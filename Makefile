@@ -3,6 +3,7 @@ FEHURL := feh.osu.edu
 FIRMWAREREPO := FEHRobotControllerFirmware
 
 all:
+	@echo $(TARGET)
 	@echo "Make all"
 
 deploy:
