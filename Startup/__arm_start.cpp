@@ -13,6 +13,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <runtime_configuration.h>
+#include "derivative.h"
 
 _EWL_BEGIN_EXTERN_C
 
