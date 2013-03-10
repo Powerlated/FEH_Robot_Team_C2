@@ -17,13 +17,18 @@ LIBS = -L"$(FEHPROTEUSINSTALL)/EWL/lib/armv7e-m"
 #CPPFILES := $(shell cat $(TARGET).files | grep cpp | awk '{ printf "%s ", $$1 } END { printf "\n" }')
 #OBJECTS := $(CPPFILES:.cpp=.o)
 #AUTOOBJECTS := $(shell cat $(TARGET).files | grep cpp | "C:/Program Files (x86)/Git/bin/awk" '{ printf "%so ", substr( $$1, 1, match( $$1, "\." ) )  } END { printf "\n" }')
+
+ifeq ($(OS),Windows_NT)
+OBJECTS := ..\main.o Startup\__arm_start.o Startup\__arm_end.o Startup\kinetis_sysinit.o
+else
 OBJECTS := ../main.o Startup/__arm_start.o Startup/__arm_end.o Startup/kinetis_sysinit.o
+endif
 
 all: $(TARGET).elf $(TARGET).s19
 
 clean:
 ifeq ($(OS),Windows_NT)
-	@rd /s /q $(OBJECTS) ../$(TARGET).elf ../$(TARGET).s19 ../$(TARGET).map $(OBJECTS:%.o=%.d) $(OBJECTS:%.o=%.o.lst)
+	del $(OBJECTS) ..\$(TARGET).elf ..\$(TARGET).s19 ..\$(TARGET).map $(OBJECTS:%.o=%.d) $(OBJECTS:%.o=%.o.lst)
 else
 	@rm -rf $(OBJECTS) ../$(TARGET).elf ../$(TARGET).s19 ../$(TARGET).map $(OBJECTS:%.o=%.d) $(OBJECTS:%.o=%.o.lst)
 endif
