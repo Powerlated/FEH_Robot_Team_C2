@@ -5,3 +5,6 @@
 
 /* Include the derivative-specific header file */
 #include <MK60DZ10.h>
+
+#define GPIO_PIN_MASK            0x1Fu
+#define GPIO_PIN(x)              (((1)<<(x & GPIO_PIN_MASK)))
