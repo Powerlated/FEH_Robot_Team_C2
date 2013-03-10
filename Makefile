@@ -22,16 +22,16 @@ OBJECTS := ../main.o Startup/__arm_start.o Startup/__arm_end.o Startup/kinetis_s
 all: $(TARGET).elf $(TARGET).s19
 
 clean:
-	@rm -rf $(OBJECTS) $(TARGET).elf $(TARGET).s19 $(TARGET).map $(OBJECTS:%.o=%.d) $(OBJECTS:%.o=%.o.lst)
+	@rm -rf $(OBJECTS) ../$(TARGET).elf ../$(TARGET).s19 ../$(TARGET).map $(OBJECTS:%.o=%.d) $(OBJECTS:%.o=%.o.lst)
 
 %.o : %.cpp
 	$(CXX) $(INCLUDES) $(ARGS) $(CFLAGS) -c $< -o $@
 
 $(TARGET).elf: $(OBJECTS)
-	$(LD) $(OBJECTS) $(LIBS) -TLinker/MK60DN512Z_flash.ld -Xlinker --gc-sections -Wl,-Map,$(TARGET).map -n -specs=$(SPECS) -Xlinker --undefined=__pformatter_ -Xlinker --defsym=__pformatter=__pformatter_ -Xlinker --undefined=__sformatter -Xlinker --defsym=__sformatter=__sformatter -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -g3 -gdwarf-2 -gstrict-dwarf -g -o $(TARGET).elf
+	$(LD) $(OBJECTS) $(LIBS) -TLinker/MK60DN512Z_flash.ld -Xlinker --gc-sections -Wl,-Map,../$(TARGET).map -n -specs=$(SPECS) -Xlinker --undefined=__pformatter_ -Xlinker --defsym=__pformatter=__pformatter_ -Xlinker --undefined=__sformatter -Xlinker --defsym=__sformatter=__sformatter -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -g3 -gdwarf-2 -gstrict-dwarf -g -o ../$(TARGET).elf
 
 $(TARGET).s19: $(TARGET).elf
-	arm-none-eabi-objcopy  -O srec --srec-len=40 --srec-forceS3 $(TARGET).elf $(TARGET).s19
+	arm-none-eabi-objcopy  -O srec --srec-len=40 --srec-forceS3 ../$(TARGET).elf ../$(TARGET).s19
 
 deploy:
 
