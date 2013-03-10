@@ -61,6 +61,19 @@ void DebugMonitor_Handler() __attribute__ ((weak, alias("Default_Handler")));
 void PendSV_Handler() __attribute__ ((weak, alias("Default_Handler")));
 void SysTick_Handler() __attribute__ ((weak, alias("Default_Handler")));
 
+void PortDISR()
+{
+    // power button pressed
+    if( PORTD_ISFR & ( 1 << 12 ) )
+    {
+        // clear interrupt
+        PORTD_ISFR &= ~( 1 << 12 );
+
+        // set kill pin low for power shutdown
+        GPIOD_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( 13 ) );
+    }
+}
+
 
 /* The Interrupt Vector Table */
 void (* const InterruptVector[])() __attribute__ ((section(".vectortable"))) = {
@@ -172,19 +185,19 @@ void (* const InterruptVector[])() __attribute__ ((section(".vectortable"))) = {
     Default_Handler,
     Default_Handler,
     Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,	
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,	
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,		
+    Default_Handler,    //105
+    PortDISR,    //106
+    Default_Handler,    //107
+    Default_Handler,    //108
+    Default_Handler,    //109
+    Default_Handler,    //110
+    Default_Handler,    //111
+    Default_Handler,    //112
+    Default_Handler,    //113
+    Default_Handler,    //114
+    Default_Handler,    //115
+    Default_Handler,	//116
+    Default_Handler,    //117
+    Default_Handler,    //118
+    Default_Handler,	//119
 };
