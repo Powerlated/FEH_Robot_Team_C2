@@ -24,7 +24,7 @@ all: $(TARGET).elf $(TARGET).s19
 clean:
 	@rm -rf $(OBJECTS) $(TARGET).elf $(TARGET).s19 $(TARGET).map $(OBJECTS:%.o=%.d) $(OBJECTS:%.o=%.o.lst)
 
-%.o : %.c
+%.o : %.cpp
 	$(CXX) $(INCLUDES) $(ARGS) $(CFLAGS) -c $< -o $@
 
 $(TARGET).elf: $(OBJECTS)
