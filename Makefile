@@ -22,7 +22,11 @@ OBJECTS := ../main.o Startup/__arm_start.o Startup/__arm_end.o Startup/kinetis_s
 all: $(TARGET).elf $(TARGET).s19
 
 clean:
+ifeq ($(OS),Windows_NT)
+	@rd /s /q $(OBJECTS) ../$(TARGET).elf ../$(TARGET).s19 ../$(TARGET).map $(OBJECTS:%.o=%.d) $(OBJECTS:%.o=%.o.lst)
+else
 	@rm -rf $(OBJECTS) ../$(TARGET).elf ../$(TARGET).s19 ../$(TARGET).map $(OBJECTS:%.o=%.d) $(OBJECTS:%.o=%.o.lst)
+endif
 
 %.o : %.cpp
 	$(CXX) $(INCLUDES) $(ARGS) $(CFLAGS) -c $< -o $@
