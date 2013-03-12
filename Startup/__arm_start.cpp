@@ -14,6 +14,10 @@
 #include <stdlib.h>
 #include <runtime_configuration.h>
 #include "derivative.h"
+#include "FEHProteus.h"
+#include "FEHUtility.h"
+#include "mcg.h"
+#include "lptmr.h"
 
 _EWL_BEGIN_EXTERN_C
 
@@ -33,6 +37,7 @@ extern int __argc_argv(char **, int);
 
 extern void __call_static_initializers(void);
 extern int main(int, char **);
+void InitFEHProteus();
 void InitPowerButton();
 
 #ifdef __VFPV4__
@@ -139,13 +144,31 @@ void __thumb_startup(void)
 #if SUPPORT_SEMIHOST_ARGC_ARGV
 		exit(main(__argc_argv(argv, __MAX_CMDLINE_ARGS), argv));
 #else
-        InitPowerButton();
+        InitFEHProteus();
+        //InitPowerButton();
 		exit(main(0, argv));
 #endif
 
 		//	should never get here
 		while (1);
 
+}
+
+void InitFEHProteus()
+{
+    // Initialize GPIO Clocks
+    SIM_SCGC5 |= (SIM_SCGC5_PORTA_MASK | SIM_SCGC5_PORTB_MASK | SIM_SCGC5_PORTC_MASK | SIM_SCGC5_PORTD_MASK | SIM_SCGC5_PORTE_MASK );
+
+    // Setup clocks
+    CoreClockMHz = pll_init( CORE_CLK_MHZ, REF_CLK );
+    CoreClockKHz = CoreClockMHz * 1000;
+    PeripheralClockKHz = CoreClockKHz / ( ( ( SIM_CLKDIV1 & SIM_CLKDIV1_OUTDIV2_MASK ) >> 24 ) + 1 );
+
+    InitPowerButton();
+
+    Propeller.Initialize();
+
+    Sleep( 5000 );
 }
 
 void InitPowerButton()
