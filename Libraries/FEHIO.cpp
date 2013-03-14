@@ -169,181 +169,181 @@ int DigitalInputPin::Value()
 //}
 
 
-//// Begin Functions for Digital Output Pin Type
-//DigitalOutputPin::DigitalOutputPin( GPIO_pin _pin )
-//{
-//    // store selected pin number in class
-//    pin = _pin;
-//    switch( GPIOPorts[ (int)pin ] )
-//                {
-//                    case PortA:
-//                    {
-//                        PORT_PCR_REG( PORTA_BASE_PTR, GPIOPinNumbers[ (int)pin ] ) = ( 0 | PORT_PCR_MUX( 1 ) );
-//                        GPIOA_PDDR |= GPIO_PDDR_PDD( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                        break;
-//                    }
-//                    case PortB:
-//                    {
-//                        PORT_PCR_REG( PORTB_BASE_PTR, GPIOPinNumbers[ (int)pin ] ) = ( 0 | PORT_PCR_MUX( 1 ) );
-//                        GPIOB_PDDR |= GPIO_PDDR_PDD( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                        break;
-//                    }
-//                    case PortC:
-//                    {
-//                        PORT_PCR_REG( PORTC_BASE_PTR, GPIOPinNumbers[ (int)pin ] ) = ( 0 | PORT_PCR_MUX( 1 ) );
-//                        GPIOC_PDDR |= GPIO_PDDR_PDD( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                        break;
-//                    }
-//                    case PortD:
-//                    {
-//                        PORT_PCR_REG( PORTD_BASE_PTR, GPIOPinNumbers[ (int)pin ] ) = ( 0 | PORT_PCR_MUX( 1 ) );
-//                        GPIOD_PDDR |= GPIO_PDDR_PDD( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                        break;
-//                    }
-//                    case PortE:
-//                    {
-//                        PORT_PCR_REG( PORTE_BASE_PTR, GPIOPinNumbers[ (int)pin ] ) = ( 0 | PORT_PCR_MUX( 1 ) );
-//                        GPIOE_PDDR |= GPIO_PDDR_PDD( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                        break;
-//                    }
-//                }
-//}
+// Begin Functions for Digital Output Pin Type
+DigitalOutputPin::DigitalOutputPin( FEHIO::FEHIOPin _pin )
+{
+    // store selected pin number in class
+    pin = _pin;
+    switch( GPIOPorts[ (int)pin ] )
+                {
+                    case PortA:
+                    {
+                        PORT_PCR_REG( PORTA_BASE_PTR, GPIOPinNumbers[ (int)pin ] ) = ( 0 | PORT_PCR_MUX( 1 ) );
+                        GPIOA_PDDR |= GPIO_PDDR_PDD( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                        break;
+                    }
+                    case PortB:
+                    {
+                        PORT_PCR_REG( PORTB_BASE_PTR, GPIOPinNumbers[ (int)pin ] ) = ( 0 | PORT_PCR_MUX( 1 ) );
+                        GPIOB_PDDR |= GPIO_PDDR_PDD( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                        break;
+                    }
+                    case PortC:
+                    {
+                        PORT_PCR_REG( PORTC_BASE_PTR, GPIOPinNumbers[ (int)pin ] ) = ( 0 | PORT_PCR_MUX( 1 ) );
+                        GPIOC_PDDR |= GPIO_PDDR_PDD( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                        break;
+                    }
+                    case PortD:
+                    {
+                        PORT_PCR_REG( PORTD_BASE_PTR, GPIOPinNumbers[ (int)pin ] ) = ( 0 | PORT_PCR_MUX( 1 ) );
+                        GPIOD_PDDR |= GPIO_PDDR_PDD( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                        break;
+                    }
+                    case PortE:
+                    {
+                        PORT_PCR_REG( PORTE_BASE_PTR, GPIOPinNumbers[ (int)pin ] ) = ( 0 | PORT_PCR_MUX( 1 ) );
+                        GPIOE_PDDR |= GPIO_PDDR_PDD( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                        break;
+                    }
+                }
+}
 
-//void DigitalOutputPin::Write( GPIOValue value )
-//{
-//    switch( value )
-//    {
-//        case high:
-//        {
-//            switch( GPIOPorts[ (int)pin ] )
-//            {
-//                case PortA:
-//                {
-//                    GPIOA_PDOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                    break;
-//                 }
-//                case PortB:
-//                {
-//                    GPIOB_PDOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                    break;
-//                }
-//                case PortC:
-//                {
-//                    GPIOC_PDOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                    break;
-//                }
-//                case PortD:
-//                {
-//                    GPIOD_PDOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                    break;
-//                }
-//                case PortE:
-//                {
-//                    GPIOE_PDOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                    break;
-//                }
-//            }
-//        }
-//        case low:
-//        {
-//            switch( GPIOPorts[ (int)pin ] )
-//            {
-//                case PortA:
-//                {
-//                    GPIOA_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                    break;
-//                }
-//                case PortB:
-//                {
-//                    GPIOB_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                    break;
-//                }
-//                case PortC:
-//                {
-//                    GPIOC_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                    break;
-//                }
-//                case PortD:
-//                {
-//                    GPIOD_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                    break;
-//                }
-//                case PortE:
-//                {
-//                    GPIOE_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                    break;
-//                }
-//            }
-//        }
-//    }
-//}
+void DigitalOutputPin::Write( bool value )
+{
+    switch( value )
+    {
+        case true:
+        {
+            switch( GPIOPorts[ (int)pin ] )
+            {
+                case PortA:
+                {
+                    GPIOA_PDOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                    break;
+                 }
+                case PortB:
+                {
+                    GPIOB_PDOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                    break;
+                }
+                case PortC:
+                {
+                    GPIOC_PDOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                    break;
+                }
+                case PortD:
+                {
+                    GPIOD_PDOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                    break;
+                }
+                case PortE:
+                {
+                    GPIOE_PDOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                    break;
+                }
+            }
+        }
+        case false:
+        {
+            switch( GPIOPorts[ (int)pin ] )
+            {
+                case PortA:
+                {
+                    GPIOA_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                    break;
+                }
+                case PortB:
+                {
+                    GPIOB_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                    break;
+                }
+                case PortC:
+                {
+                    GPIOC_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                    break;
+                }
+                case PortD:
+                {
+                    GPIOD_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                    break;
+                }
+                case PortE:
+                {
+                    GPIOE_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                    break;
+                }
+            }
+        }
+    }
+}
 
-//int DigitalOutputPin::PinStatus()
-//{
-//    int ret = 0;
-//        switch( GPIOPorts[ (int)pin ] )
-//        {
-//            case PortA:
-//            {
-//                ret = GPIOA_PDOR & GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                break;
-//            }
-//            case PortB:
-//            {
-//                ret = GPIOB_PDOR & GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                break;
-//            }
-//            case PortC:
-//            {
-//                ret = GPIOC_PDOR & GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                break;
-//            }
-//            case PortD:
-//            {
-//                ret = GPIOD_PDOR & GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                break;
-//            }
-//            case PortE:
-//            {
-//                ret = GPIOE_PDOR & GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                break;
-//            }
-//        }
-//        return ret;
-//}
+int DigitalOutputPin::PinStatus()
+{
+    int ret = 0;
+        switch( GPIOPorts[ (int)pin ] )
+        {
+            case PortA:
+            {
+                ret = GPIOA_PDOR & GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                break;
+            }
+            case PortB:
+            {
+                ret = GPIOB_PDOR & GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                break;
+            }
+            case PortC:
+            {
+                ret = GPIOC_PDOR & GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                break;
+            }
+            case PortD:
+            {
+                ret = GPIOD_PDOR & GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                break;
+            }
+            case PortE:
+            {
+                ret = GPIOE_PDOR & GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                break;
+            }
+        }
+        return ret;
+}
 
-//void DigitalOutputPin::Toggle()
-//{
-//    switch( GPIOPorts[ (int)pin ] )
-//        {
-//            case PortA:
-//            {
-//                GPIOA_PTOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                break;
-//            }
-//            case PortB:
-//            {
-//                GPIOB_PTOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                break;
-//            }
-//            case PortC:
-//            {
-//                GPIOC_PTOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                break;
-//            }
-//            case PortD:
-//            {
-//                GPIOD_PTOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                break;
-//            }
-//            case PortE:
-//            {
-//                GPIOE_PTOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
-//                break;
-//            }
-//        }
+void DigitalOutputPin::Toggle()
+{
+    switch( GPIOPorts[ (int)pin ] )
+        {
+            case PortA:
+            {
+                GPIOA_PTOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                break;
+            }
+            case PortB:
+            {
+                GPIOB_PTOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                break;
+            }
+            case PortC:
+            {
+                GPIOC_PTOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                break;
+            }
+            case PortD:
+            {
+                GPIOD_PTOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                break;
+            }
+            case PortE:
+            {
+                GPIOE_PTOR |= GPIO_PDOR_PDO( GPIO_PIN( GPIOPinNumbers[ (int)pin ] ) );
+                break;
+            }
+        }
 
-//}
+}
 
 ////Initialize ADC Function. Needs to be placed somewhere??
 

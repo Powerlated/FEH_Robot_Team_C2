@@ -73,16 +73,16 @@ private:
 //    float Value();
 //};
 
-//class DigitalOutputPin
-//{
-//private:
-//    GPIO_pin pin;
-//public:
-//    DigitalOutputPin( GPIO_pin );
-//    void Write( GPIOValue );
-//    int PinStatus();
-//    void Toggle();
-//};
+class DigitalOutputPin
+{
+private:
+    FEHIO::FEHIOPin pin;
+public:
+    DigitalOutputPin( FEHIO::FEHIOPin );
+    void Write( bool );
+    int PinStatus();
+    void Toggle();
+};
 
 //// Initialize ADC ports
 //void InitADCs();
