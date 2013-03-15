@@ -15,8 +15,8 @@
 
 // global variables
 
-extern int slow_irc_freq = 32768; // default slow irc frequency is 32768Hz
-extern int fast_irc_freq = 4000000; // default fast irc frequency is 4MHz
+int slow_irc_freq = 32768; // default slow irc frequency is 32768Hz
+int fast_irc_freq = 4000000; // default fast irc frequency is 4MHz
 
 extern int core_clk_khz;
 extern int core_clk_mhz;
