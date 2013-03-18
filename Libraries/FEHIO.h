@@ -64,14 +64,14 @@ private:
     FEHIO::FEHIOPin _pin;
 };
 
-//class AnalogInputPin
-//{
-//private:
-//    GPIO_pin pin;
-//public:
-//    AnalogInputPin( GPIO_pin );
-//    float Value();
-//};
+class AnalogInputPin
+{
+private:
+    FEHIO::FEHIOPin pin;
+public:
+    AnalogInputPin( FEHIO::FEHIOPin );
+    float Value();
+};
 
 class DigitalOutputPin
 {
@@ -85,8 +85,8 @@ public:
 };
 
 //// Initialize ADC ports
-//void InitADCs();
-//void InitClocks();
+void InitADCs();
+void InitClocks();
 
 
 #endif // FEHIO_H

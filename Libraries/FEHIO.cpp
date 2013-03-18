@@ -130,43 +130,43 @@ int DigitalInputPin::Value()
     return ret;
 }
 
-//// Begin Functions for Analog Input Pin Type
-//AnalogInputPin::AnalogInputPin( GPIO_pin _pin )
-//{
-//    pin = _pin;
-//}
+// Begin Functions for Analog Input Pin Type
+AnalogInputPin::AnalogInputPin( GPIO_pin _pin )
+{
+    pin = _pin;
+}
 
 
-//float AnalogInputPin::Value()
-//{
-//    int analogPin = AnalogPinNumbers[pin];
-//        ADCNumber adcNum = ADCNumbers[pin];
+float AnalogInputPin::Value()
+{
+    int analogPin = AnalogPinNumbers[pin];
+        ADCNumber adcNum = ADCNumbers[pin];
 
-//         Master_Adc_Config.STATUS1A = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(analogPin);
-//         Master_Adc_Config.STATUS1B = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(analogPin);
+         Master_Adc_Config.STATUS1A = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(analogPin);
+         Master_Adc_Config.STATUS1B = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(analogPin);
 
-//        int result;
+        int result;
 
-//        if (adcNum == ADC0)
-//        {
-//             ADC_Config_Alt(ADC0_BASE_PTR, &Master_Adc_Config);  // config ADC0
+        if (adcNum == ADC0)
+        {
+             ADC_Config_Alt(ADC0_BASE_PTR, &Master_Adc_Config);  // config ADC0
 
-//             // Check the status control register to see is the COnversion is COmplete
-//             while (( ADC0_SC1A & ADC_SC1_COCO_MASK ) != ADC_SC1_COCO_MASK){}
-//             result = ADC0_RA;
-//        }
-//        else
-//        {
-//             ADC_Config_Alt(ADC1_BASE_PTR, &Master_Adc_Config);  // config ADC0
+             // Check the status control register to see is the COnversion is COmplete
+             while (( ADC0_SC1A & ADC_SC1_COCO_MASK ) != ADC_SC1_COCO_MASK){}
+             result = ADC0_RA;
+        }
+        else
+        {
+             ADC_Config_Alt(ADC1_BASE_PTR, &Master_Adc_Config);  // config ADC0
 
-//             // Check the status control register to see is the COnversion is COmplete
-//             while (( ADC1_SC1A & ADC_SC1_COCO_MASK ) != ADC_SC1_COCO_MASK){}
-//             result = ADC1_RA;
+             // Check the status control register to see is the COnversion is COmplete
+             while (( ADC1_SC1A & ADC_SC1_COCO_MASK ) != ADC_SC1_COCO_MASK){}
+             result = ADC1_RA;
 
-//        }
+        }
 
-//        float v = result *3.33 / (0x10000);
-//}
+        float v = result *3.33 / (0x10000);
+}
 
 
 // Begin Functions for Digital Output Pin Type
@@ -347,74 +347,71 @@ void DigitalOutputPin::Toggle()
 
 ////Initialize ADC Function. Needs to be placed somewhere??
 
-//void InitADCs()
-//{
-//    // setup the initial ADC default configuration
-//         Master_Adc_Config.CONFIG1  = ADLPC_NORMAL                   // Normal power, (not low power)
-//                                    | ADC_CFG1_ADIV(ADIV_4)          // Clock divider
-//                                    | ADLSMP_LONG                    // Take a long time to sample
-//                                    | ADC_CFG1_MODE(MODE_16)         // 16 bit mode
-//                                    | ADC_CFG1_ADICLK(ADICLK_BUS);   // use the bus clock
-//         Master_Adc_Config.CONFIG2  = MUXSEL_ADCB                    // use channel A
-//                                    | ADACKEN_DISABLED               // Asynch clock disabled?
-//                                    | ADHSC_NORMAL                   // Asynch clock setting
-//                                    | ADC_CFG2_ADLSTS(ADLSTS_20) ;
-//         Master_Adc_Config.COMPARE1 = 0x1234u ;                 // can be anything
-//         Master_Adc_Config.COMPARE2 = 0x5678u ;                 // can be anything
-//                                                                // since not using
-//                                                                // compare feature
-//         Master_Adc_Config.STATUS2  = ADTRG_SW                  // Software triggered conversion
-//                                    | ACFE_DISABLED             // Disable comparator (if enabled only registers as an anlog reading if it is greater than a certain value)
-//                                    | ACFGT_GREATER             // comparator setting
-//                                    | ACREN_DISABLED            // Compare Function Range disabled
-//                                    | DMAEN_DISABLED               // Disable DMA
-//                                    | ADC_SC2_REFSEL(REFSEL_EXT); // external voltage reference
+void InitADCs()
+{
+    // setup the initial ADC default configuration
+         Master_Adc_Config.CONFIG1  = ADLPC_NORMAL                   // Normal power, (not low power)
+                                    | ADC_CFG1_ADIV(ADIV_4)          // Clock divider
+                                    | ADLSMP_LONG                    // Take a long time to sample
+                                    | ADC_CFG1_MODE(MODE_16)         // 16 bit mode
+                                    | ADC_CFG1_ADICLK(ADICLK_BUS);   // use the bus clock
+         Master_Adc_Config.CONFIG2  = MUXSEL_ADCB                    // use channel A
+                                    | ADACKEN_DISABLED               // Asynch clock disabled?
+                                    | ADHSC_NORMAL                   // Asynch clock setting
+                                    | ADC_CFG2_ADLSTS(ADLSTS_20) ;
+         Master_Adc_Config.COMPARE1 = 0x1234u ;                 // can be anything
+         Master_Adc_Config.COMPARE2 = 0x5678u ;                 // can be anything
+                                                                // since not using
+                                                                // compare feature
+         Master_Adc_Config.STATUS2  = ADTRG_SW                  // Software triggered conversion
+                                    | ACFE_DISABLED             // Disable comparator (if enabled only registers as an anlog reading if it is greater than a certain value)
+                                    | ACFGT_GREATER             // comparator setting
+                                    | ACREN_DISABLED            // Compare Function Range disabled
+                                    | DMAEN_DISABLED               // Disable DMA
+                                    | ADC_SC2_REFSEL(REFSEL_EXT); // external voltage reference
 
-//         Master_Adc_Config.STATUS3  = CAL_OFF                     // Calibration begins off
-//                                    | ADCO_SINGLE                 // Take a single reading
-//                                    | AVGE_ENABLED                // Enable averaging
-//                                    | ADC_SC3_AVGS(AVGS_32);      // Average 32 samples
+         Master_Adc_Config.STATUS3  = CAL_OFF                     // Calibration begins off
+                                    | ADCO_SINGLE                 // Take a single reading
+                                    | AVGE_ENABLED                // Enable averaging
+                                    | ADC_SC3_AVGS(AVGS_32);      // Average 32 samples
 
-//         Master_Adc_Config.PGA      = PGAEN_DISABLED             // PGA disabled
-//                                    | PGACHP_NOCHOP              // no chopping for PGA?
-//                                    | PGALP_NORMAL               // Normal (not low power mode)
-//                                    | ADC_PGA_PGAG(PGAG_64);     // PGA gain of 64
+         Master_Adc_Config.PGA      = PGAEN_DISABLED             // PGA disabled
+                                    | PGACHP_NOCHOP              // no chopping for PGA?
+                                    | PGALP_NORMAL               // Normal (not low power mode)
+                                    | ADC_PGA_PGAG(PGAG_64);     // PGA gain of 64
 
-//         // Set up channel as all ones for configuration
-//         Master_Adc_Config.STATUS1A = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(31);
+         // Set up channel as all ones for configuration
+         Master_Adc_Config.STATUS1A = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(31);
 
-//// start of area that conflicts with digital
-//         Master_Adc_Config.STATUS1B = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(31);
+// start of area that conflicts with digital
+         Master_Adc_Config.STATUS1B = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(31);
 
 
-//        // Configure ADC as it will be used, but becuase ADC_SC1_ADCH is 31,
-//        // the ADC will be inactive.  Channel 31 is just disable function.
-//        // There really is no channel 31.
+        // Configure ADC as it will be used, but becuase ADC_SC1_ADCH is 31,
+        // the ADC will be inactive.  Channel 31 is just disable function.
+        // There really is no channel 31.
 
-//         ADC_Config_Alt(ADC0_BASE_PTR, &Master_Adc_Config);  // config ADC
-//         ADC_Config_Alt(ADC1_BASE_PTR, &Master_Adc_Config);  // config ADC
+         ADC_Config_Alt(ADC0_BASE_PTR, &Master_Adc_Config);  // config ADC
+         ADC_Config_Alt(ADC1_BASE_PTR, &Master_Adc_Config);  // config ADC
 
-//        // Calibrate the ADC in the configuration in which it will be used:
-//         ADC_Cal(ADC1_BASE_PTR);                    // do the calibration
-//         ADC_Cal(ADC0_BASE_PTR);                    // do the calibration
+        // Calibrate the ADC in the configuration in which it will be used:
+         ADC_Cal(ADC1_BASE_PTR);                    // do the calibration
+         ADC_Cal(ADC0_BASE_PTR);                    // do the calibration
 
-//        // The structure still has the desired configuration.  So restore it.
-//        // Why restore it?  The calibration makes some adjustments to the
-//        // configuration of the ADC.  The are now undone:
+        // The structure still has the desired configuration.  So restore it.
+        // Why restore it?  The calibration makes some adjustments to the
+        // configuration of the ADC.  The are now undone:
 
-//        // config the ADC again to desired conditions
-//         ADC_Config_Alt(ADC1_BASE_PTR, &Master_Adc_Config);
-//         ADC_Config_Alt(ADC0_BASE_PTR, &Master_Adc_Config);
-//}
+        // config the ADC again to desired conditions
+         ADC_Config_Alt(ADC1_BASE_PTR, &Master_Adc_Config);
+         ADC_Config_Alt(ADC0_BASE_PTR, &Master_Adc_Config);
+}
 
 //// initialize clocks for GPIO and the ADCs, This will also be moved somewhere else...
-//void InitClocks()
-//{
-//    // Clocks for GPIO
-//    SIM_SCGC5 = SIM_SCGC5_PORTA_MASK | SIM_SCGC5_PORTB_MASK | SIM_SCGC5_PORTC_MASK | SIM_SCGC5_PORTD_MASK | SIM_SCGC5_PORTE_MASK;
-
-//    // Clocks for ADC
-//    // Turn on the ADC0 and ADC1 clocks
-//     SIM_SCGC6 |= (SIM_SCGC6_ADC0_MASK );
-//     SIM_SCGC3 |= (SIM_SCGC3_ADC1_MASK );
-//}
+void InitClocks()
+{
+    // Clocks for ADC
+    // Turn on the ADC0 and ADC1 clocks
+     SIM_SCGC6 |= (SIM_SCGC6_ADC0_MASK );
+     SIM_SCGC3 |= (SIM_SCGC3_ADC1_MASK );
+}
