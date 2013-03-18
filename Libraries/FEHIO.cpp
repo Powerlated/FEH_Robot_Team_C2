@@ -137,6 +137,7 @@ AnalogInputPin::AnalogInputPin( GPIO_pin _pin )
 }
 
 
+//Analog read function causes digital output to behave strangely????????
 float AnalogInputPin::Value()
 {
     int analogPin = AnalogPinNumbers[pin];
@@ -383,7 +384,6 @@ void InitADCs()
          // Set up channel as all ones for configuration
          Master_Adc_Config.STATUS1A = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(31);
 
-// start of area that conflicts with digital
          Master_Adc_Config.STATUS1B = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(31);
 
 

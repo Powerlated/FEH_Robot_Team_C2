@@ -8,8 +8,6 @@
 
 
 
-// The Servo Off function is not working !!
-
 FEHServo::FEHServo( FEHServoPort _servo )
 {
     servo_port = _servo;
@@ -119,4 +117,5 @@ void FEHServo::Off()
     uart_putchar( UART5_BASE_PTR, 0x7F );
     uart_putchar( UART5_BASE_PTR, 0x06 ); // servo off type
     uart_putchar( UART5_BASE_PTR, (unsigned char) servo_port ); // servo to turn off
+    uart_putchar( UART5_BASE_PTR, 0xFF );
 }
