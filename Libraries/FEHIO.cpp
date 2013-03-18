@@ -131,7 +131,7 @@ int DigitalInputPin::Value()
 }
 
 // Begin Functions for Analog Input Pin Type
-AnalogInputPin::AnalogInputPin( GPIO_pin _pin )
+AnalogInputPin::AnalogInputPin( FEHIO::FEHIOPin _pin )
 {
     pin = _pin;
 }
