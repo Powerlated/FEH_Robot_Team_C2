@@ -60,8 +60,13 @@ public:
     DigitalInputPin( FEHIO::FEHIOPin pin );
     int Value();
 
+    friend class ButtonBoard;
+
 private:
     FEHIO::FEHIOPin _pin;
+
+    DigitalInputPin();
+    void Initialize( FEHIO::FEHIOPin pin );
 };
 
 class AnalogInputPin
@@ -82,6 +87,26 @@ public:
     void Write( bool );
     int PinStatus();
     void Toggle();
+};
+
+class ButtonBoard
+{
+public:
+    ButtonBoard( FEHIO::FEHIOPort bank );
+
+    bool LeftPressed();
+    bool LeftReleased();
+
+    bool MiddlePressed();
+    bool MiddleReleased();
+
+    bool RightPressed();
+    bool RightReleased();
+
+private:
+    DigitalInputPin _left;
+    DigitalInputPin _middle;
+    DigitalInputPin _right;
 };
 
 //// Initialize ADC ports

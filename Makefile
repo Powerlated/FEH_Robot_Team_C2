@@ -19,9 +19,9 @@ LIBS = -L"$(FEHPROTEUSINSTALL)/EWL/lib/armv7e-m"
 #AUTOOBJECTS := $(shell cat $(TARGET).files | grep cpp | "C:/Program Files (x86)/Git/bin/awk" '{ printf "%so ", substr( $$1, 1, match( $$1, "\." ) )  } END { printf "\n" }')
 
 ifeq ($(OS),Windows_NT)
-OBJECTS := ..\main.o Startup\__arm_start.o Startup\__arm_end.o Startup\kinetis_sysinit.o Libraries\FEHMotor.o Drivers\mcg.o Drivers\uart.o Drivers\lptmr.o FEHProteus.o Drivers\FEHPropeller.o Libraries\FEHUtility.o Libraries\FEHIO.o Drivers\adc16.o Libraries\FEHBuzzer.o Libraries\FEHServo.o
+OBJECTS := ..\main.o Startup\__arm_start.o Startup\__arm_end.o Startup\kinetis_sysinit.o Libraries\FEHMotor.o Drivers\mcg.o Drivers\uart.o Drivers\lptmr.o FEHProteus.o Drivers\FEHPropeller.o Libraries\FEHUtility.o Libraries\FEHIO.o Drivers\adc16.o Libraries\FEHBuzzer.o Libraries\FEHServo.o Libraries\FEHLCD.o
 else
-OBJECTS := ../main.o Startup/__arm_start.o Startup/__arm_end.o Startup/kinetis_sysinit.o Libraries/FEHMotor.o Drivers/mcg.o Drivers/uart.o Drivers/lptmr.o FEHProteus.o Drivers/FEHPropeller.o Libraries/FEHUtility.o Libraries/FEHIO.o Drivers/adc16.o Libraries/FehBuzzer.o Libraries/FEHServo.o
+OBJECTS := ../main.o Startup/__arm_start.o Startup/__arm_end.o Startup/kinetis_sysinit.o Libraries/FEHMotor.o Drivers/mcg.o Drivers/uart.o Drivers/lptmr.o FEHProteus.o Drivers/FEHPropeller.o Libraries/FEHUtility.o Libraries/FEHIO.o Drivers/adc16.o Libraries/FehBuzzer.o Libraries/FEHServo.o Libraries/FEHLCD.o
 endif
 
 all: $(TARGET).elf $(TARGET).s19

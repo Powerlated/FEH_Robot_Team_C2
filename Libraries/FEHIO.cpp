@@ -59,6 +59,16 @@ const int AnalogPinNumbers[ 32 ] =
 // Begin Functions for Digital Input Pin Type
 DigitalInputPin::DigitalInputPin( FEHIO::FEHIOPin pin )
 {
+    Initialize( pin );
+}
+
+DigitalInputPin::DigitalInputPin()
+{
+
+}
+
+void DigitalInputPin::Initialize( FEHIO::FEHIOPin pin )
+{
     // store selected pin number in class
     _pin = pin;
     switch( GPIOPorts[ (int)_pin ] )
@@ -415,4 +425,69 @@ void InitClocks()
     // Turn on the ADC0 and ADC1 clocks
      SIM_SCGC6 |= (SIM_SCGC6_ADC0_MASK );
      SIM_SCGC3 |= (SIM_SCGC3_ADC1_MASK );
+}
+
+ButtonBoard::ButtonBoard( FEHIO::FEHIOPort bank )
+{
+    switch( bank )
+    {
+        case FEHIO::Bank0:
+        {
+            _left.Initialize( FEHIO::P0_0 );
+            _middle.Initialize( FEHIO::P0_1 );
+            _right.Initialize( FEHIO::P0_2 );
+            break;
+        }
+        case FEHIO::Bank1:
+        {
+            _left.Initialize( FEHIO::P1_0 );
+            _middle.Initialize( FEHIO::P1_1 );
+            _right.Initialize( FEHIO::P1_2 );
+            break;
+        }
+        case FEHIO::Bank2:
+        {
+            _left.Initialize( FEHIO::P2_0 );
+            _middle.Initialize( FEHIO::P2_1 );
+            _right.Initialize( FEHIO::P2_2 );
+            break;
+        }
+        case FEHIO::Bank3:
+        {
+            _left.Initialize( FEHIO::P3_0 );
+            _middle.Initialize( FEHIO::P3_1 );
+            _right.Initialize( FEHIO::P3_2 );
+            break;
+        }
+    }
+}
+
+bool ButtonBoard::LeftPressed()
+{
+    return ( _left.Value() == 0 );
+}
+
+bool ButtonBoard::LeftReleased()
+{
+    return ( _left.Value() == 1 );
+}
+
+bool ButtonBoard::MiddlePressed()
+{
+    return ( _middle.Value() == 0 );
+}
+
+bool ButtonBoard::MiddleReleased()
+{
+    return ( _middle.Value() == 1 );
+}
+
+bool ButtonBoard::RightPressed()
+{
+    return ( _right.Value() == 0 );
+}
+
+bool ButtonBoard::RightReleased()
+{
+    return ( _right.Value() == 1 );
 }
