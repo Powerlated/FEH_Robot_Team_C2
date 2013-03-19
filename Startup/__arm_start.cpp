@@ -1,5 +1,5 @@
 /* CodeWarrior ARM Runtime Support Library
- * Copyright © 2012 Freescale Semiconductors. All rights reserved.
+ * Copyright ï¿½ 2012 Freescale Semiconductors. All rights reserved.
  *
  * $Date: 2012/07/23 06:20:27 $
  * $Revision: 1.5 $
@@ -16,6 +16,7 @@
 #include "derivative.h"
 #include "FEHProteus.h"
 #include "FEHUtility.h"
+#include "FEHIO.h"
 #include "mcg.h"
 #include "lptmr.h"
 
@@ -158,7 +159,10 @@ void InitFEHProteus()
 {
     // Initialize GPIO Clocks
     SIM_SCGC5 |= (SIM_SCGC5_PORTA_MASK | SIM_SCGC5_PORTB_MASK | SIM_SCGC5_PORTC_MASK | SIM_SCGC5_PORTD_MASK | SIM_SCGC5_PORTE_MASK );
-
+	// Initialize ADC Clocks
+	InitClocks();
+	// Initialize ADCs
+	InitADCs();
     // Setup clocks
     CoreClockMHz = pll_init( CORE_CLK_MHZ, REF_CLK );
     CoreClockKHz = CoreClockMHz * 1000;
