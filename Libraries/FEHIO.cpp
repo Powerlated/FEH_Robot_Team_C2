@@ -389,7 +389,7 @@ void DigitalOutputPin::Toggle()
 }
 
 ////Initialize ADC Function. Needs to be placed somewhere??
-void InitADCs()
+void AnalogInputPin::InitADCs()
 {
     // setup the initial ADC default configuration
          Master_Adc_Config.CONFIG1  = ADLPC_NORMAL                   // Normal power, (not low power)
@@ -460,15 +460,6 @@ void InitADCs()
                                     | ADCO_SINGLE                 // Take a single reading
                                     | AVGE_ENABLED                // Enable averaging
                                     | ADC_SC3_AVGS(AVGS_4);      // Average 4 samples
-}
-
-//// initialize clocks for GPIO and the ADCs, This will also be moved somewhere else...
-void InitClocks()
-{
-    // Clocks for ADC
-    // Turn on the ADC0 and ADC1 clocks
-     SIM_SCGC6 |= (SIM_SCGC6_ADC0_MASK | SIM_SCGC6_PIT_MASK);
-     SIM_SCGC3 |= (SIM_SCGC3_ADC1_MASK );
 }
 
 int FEHEncoder::numEncoders = 0;

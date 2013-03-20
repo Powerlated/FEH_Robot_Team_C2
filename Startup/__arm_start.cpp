@@ -161,6 +161,10 @@ void InitFEHProteus()
     // Initialize GPIO Clocks
     SIM_SCGC5 |= (SIM_SCGC5_PORTA_MASK | SIM_SCGC5_PORTB_MASK | SIM_SCGC5_PORTC_MASK | SIM_SCGC5_PORTD_MASK | SIM_SCGC5_PORTE_MASK );
 
+    // Initialize ADC and PIT Clocks
+    SIM_SCGC6 |= (SIM_SCGC6_ADC0_MASK | SIM_SCGC6_PIT_MASK);
+    SIM_SCGC3 |= (SIM_SCGC3_ADC1_MASK );
+
     // Setup clocks
     CoreClockMHz = pll_init( CORE_CLK_MHZ, REF_CLK );
     CoreClockKHz = CoreClockMHz * 1000;
@@ -168,12 +172,9 @@ void InitFEHProteus()
 
     InitPowerButton();
 
-    // Initialize ADC Clocks
-    InitClocks();
 
     // Initialize ADCs
-    InitADCs();
-
+    AnalogInputPin::InitADCs();
 	FEHEncoder::Init();
 
     Propeller.Initialize();

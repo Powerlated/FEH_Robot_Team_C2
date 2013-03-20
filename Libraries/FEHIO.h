@@ -77,6 +77,8 @@ public:
     AnalogInputPin( FEHIO::FEHIOPin );
     float Value();
     int EncoderValue();
+
+    static void InitADCs();
 };
 
 class DigitalOutputPin
@@ -109,10 +111,6 @@ private:
     DigitalInputPin _middle;
     DigitalInputPin _right;
 };
-
-//// Initialize ADC ports
-void InitADCs();
-void InitClocks();
 
 class FEHEncoder : public AnalogInputPin
 {
