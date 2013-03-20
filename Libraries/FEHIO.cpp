@@ -181,6 +181,36 @@ float AnalogInputPin::Value()
 }
 
 
+int AnalogInputPin::EncoderValue()
+{
+    int analogPin = AnalogPinNumbers[pin];
+    ADCNumber adcNum = ADCNumbers[pin];
+
+     Encoder_Adc_Config.STATUS1A = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(analogPin);
+     Encoder_Adc_Config.STATUS1B = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(analogPin);
+
+    int result;
+
+    if (adcNum == ADC0)
+    {
+         ADC_Config_Alt(ADC0_BASE_PTR, &Encoder_Adc_Config);  // config ADC0
+
+         // Check the status control register to see is the COnversion is COmplete
+         while (( ADC0_SC1A & ADC_SC1_COCO_MASK ) != ADC_SC1_COCO_MASK){}
+         result = ADC0_RA;
+    }
+    else
+    {
+         ADC_Config_Alt(ADC1_BASE_PTR, &Encoder_Adc_Config);  // config ADC0
+
+         // Check the status control register to see is the COnversion is COmplete
+         while (( ADC1_SC1A & ADC_SC1_COCO_MASK ) != ADC_SC1_COCO_MASK){}
+         result = ADC1_RA;
+    }
+    return result;
+}
+
+
 // Begin Functions for Digital Output Pin Type
 DigitalOutputPin::DigitalOutputPin( FEHIO::FEHIOPin _pin )
 {
