@@ -160,7 +160,7 @@ float AnalogInputPin::Value()
          Master_Adc_Config.STATUS1A = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(analogPin);
          Master_Adc_Config.STATUS1B = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(analogPin);
 
-        int result;
+        unsigned int result;
 
         // Disable Encoder Interrupts Temporarily
         NVICICER2 |= (1 << (4));
@@ -192,7 +192,7 @@ float AnalogInputPin::Value()
         NVICISER2 |= (1 << ( 26 ));
 
 
-        float v = result *3.33 / (0x10000);
+        float v = (result & 0xFFFFu) *3.33 / (0xFFFFu);
         return v;
 }
 
