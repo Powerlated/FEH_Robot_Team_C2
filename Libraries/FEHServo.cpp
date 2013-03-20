@@ -41,13 +41,13 @@ void FEHServo::SetMax( int _max )
     }
 }
 
-void FEHServo::SetDegree( unsigned short _degree )
+void FEHServo::SetDegree( int _degree )
 {
     if( _degree < 0 ) _degree = 0;
     if( _degree > 180 ) _degree = 180;
     //set rate based on min ,max and degre provided
     unsigned short rate;
-    rate = servo_min + (unsigned short)((servo_max - servo_min) / 180.0 * _degree);
+    rate = servo_min + (unsigned short)((servo_max - servo_min) / 180.0 * (unsigned short)_degree);
 
     //to get low byte, typecase to unsigned char
     unsigned char rate_low = (unsigned char)( rate & 0xFF );
