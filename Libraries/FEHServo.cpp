@@ -69,7 +69,6 @@ void FEHServo::Calibrate()
     DigitalInputPin leftbutton( FEHIO::P3_0 );
     DigitalInputPin middlebutton( FEHIO::P3_1 );
     DigitalInputPin rightbutton( FEHIO::P3_2 );
-    DigitalOutputPin led1(FEHIO::P1_0);
 
     LCD.WriteLine( "Use left and right buttons to select min." );
     LCD.WriteLine( "Press middle button when complete." );
