@@ -8,6 +8,6 @@ void Sleep( double sec );
 double TimeNow();
 unsigned int seconds();
 unsigned long mseconds();
-void ResetTime();
+//void ResetTime();
 
 #endif // FEHUTILITY_H

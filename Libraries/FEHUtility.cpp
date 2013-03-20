@@ -33,10 +33,10 @@ unsigned long mseconds() {
     m+= (((unsigned int) RTC_TPR)*1000) >> 15;
     return m;
 }
-void ResetTime()
+/*void ResetTime()
 {
     RTC_SR &=  ~RTC_SR_TCE_MASK;
     RTC_TSR = 0x0u;
     RTC_TPR = 0x0u;
     RTC_SR =  RTC_SR_TCE_MASK;
-}
+}*/
