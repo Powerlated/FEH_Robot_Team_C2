@@ -74,7 +74,6 @@ private:
 
     void NextLine();
     void CheckLine();
-    void CheckNewLine();
     void NextChar();
 
     static unsigned char fontData[];

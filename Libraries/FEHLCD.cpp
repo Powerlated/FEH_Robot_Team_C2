@@ -214,7 +214,7 @@ void FEHLCD::Write( bool b )
 
 void FEHLCD::WriteLine( const char* str )
 {
-    CheckNewLine();
+    CheckLine();
     Write( str );
     NextLine();
 }
@@ -222,28 +222,28 @@ void FEHLCD::WriteLine( const char* str )
 
 void FEHLCD::WriteLine( int i )
 {
-    CheckNewLine();
+    CheckLine();
     Write( i );
     NextLine();
 }
 
 void FEHLCD::WriteLine( float f )
 {
-    CheckNewLine();
+    CheckLine();
     Write( f );
     NextLine();
 }
 
 void FEHLCD::WriteLine( double d )
 {
-    CheckNewLine();
+    CheckLine();
     Write( d );
     NextLine();
 }
 
 void FEHLCD::WriteLine( bool b )
 {
-    CheckNewLine();
+    CheckLine();
     Write( b );
     NextLine();
 }
@@ -529,14 +529,6 @@ void FEHLCD::CheckLine()
         _currentline = 0;
         _Clear();
     }
-}
-
-void FEHLCD::CheckNewLine()
-{
-    if(_currentchar > 0) {
-        NextLine();
-    }
-    CheckLine();
 }
 
 void FEHLCD::NextChar() {
