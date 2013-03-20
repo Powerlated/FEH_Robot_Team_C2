@@ -2,9 +2,9 @@
 #define FEHLCD_H
 
 #include "derivative.h"
-#include <string>
+//#include <string>
 
-using namespace std;
+//using namespace std;
 
 class FEHLCD
 {

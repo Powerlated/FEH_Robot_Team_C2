@@ -4,6 +4,7 @@
 #include "derivative.h"
 #include "mcg.h"
 #include "lptmr.h"
+#include "stdio.h"
 
 #define CLR_CS GPIOC_PDOR &= ~GPIO_PDOR_PDO( ( 1 << 3 ) )
 #define SET_CS GPIOC_PDOR |= GPIO_PDOR_PDO( ( 1 << 3 ) )
