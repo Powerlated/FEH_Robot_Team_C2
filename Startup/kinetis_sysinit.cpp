@@ -74,25 +74,26 @@ void PortDISR()
     }
 }
 
+extern void pit0_isr();
 
 /* The Interrupt Vector Table */
 void (* const InterruptVector[])() __attribute__ ((section(".vectortable"))) = {
     /* Processor exceptions */
     (void(*)(void)) &_estack,
     __thumb_startup,
-    NMI_Handler, 
-    HardFault_Handler, 
-    MemManage_Handler, 
+    NMI_Handler,
+    HardFault_Handler,
+    MemManage_Handler,
     BusFault_Handler,
-    UsageFault_Handler, 
-    0, 
-    0, 
-    0, 
-    0, 
-    SVC_Handler, 
-    DebugMonitor_Handler, 
+    UsageFault_Handler,
     0,
-    PendSV_Handler, 
+    0,
+    0,
+    0,
+    SVC_Handler,
+    DebugMonitor_Handler,
+    0,
+    PendSV_Handler,
     SysTick_Handler,
 
     /* Interrupts */
@@ -160,6 +161,17 @@ void (* const InterruptVector[])() __attribute__ ((section(".vectortable"))) = {
     Default_Handler,
     Default_Handler,
     Default_Handler,
+    Default_Handler, //80
+    Default_Handler,
+    Default_Handler,
+    Default_Handler,
+    pit0_isr,
+    Default_Handler,
+    Default_Handler,
+    Default_Handler,
+    Default_Handler,
+    Default_Handler,
+    Default_Handler, //90
     Default_Handler,
     Default_Handler,
     Default_Handler,
@@ -169,18 +181,7 @@ void (* const InterruptVector[])() __attribute__ ((section(".vectortable"))) = {
     Default_Handler,
     Default_Handler,
     Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
+    Default_Handler, //100
     Default_Handler,
     Default_Handler,
     Default_Handler,

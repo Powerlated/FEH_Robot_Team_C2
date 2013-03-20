@@ -22,6 +22,7 @@ typedef enum
 } ADCNumber;
 
 tADC_Config Master_Adc_Config;
+tADC_Config Encoder_Adc_Config;
 
 const GPIOPort GPIOPorts[ 32 ] =
 {
@@ -358,7 +359,6 @@ void DigitalOutputPin::Toggle()
 }
 
 ////Initialize ADC Function. Needs to be placed somewhere??
-
 void InitADCs()
 {
     // setup the initial ADC default configuration
@@ -416,6 +416,20 @@ void InitADCs()
         // config the ADC again to desired conditions
          ADC_Config_Alt(ADC1_BASE_PTR, &Master_Adc_Config);
          ADC_Config_Alt(ADC0_BASE_PTR, &Master_Adc_Config);
+
+         //Load Encoder ADC Config (A bit different from Master)
+         Encoder_Adc_Config = Master_Adc_Config;
+
+         Encoder_Adc_Config.CONFIG1  = ADLPC_NORMAL                   // Normal power, (not low power)
+                                    | ADC_CFG1_ADIV(ADIV_4)          // Clock divider
+                                    | ADLSMP_LONG                    // Take a long time to sample
+                                    | ADC_CFG1_MODE(MODE_16)         // 16 bit mode
+                                    | ADC_CFG1_ADICLK(ADICLK_BUS);   // use the bus clock
+
+         Encoder_Adc_Config.STATUS3  = CAL_OFF                     // Calibration begins off
+                                    | ADCO_SINGLE                 // Take a single reading
+                                    | AVGE_ENABLED                // Enable averaging
+                                    | ADC_SC3_AVGS(AVGS_4);      // Average 4 samples
 }
 
 //// initialize clocks for GPIO and the ADCs, This will also be moved somewhere else...
@@ -423,9 +437,83 @@ void InitClocks()
 {
     // Clocks for ADC
     // Turn on the ADC0 and ADC1 clocks
-     SIM_SCGC6 |= (SIM_SCGC6_ADC0_MASK );
+     SIM_SCGC6 |= (SIM_SCGC6_ADC0_MASK | SIM_SCGC6_PIT_MASK);
      SIM_SCGC3 |= (SIM_SCGC3_ADC1_MASK );
 }
+
+int FEHEncoder::numEncoders = 0;
+FEHEncoder * FEHEncoder::encoders[32];
+
+void pit0_isr(void) {
+    FEHEncoder::ProcessInt();
+    PIT_TFLG0 = PIT_TFLG_TIF_MASK;
+    return;
+}
+
+void FEHEncoder::Init() {
+    // Freeze on Debug
+    PIT_MCR = PIT_MCR_FRZ_MASK;
+
+    // Load wait period
+    SetCounterInit(0x186A0u);
+
+    //#define PIT_CVAL0                                PIT_CVAL_REG(PIT_BASE_PTR,0)
+
+    // Enable PINT0 and interrupt
+    PIT_TCTRL0 = PIT_TCTRL_TIE_MASK | PIT_TCTRL_TEN_MASK;
+
+    // Other Vector Interrupt Register
+    NVICICPR2 |= 1 << (4);
+    NVICISER2 |= 1 << (4);
+}
+
+void FEHEncoder::SetCounterInit(unsigned int val) {
+    PIT_LDVAL0  =  val;
+}
+
+FEHEncoder::FEHEncoder(FEHIO::FEHIOPin pin_) : AnalogInputPin(pin_){
+    state = LOW_STATE;
+    encoders[numEncoders] = this;
+    numEncoders++;
+    ResetCounts();
+    lowThreshold = 70*256;
+    highThreshold = 210*256;
+}
+
+void FEHEncoder::SetThresholds(int low, int high) {
+    lowThreshold = low;
+    highThreshold = high;
+}
+
+void FEHEncoder::ProcessInt() {
+    for(int i=0; i< numEncoders; i++)
+    {
+        encoders[i]->ProcessIntSelf();
+    }
+}
+
+void FEHEncoder::ProcessIntSelf() {
+    int value = EncoderValue();
+    if(state == LOW_STATE && value>highThreshold) {
+        state = HIGH_STATE;
+        counts++;
+    }
+    if(state== HIGH_STATE && value<lowThreshold) {
+        state = LOW_STATE;
+        counts++;
+    }
+}
+
+int FEHEncoder::Counts()
+{
+    return (int) counts;
+}
+
+void FEHEncoder::ResetCounts()
+{
+    counts=0;
+}
+
 
 ButtonBoard::ButtonBoard( FEHIO::FEHIOPort bank )
 {

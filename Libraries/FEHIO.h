@@ -76,6 +76,7 @@ private:
 public:
     AnalogInputPin( FEHIO::FEHIOPin );
     float Value();
+    int EncoderValue();
 };
 
 class DigitalOutputPin
@@ -113,5 +114,32 @@ private:
 void InitADCs();
 void InitClocks();
 
+class FEHEncoder : public AnalogInputPin
+{
+private:
+    typedef enum
+    {
+        LOW_STATE,
+        HIGH_STATE
+    } EncoderState;
+
+    static int numEncoders;
+    static FEHEncoder * encoders[32];
+    static void SetCounterInit(unsigned int);
+
+    EncoderState state;
+    int counts;
+    int lowThreshold;
+    int highThreshold;
+    void ProcessIntSelf();
+
+public:
+    static void Init();
+    FEHEncoder(FEHIO::FEHIOPin);
+    int Counts();
+    void ResetCounts();
+    void SetThresholds(int low, int high);
+    static void ProcessInt();
+};
 
 #endif // FEHIO_H

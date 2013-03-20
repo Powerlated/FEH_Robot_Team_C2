@@ -170,6 +170,8 @@ void InitFEHProteus()
 
     InitPowerButton();
 
+    FEHEncoder::Init();
+
     Propeller.Initialize();
 
     Sleep( 5000 );
