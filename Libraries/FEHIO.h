@@ -41,7 +41,8 @@ public:
         P3_4,
         P3_5,
         P3_6,
-        P3_7
+        P3_7,
+        BATTERY_VOLTAGE
     }FEHIOPin;
 
     typedef enum
@@ -71,12 +72,15 @@ private:
 
 class AnalogInputPin
 {
-private:
+protected:
     FEHIO::FEHIOPin pin;
+    static tADC_Config Master_Adc_Config;
+    static tADC_Config Encoder_Adc_Config;
+
 public:
     AnalogInputPin( FEHIO::FEHIOPin );
     float Value();
-    int EncoderValue();
+
 
     static void InitADCs();
 };
@@ -130,13 +134,14 @@ private:
     int lowThreshold;
     int highThreshold;
     void ProcessIntSelf();
+    int EncoderValue();
 
 public:
     static void Init();
     FEHEncoder(FEHIO::FEHIOPin);
     int Counts();
     void ResetCounts();
-    void SetThresholds(int low, int high);
+    void SetThresholds(float low, float high);
     static void ProcessInt();
 };
 

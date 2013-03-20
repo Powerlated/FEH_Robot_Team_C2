@@ -1,5 +1,9 @@
 #include "FEHIO.h"
 
+
+tADC_Config AnalogInputPin::Master_Adc_Config;
+tADC_Config AnalogInputPin::Encoder_Adc_Config;
+
 typedef enum
 {
     PortA,
@@ -21,9 +25,6 @@ typedef enum
     ADC1
 } ADCNumber;
 
-tADC_Config Master_Adc_Config;
-tADC_Config Encoder_Adc_Config;
-
 const GPIOPort GPIOPorts[ 32 ] =
 {
     PortB, PortB, PortB, PortB, PortB, PortB, PortB, PortB,
@@ -32,12 +33,13 @@ const GPIOPort GPIOPorts[ 32 ] =
     PortA, PortE, PortE, PortE, PortE, PortE, PortD, PortD
 };
 
-const ADCNumber ADCNumbers[ 32 ] =
+const ADCNumber ADCNumbers[ 33 ] =
 {
     ADC1, ADC1, ADC1, ADC1, ADC1, ADC1, ADC1, ADC1,
     ADC0, ADC0, ADC1, ADC1, ADC1, ADC1, ADC1, ADC0,
     ADC0, ADC1, ADC1, ADC0, ADC0, ADC1, ADC1, ADC0,
-    ADC0, ADC0, ADC0, ADC0, ADC1, ADC0, ADC0, ADC0
+    ADC0, ADC0, ADC0, ADC0, ADC1, ADC0, ADC0, ADC0,
+    ADC0
 };
 
 const int GPIOPinNumbers[ 32 ] =
@@ -48,12 +50,13 @@ const int GPIOPinNumbers[ 32 ] =
     7, 25, 24, 26, 27, 28, 1, 6
 };
 
-const int AnalogPinNumbers[ 32 ] =
+const int AnalogPinNumbers[ 33 ] =
 {
     15, 14, 13, 12, 11, 10, 9, 8,
     14, 15, 4, 5, 6, 7, 17, 1,
     20, 1, 20, 0, 19, 0, 19, 11,
-    10, 18, 17, 16, 16, 4, 5, 7
+    10, 18, 17, 16, 16, 4, 5, 7,
+    6
 };
 
 
@@ -159,6 +162,9 @@ float AnalogInputPin::Value()
 
         int result;
 
+        // Disable Encoder Interrupts Temporarily
+        NVICICER2 |= (1 << (4));
+
         if (adcNum == ADC0)
         {
              ADC_Config_Alt(ADC0_BASE_PTR, &Master_Adc_Config);  // config ADC0
@@ -177,11 +183,21 @@ float AnalogInputPin::Value()
 
         }
 
+        // Re-enable Encoder Interrupt
+        NVICICPR2 |= (1 << (4));
+        NVICISER2 |= (1 << (4));
+
+        // Re-enable button Interrupt
+        NVICICPR2 |= (1 << ( 26 ));
+        NVICISER2 |= (1 << ( 26 ));
+
+
         float v = result *3.33 / (0x10000);
+        return v;
 }
 
 
-int AnalogInputPin::EncoderValue()
+int FEHEncoder::EncoderValue()
 {
     int analogPin = AnalogPinNumbers[pin];
     ADCNumber adcNum = ADCNumbers[pin];
@@ -501,9 +517,9 @@ FEHEncoder::FEHEncoder(FEHIO::FEHIOPin pin_) : AnalogInputPin(pin_){
     highThreshold = 210*256;
 }
 
-void FEHEncoder::SetThresholds(int low, int high) {
-    lowThreshold = low;
-    highThreshold = high;
+void FEHEncoder::SetThresholds(float low, float high) {
+    lowThreshold = low/3.3*0x10000;
+    highThreshold = high/3.3*0x10000;
 }
 
 void FEHEncoder::ProcessInt() {

@@ -206,8 +206,8 @@ void InitPowerButton()
 
     // enable interrupt on port D
     //enable_irq( 90 );
-    NVICICPR2 = 1 << ( 26 );
-    NVICISER2 = 1 << ( 26 );
+    NVICICPR2 |= 1 << ( 26 );
+    NVICISER2 |= 1 << ( 26 );
 
     //#define VECTOR_106      default_isr     // 0x0000_01A8 106   90     Port control module Pin Detect (Port D)
     //vect_table = (tVectorTable*)SCB_VTOR;
