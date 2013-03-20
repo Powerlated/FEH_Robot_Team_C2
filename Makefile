@@ -45,5 +45,7 @@ $(TARGET).s19: $(TARGET).elf
 deploy:
 
 run:
-
+ifeq ($(OS),Windows_NT)
+	-explorer ..\.
+endif
 
