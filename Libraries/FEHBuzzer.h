@@ -148,4 +148,5 @@ public:
 
 };
 
+extern FEHBuzzer Buzzer;
 #endif // FEHBUZZER_H

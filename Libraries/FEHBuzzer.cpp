@@ -6,6 +6,8 @@
 #define default_frequency 1000
 #define default_duration 500
 
+FEHBuzzer Buzzer;
+
 void FEHBuzzer::Beep()//default beep at default frequency and default duration
 {
     Tone( default_frequency, default_duration );
