@@ -15,6 +15,7 @@
 #include <runtime_configuration.h>
 #include "derivative.h"
 #include "FEHProteus.h"
+#include "FEHLCD.h"
 #include "FEHUtility.h"
 #include "FEHIO.h"
 #include "mcg.h"
@@ -159,10 +160,7 @@ void InitFEHProteus()
 {
     // Initialize GPIO Clocks
     SIM_SCGC5 |= (SIM_SCGC5_PORTA_MASK | SIM_SCGC5_PORTB_MASK | SIM_SCGC5_PORTC_MASK | SIM_SCGC5_PORTD_MASK | SIM_SCGC5_PORTE_MASK );
-	// Initialize ADC Clocks
-	InitClocks();
-	// Initialize ADCs
-	InitADCs();
+
     // Setup clocks
     CoreClockMHz = pll_init( CORE_CLK_MHZ, REF_CLK );
     CoreClockKHz = CoreClockMHz * 1000;
@@ -170,11 +168,24 @@ void InitFEHProteus()
 
     InitPowerButton();
 
-    FEHEncoder::Init();
+    // Initialize ADC Clocks
+    InitClocks();
+
+    // Initialize ADCs
+    InitADCs();
+
+	FEHEncoder::Init();
 
     Propeller.Initialize();
 
-    Sleep( 5000 );
+    // sleep long enough to make sure the LCD has booted
+    Sleep( 1000 );
+
+    // Initialize LCD
+    LCD.Initialize();
+
+    // sleep long enough to make sure the Propeller has initialized
+    Sleep( 4000 );
 }
 
 void InitPowerButton()

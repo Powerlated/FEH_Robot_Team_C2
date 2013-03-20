@@ -2,10 +2,10 @@ GITBINARY := git
 FEHURL := feh.osu.edu
 FIRMWAREREPO := FEHRobotControllerFirmware
 
-CXX = arm-none-eabi-gcc
+CXX = arm-none-eabi-g++
 LD = $(CXX)
 
-SPECS = "$(FEHPROTEUSINSTALL)/GCC/arm-none-eabi/lib/armv7e-m/ewl_c++.specs"
+SPECS = "$(FEHPROTEUSINSTALL)/GCC/arm-none-eabi/lib/armv7e-m/ewl_c++_noio.specs"
 ARGS = -O0 -ffunction-sections -fdata-sections -fno-exceptions -c -fmessage-length=0 -specs=$(SPECS)
 
 ##-Wa,-adhlns="$@.lst"
