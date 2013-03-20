@@ -1,6 +1,7 @@
 #ifndef FEHLCD_H
 #define FEHLCD_H
 
+#include "derivative.h"
 #include <string>
 
 using namespace std;
@@ -14,6 +15,8 @@ public:
         Black = 0,
         White
     } FEHLCDColor;
+
+
 
     FEHLCD();
 
@@ -42,17 +45,39 @@ private:
     FEHLCDColor _forecolor;
     FEHLCDColor _backcolor;
 
+    typedef struct regColVal {
+        uint32_t BVal;
+        uint32_t CVal;
+        uint32_t DVal;
+    } RegisterColorValues;
+
     int _currentline;
     int _currentchar;
 
     void _Initialize();
     void _Clear();
+    void _RepeatColor();
+    void _BackPixel();
+    void _ForePixel();
 
+    void SetRegisterColorValues();
+    RegisterColorValues foreRegisterValues, backRegisterValues;
+
+
+    void WriteChar(int row, int col, char c);
     void WriteIndex( unsigned char index );
     void WriteParameter( unsigned char param );
-    void Delay2( unsigned int t );
+    void RepeatColor();
+
+
+
 
     void NextLine();
+    void CheckLine();
+    void CheckNewLine();
+    void NextChar();
+
+    static unsigned char fontData[];
 };
 
 extern FEHLCD LCD;
