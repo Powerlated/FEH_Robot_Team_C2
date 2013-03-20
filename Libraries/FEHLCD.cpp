@@ -428,6 +428,9 @@ void FEHLCD::WriteParameter( unsigned char param )
 
 void FEHLCD::_Clear()
 {
+    _currentline = 0;
+    _currentchar = 0;
+
     unsigned int color = 0x00000;
 
     switch( _backcolor )
