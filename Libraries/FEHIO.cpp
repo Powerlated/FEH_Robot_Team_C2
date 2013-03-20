@@ -107,7 +107,7 @@ void DigitalInputPin::Initialize( FEHIO::FEHIOPin pin )
     }
 }
 
-int DigitalInputPin::Value()
+bool DigitalInputPin::Value()
 {
     int ret = 0;
     switch( GPIOPorts[ (int)_pin ] )

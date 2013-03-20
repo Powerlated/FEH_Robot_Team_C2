@@ -58,7 +58,7 @@ class DigitalInputPin
 {
 public:
     DigitalInputPin( FEHIO::FEHIOPin pin );
-    int Value();
+    bool Value();
 
     friend class ButtonBoard;
 
