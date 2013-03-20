@@ -121,7 +121,7 @@ void FEHServo::Calibrate()
     LCD.Write( "Min = " );
     LCD.Write( servo_min );
     LCD.Write( "   Max = " );
-    LCD.Writeline( servo_max );
+    LCD.WriteLine( servo_max );
 
 }
 
