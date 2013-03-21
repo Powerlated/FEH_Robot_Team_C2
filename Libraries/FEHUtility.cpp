@@ -23,11 +23,11 @@ double TimeNow()
     return t;
 }
 
-unsigned int seconds() {
+unsigned int TimeNows() {
     return (unsigned int) RTC_TSR;
 }
 
-unsigned long mseconds() {
+unsigned long TimeNowms() {
     unsigned long m;
     m = ((unsigned int) RTC_TSR)*1000;
     m+= (((unsigned int) RTC_TPR)*1000) >> 15;
