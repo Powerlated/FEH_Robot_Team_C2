@@ -2,7 +2,9 @@ GITBINARY := git
 FEHURL := feh.osu.edu
 FIRMWAREREPO := FEHRobotControllerFirmware
 
-FEHPROTEUSINSTALL=C:\FEHProteus
+ifeq ($(FEHPROTEUSINSTALL),)
+FEHPROTEUSINSTALL = C:\FEHProteus
+endif
 
 CXX = arm-none-eabi-g++
 LD = $(CXX)
