@@ -6,8 +6,8 @@ void Sleep( float sec );
 void Sleep( double sec );
 
 double TimeNow();
-unsigned int seconds();
-unsigned long mseconds();
+unsigned int TimeNows();
+unsigned long TimeNowms();
 //void ResetTime();
 
 #endif // FEHUTILITY_H
