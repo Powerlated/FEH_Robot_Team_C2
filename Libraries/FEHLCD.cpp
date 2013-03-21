@@ -192,7 +192,7 @@ void FEHLCD::Write( float f )
     int d,r;
     d = (int) f;
     r = (int) ((f-d)*1000);
-    sprintf(num,"%d.%d",d,r);
+    sprintf(num,"%d.%03d",d,r);
     Write(num);
 }
 
