@@ -92,7 +92,7 @@ private:
 public:
     DigitalOutputPin( FEHIO::FEHIOPin );
     void Write( bool );
-    int PinStatus();
+    int Status();
     void Toggle();
 };
 

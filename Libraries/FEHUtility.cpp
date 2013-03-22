@@ -23,16 +23,17 @@ double TimeNow()
     return t;
 }
 
-unsigned int TimeNows() {
+unsigned int TimeNowSec() {
     return (unsigned int) RTC_TSR;
 }
 
-unsigned long TimeNowms() {
+unsigned long TimeNowMSec() {
     unsigned long m;
     m = ((unsigned int) RTC_TSR)*1000;
     m+= (((unsigned int) RTC_TPR)*1000) >> 15;
     return m;
 }
+
 /*void ResetTime()
 {
     RTC_SR &=  ~RTC_SR_TCE_MASK;

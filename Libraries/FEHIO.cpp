@@ -337,7 +337,7 @@ void DigitalOutputPin::Write( bool value )
     }
 }
 
-int DigitalOutputPin::PinStatus()
+int DigitalOutputPin::Status()
 {
     int ret = 0;
         switch( GPIOPorts[ (int)pin ] )
