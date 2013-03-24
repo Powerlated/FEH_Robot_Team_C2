@@ -508,7 +508,9 @@ void FEHLCD::_Initialize()
     LCD.PrintImage(111,30);
     LCD.SetFontColor(FEHLCD::Black);
     LCD.WriteAt("FEH Proteus",90,175);
+
     LCD.SetFontColor(FEHLCD::White);
+    LCD.SetBackgroundColor(FEHLCD::Black);
 
 }
 
