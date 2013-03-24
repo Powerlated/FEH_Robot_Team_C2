@@ -201,8 +201,8 @@ void FEHLCD::SetOrientation(FEHLCDOrientation orientation)
     {
     case North: WriteParameter( 0x00); break;
     case South: WriteParameter(0x03); break;
-    case East:  WriteParameter(0x05 << 5); break;
-    case West:  WriteParameter((0x05 << 5) | 0x03); break;
+    case East:  WriteParameter(0x05 << 5  | 0x03); break;
+    case West:  WriteParameter((0x05 << 5)); break;
     }
     if(_orientation == North || _orientation == South)
     {
