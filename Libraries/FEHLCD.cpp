@@ -5,6 +5,7 @@
 #include "mcg.h"
 #include "lptmr.h"
 #include "stdio.h"
+#include "image.h"
 
 #define CLR_CS GPIOC_PDOR &= ~GPIO_PDOR_PDO( ( 1 << 3 ) )
 #define SET_CS GPIOC_PDOR |= GPIO_PDOR_PDO( ( 1 << 3 ) )
@@ -21,14 +22,9 @@
 #define CLR_RESET GPIOB_PDOR &= ~GPIO_PDOR_PDO( ( 1 << 3 ) )
 #define SET_RESET GPIOB_PDOR |= GPIO_PDOR_PDO( ( 1 << 3 ) )
 
-// font height = 20, maxlines = 240 / 20
-// TODO: support portrait text
-#define MAXLINES 14
-#define MAXCHARS 26
 
 #define CharHeight 17
 #define CharWidth  12
-
 
 unsigned char FEHLCD::fontData[] = {
     0x00, 0x00, 0x00, 0x00, 0x00,// (space)
@@ -140,6 +136,15 @@ FEHLCD::FEHLCD()
 
     _currentline = 0;
     _currentchar = 0;
+
+    _maxlines = 14;
+    _maxcols = 26;
+
+    _width = 320;
+    _height = 240;
+
+    _orientation = North;
+
     SetRegisterColorValues();
 }
 
@@ -153,20 +158,177 @@ void FEHLCD::Initialize()
     }
 }
 
-void FEHLCD::Clear( FEHLCDColor color )
-{
-    _backcolor = color;
-    SetRegisterColorValues();
 
-    // TODO: Clear screen
+void FEHLCD::PrintImage(int x, int y)
+{
+    SetDrawRegion(x,y,98,126);
+    int k=0;
+    for(int i=0;i<126;i++)
+    {
+        for(int j=0;j<98;j++)
+        {
+            unsigned char r, g, b;
+            if(image[k] ==0) {
+                r = 255; g=255; b=255;
+            }
+            else if(image[k]==1)
+            {
+                r = 212; g=0; b=38;
+            }
+            else
+            {
+                r=181; g= 186; b=176;
+            }
+            //_forecolor = ConvertRGBColorTo16Bit(image[k][0],image[k][1],image[k][2]);
+            _forecolor = ConvertRGBColorTo16Bit(r,g,b);
+
+            SetRegisterColorValues();
+            _ForePixel();
+            k++;
+        }
+    }
+}
+
+void FEHLCD::SetOrientation(FEHLCDOrientation orientation)
+{
+    _orientation = orientation;
+    // widx(0x36); //set adress mode
+    WriteIndex( 0x36 );
+
+    // wpat( 0x00 ); //set page,column,line,RGB adress order;display data latch data,fli horizontal,vertical
+
+    switch(_orientation)
+    {
+    case North: WriteParameter( 0x00); break;
+    case South: WriteParameter(0x03); break;
+    case East:  WriteParameter(0x05 << 5); break;
+    case West:  WriteParameter((0x05 << 5) | 0x03); break;
+    }
+    if(_orientation == North || _orientation == South)
+    {
+        _maxlines = 14;
+        _maxcols = 26;
+
+        _width = 320;
+        _height = 240;
+
+    }
+    else
+    {
+        _maxlines = 18;
+        _maxcols = 19;
+
+        _width = 240;
+        _height = 320;
+    }
     _Clear();
 }
 
-void FEHLCD::SetFontColor( FEHLCDColor color )
-{
-    _forecolor = color;
+
+unsigned int FEHLCD::ConvertFEHColorTo24Bit(FEHLCDColor color) {
+    unsigned int htmlColor;
+    switch(color)
+    {
+    case White: htmlColor=0xFFFFFFu; break;
+    case Black: htmlColor=0x000000u; break;
+    case Red:   htmlColor=0xFF0000u; break;
+    case Green: htmlColor=0x00FF00u; break;
+    case Blue:  htmlColor=0x0000FFu; break;
+    }
+    return htmlColor;
+}
+
+unsigned int FEHLCD::Convert24BitColorTo16Bit(unsigned int color) {
+    unsigned char r = (color & 0xFF0000u) >> 16;
+    unsigned char g = (color & 0x00FF00u) >> 8;
+    unsigned char b = (color & 0x0000FFu);
+    return ConvertRGBColorTo16Bit(r,g,b);
+}
+
+unsigned int FEHLCD::ConvertRGBColorTo16Bit(unsigned char r, unsigned char g, unsigned char b) {
+    unsigned int ru = r >>2;
+    unsigned int gu = g >>2;
+    unsigned int bu = b >>2;
+    return (ru << 12) | (gu << 6) | bu;
+}
+
+void FEHLCD::Clear( FEHLCDColor color ) {
+    Clear(ConvertFEHColorTo24Bit(color));
+}
+
+void FEHLCD::Clear( unsigned int color ) {
+    _backcolor = Convert24BitColorTo16Bit(color);
+    SetRegisterColorValues();
+
+    _Clear();
+}
+void FEHLCD::Clear() {
+    _Clear();
+}
+
+void FEHLCD::SetBackgroundColor( FEHLCDColor color ) {
+    SetBackgroundColor(ConvertFEHColorTo24Bit(color));
+}
+
+void FEHLCD::SetBackgroundColor( unsigned int color ) {
+    _backcolor = Convert24BitColorTo16Bit(color);
     SetRegisterColorValues();
 }
+
+void FEHLCD::SetFontColor( FEHLCDColor color ) {
+    SetFontColor(ConvertFEHColorTo24Bit(color));
+}
+
+void FEHLCD::SetFontColor( unsigned int color ) {
+    _forecolor = Convert24BitColorTo16Bit(color);
+    SetRegisterColorValues();
+}
+
+void FEHLCD::WriteAt(const char * str, int x, int y)
+{
+    int i=0;
+    while(str[i] != '\0') {
+        WriteCharAt(x,y,str[i]);
+        x+=CharWidth;
+        i++;
+    }
+}
+
+void FEHLCD::WriteAt(int i, int x, int y)
+{
+    char num[50];
+    sprintf(num,"%d",i);
+    WriteAt(num,x,y);
+}
+
+
+void FEHLCD::WriteAt(float f, int x, int y)
+{
+    char num[50];
+    int d,r;
+    d = (int) f;
+    r = (int) ((f-d)*1000);
+    sprintf(num,"%d.%03d",d,r);
+    WriteAt(num,x,y);
+}
+
+void FEHLCD::WriteAt(double d, int x, int y)
+{
+    WriteAt((float)d,x,y);
+}
+
+void FEHLCD::WriteAt(bool b, int x, int y)
+{
+    if(b)
+    {
+        WriteAt("true",x,y);
+    }
+    else
+    {
+        WriteAt("false",x,y);
+    }
+}
+
 
 void FEHLCD::Write( const char *str )
 {
@@ -268,6 +430,9 @@ void FEHLCD::_Initialize()
     GPIOB_PDDR |= ( ( 1 << 17 ) );
     SET_RESET;
     GPIOB_PDDR |= ( ( 1 << 3 ) );
+    // CS = 1;
+    SET_CS;
+
 
     // D0 - B9
     // D1 - B8
@@ -309,13 +474,18 @@ void FEHLCD::_Initialize()
     GPIOC_PDDR |= ( ( 1 << 4 ) | ( 1 << 5 ) | ( 1 << 6 ) | ( 1 << 7 ) | ( 1 << 12 ) | ( 1 << 13 ) | ( 1 << 14 ) | ( 1 << 15 ) | ( 1 << 16 ) | ( 1 << 17 ) | ( 1 << 18 ) | ( 1 << 19 ) );
     GPIOD_PDDR |= ( ( 1 << 0 ) | ( 1 << 2 ) | ( 1 << 3 ) | ( 1 << 4 ) );
 
-    // CS = 1;
-    SET_CS;
+    // Wait for the LCD to become responsive
+    // I don't know why it takes so long.
+    // The random pixels should mean its ready immediately
+    Sleep(2000);
 
     // RESET = 1;
     SET_RESET;
 
-    Sleep( 500 );
+
+
+    // Wait for it to finish resetting
+    Sleep(100 );
 
     // uchar i;
 
@@ -333,6 +503,13 @@ void FEHLCD::_Initialize()
 
     // widx( 0x29 );  //display on
     WriteIndex( 0x29 );
+
+    LCD.Clear(FEHLCD::White);
+    LCD.PrintImage(111,30);
+    LCD.SetFontColor(FEHLCD::Black);
+    LCD.WriteAt("FEH Proteus",90,175);
+    LCD.SetFontColor(FEHLCD::White);
+
 }
 
 void FEHLCD::WriteIndex( unsigned char index )
@@ -432,14 +609,7 @@ void FEHLCD::_Clear()
     _currentline = 0;
     _currentchar = 0;
 
-    unsigned int color = 0x00000;
-
-    switch( _backcolor )
-    {
-        case Black: color = 0x00000; break;
-        case White: color = 0x3FFFF; break;
-    }
-
+    unsigned int color = _backcolor;
 
     unsigned char c1 = (unsigned char)( color & 0xFF );
     unsigned char c2 = (unsigned char)( ( color >> 8 ) & 0xFF );
@@ -522,13 +692,16 @@ void FEHLCD::_Clear()
 }
 
 void FEHLCD::NextLine() {
-    _currentline ++;
-    _currentchar = 0;
+    if(_currentchar > 0)
+    {
+        _currentline ++;
+        _currentchar = 0;
+    }
 }
 
 void FEHLCD::CheckLine()
 {
-    if( _currentline >= MAXLINES)
+    if( _currentline >= _maxlines)
     {
         _currentline = 0;
         _Clear();
@@ -537,24 +710,86 @@ void FEHLCD::CheckLine()
 
 void FEHLCD::NextChar() {
     _currentchar++;
-    if(_currentchar == MAXCHARS) {
+    if(_currentchar == _maxcols) {
         NextLine();
         CheckLine();
     }
 }
 
-void FEHLCD::WriteChar(int charRow, int charCol, char charNum) {
-    if(charNum > 125 || charNum <32)
+void FEHLCD::DrawPixel(int x, int y)
+{
+    SetDrawRegion(x,y,1,1);
+    _ForePixel();
+}
+void Swap(int & a, int &b) {
+    int c = a;
+    a=b;
+    b=c;
+}
+int abs(int z)
+{
+    if(z<0)
+        return -z;
+    else
+        return z;
+}
+
+
+void FEHLCD::DrawHorizontalLine(int y, int x1, int x2)
+{
+    if(x2<x1)
+        Swap(x1,x2);
+    int length = x2-x1+1;
+    SetDrawRegion(x1,y,length,1);
+
+    _ForePixel();
+    for(int i=1;i<_width;i++)
+        RepeatColor();
+}
+
+void FEHLCD::DrawVerticalLine(int x,int y1, int y2)
+{
+    if(y2<y1)
+        Swap(y1,y2);
+    int length = y2-y1+1;
+    SetDrawRegion(x,y1,1,length);
+
+    _ForePixel();
+    for(int i=1;i<length;i++)
+        RepeatColor();
+}
+
+
+
+
+void FEHLCD::DrawRectangle(int x, int y, int width, int height)
+{
+    DrawLine(x,y,x+width,y);
+    DrawLine(x+width,y,x+width,y+height);
+    DrawLine(x+width,y+height,x,y+height);
+    DrawLine(x,y+height,x,y);
+}
+
+void FEHLCD::SetDrawRegion(int x, int y, int width, int height)
+{
+    unsigned int pixStartCol, pixEndCol, pixStartRow, pixEndRow;
+
+    if(_orientation == East || _orientation == West)
     {
-        charNum = 32;
+         pixStartCol = y;
+         pixEndCol = pixStartCol+height-1;
+
+         pixEndRow = _width-x;
+         pixStartRow  = pixEndRow-(width-1);
     }
-    charNum-=32;
+    else
+    {
+        pixStartCol = x;
+        pixEndCol   = pixStartCol+width-1;
 
-   unsigned int pixStartRow = 3+charRow*CharHeight;
-   unsigned int pixEndRow = pixStartRow+CharHeight-1;
-
-   unsigned int pixStartCol = 2+charCol*CharWidth;
-   unsigned int pixEndCol   = pixStartCol+CharWidth-1;
+        pixStartRow = y;
+        pixEndRow = pixStartRow+height-1;
+    }
 
     // widx( 0x2a ); //set column adress
     WriteIndex( 0x2A );
@@ -589,7 +824,160 @@ void FEHLCD::WriteChar(int charRow, int charCol, char charNum) {
 
     // widx( 0x2c );       //enter write mode
     WriteIndex( 0x2C );
+}
 
+void FEHLCD::FillRectangle(int x, int y, int width, int height)
+{
+    SetDrawRegion(x,y,width,height);
+    _ForePixel();
+    for(int i=1;i<width*height;i++)
+        RepeatColor();
+
+}
+
+void FEHLCD::DrawLine(int x1, int y1, int x2, int y2)
+{
+    int dx = abs(x2-x1);
+    int dy = abs(y2-y1);
+    bool steep = (dy > dx);
+
+    // If the line is steep, we'll iterate over y
+    // instead of x. To keep code simple, I just
+    // swap and always iterate over x
+    if(steep)
+    {
+        Swap(x1,y1);
+        Swap(x2,y2);
+    }
+
+    // Alwasy iterate from low x to high x
+    if(x1>x2)
+    {
+        Swap(x1,x2);
+        Swap(y1,y2);
+    }
+
+    // If x2==x1, then the line is just a pixel
+    if(x2==x1)
+    {
+        DrawPixel(x1,y1);
+        return;
+    }
+
+    float slope = (y2-y1)/((float)(x2-x1));
+    float y = y1;
+
+    // Iterate over x
+    for(int x=x1;x<=x2;x++)
+    {
+        // Round the y coordinate, and draw
+        // swap back x and y if we swapped them initially
+        if(steep)
+            DrawPixel((int)(y+.5),x);
+        else
+            DrawPixel(x,(int)(y+.5));
+
+        y+=slope;
+    }
+}
+
+void FEHLCD::DrawCircle(int x0, int y0, int radius)
+{
+    // This alogorithm is from wikipedia
+    // It's called the "midpoint circle algorithm"
+    // or the "Bresenham's circle algorithm"
+    // http://en.wikipedia.org/wiki/Midpoint_circle_algorithm
+    // See the page for further details
+      int f = 1 - radius;
+      int ddF_x = 1;
+      int ddF_y = -2 * radius;
+      int x = 0;
+      int y = radius;
+
+      DrawPixel(x0, y0 + radius);
+      DrawPixel(x0, y0 - radius);
+      DrawPixel(x0 + radius, y0);
+      DrawPixel(x0 - radius, y0);
+
+      while(x < y)
+      {
+        // ddF_x == 2 * x + 1;
+        // ddF_y == -2 * y;
+        // f == x*x + y*y - radius*radius + 2*x - y + 1;
+        if(f >= 0)
+        {
+          y--;
+          ddF_y += 2;
+          f += ddF_y;
+        }
+        x++;
+        ddF_x += 2;
+        f += ddF_x;
+        DrawPixel(x0 + x, y0 + y);
+        DrawPixel(x0 - x, y0 + y);
+        DrawPixel(x0 + x, y0 - y);
+        DrawPixel(x0 - x, y0 - y);
+        DrawPixel(x0 + y, y0 + x);
+        DrawPixel(x0 - y, y0 + x);
+        DrawPixel(x0 + y, y0 - x);
+        DrawPixel(x0 - y, y0 - x);
+      }
+}
+void FEHLCD::FillCircle(int x0, int y0, int radius)
+{
+    // This algorithm is a variant on DrawCircle.
+    // Rather than draw the points around the circle,
+    // We connect them with a series of lines
+    // to fill in the circle.
+
+      int f = 1 - radius;
+      int ddF_x = 1;
+      int ddF_y = -2 * radius;
+      int x = 0;
+      int y = radius;
+
+
+      DrawVerticalLine(x0, y0 - radius, y0 + radius);
+      DrawHorizontalLine(y0, x0 - radius, x0 + radius);
+
+      while(x < y)
+      {
+        // ddF_x == 2 * x + 1;
+        // ddF_y == -2 * y;
+        // f == x*x + y*y - radius*radius + 2*x - y + 1;
+        if(f >= 0)
+        {
+          y--;
+          ddF_y += 2;
+          f += ddF_y;
+        }
+        x++;
+        ddF_x += 2;
+        f += ddF_x;
+        DrawHorizontalLine(y0 + x, x0 - y, x0 +y);
+        DrawHorizontalLine(y0 - x, x0 - y, x0 +y);
+        DrawVerticalLine(x0 + x, y0 - y, y0 +y);
+        DrawVerticalLine(x0 - x, y0 - y, y0 +y);
+      }
+}
+
+void FEHLCD::WriteChar(int charRow, int charCol, char charNum) {
+    WriteCharAt(2+charCol*CharWidth,3+charRow*CharHeight, charNum);
+}
+
+void FEHLCD::WriteCharAt(int x, int y, char charNum)
+{
+    if(charNum > 125 || charNum <32)
+    {
+        charNum = 32;
+    }
+    charNum-=32;
+
+    SetDrawRegion(x,y,CharWidth,CharHeight);
+
+    // Look up the bitmap data out of the fontData table
+    // Each entry in the fontData table corresponds
+    // to a column of pixels in the 5x7 bitmapped character
     unsigned char charData[5];
     charData[0] = fontData[5*charNum];
     charData[1] = fontData[5*charNum+1];
@@ -597,19 +985,32 @@ void FEHLCD::WriteChar(int charRow, int charCol, char charNum) {
     charData[3] = fontData[5*charNum+3];
     charData[4] = fontData[5*charNum+4];
 
+    // The actual characters here are 12x17. They are double size
+    // and have 2 pixels of border on the left, and 3 on the bottom.
 
     bool pix;
     bool prevPix;
 
+
+    // Loop through the character data to draw the character
+    // prevPix stores whether the previous pixel
+    // was a forePixel. This allows the more efficient "Repeat pixel"
+    // function when a pixel color is repeated.
     for (int row = 0 ; row <7 ; row++)
     {
+        // 2 pixels of left border
         _BackPixel();
         RepeatColor();
         prevPix=false;
 
+        // Loop through the columns of the character
         for(int col = 0; col < 5; col++)
         {
+            // get the current pixel from the end of the
+            // character data array
             bool pix = charData[col] & 0x01;
+
+            // Draw it efficently using repeat pixel if possible
             if (pix)
             {
                 if(!prevPix)
@@ -630,6 +1031,9 @@ void FEHLCD::WriteChar(int charRow, int charCol, char charNum) {
             //charData[col] >>= 1;
             //WriteData1( n );
         }
+
+        // Now we're at the next line of the display
+        // so we need two more pixels of border
         if(prevPix)
             _BackPixel();
         else
@@ -637,6 +1041,8 @@ void FEHLCD::WriteChar(int charRow, int charCol, char charNum) {
 
         RepeatColor();
         prevPix = false;
+
+        // Loop through the columns again
         for(int col = 0; col < 5; col++)
         {
             bool pix = charData[col] & 0x01;
@@ -657,18 +1063,21 @@ void FEHLCD::WriteChar(int charRow, int charCol, char charNum) {
                 RepeatColor();
             }
             prevPix = pix;
+            // Now we're done with this column of the character
+            // so we bitshit to get the next pixel for this column
+            // queued up for the next time through the loop.
             charData[col] >>= 1;
             //WriteData1( n );
         }
     }
 
 
+    // Draw the three rows of padding at the bottom
     _BackPixel();
     prevPix = false;
     for(int i=1;i<CharWidth*3; i++)
     {
         RepeatColor();
-
     }
 }
 
@@ -731,7 +1140,8 @@ void FEHLCD::_ForePixel(){
 }
 
 void FEHLCD::_BackPixel() {
-
+    //_ForePixel();
+    //return;
     // RD=1;
     SET_RD;
 
@@ -752,26 +1162,6 @@ void FEHLCD::_BackPixel() {
     GPIOD_PDOR |= backRegisterValues.DVal;
 
 
-    /*GPIOB_PDOR |= GPIO_PDOR_PDO( ( 1 << 9 ) );
-    GPIOB_PDOR |= GPIO_PDOR_PDO( ( 1 << 8 ) );
-    GPIOC_PDOR |= GPIO_PDOR_PDO( ( 1 << 4 ) );
-    GPIOC_PDOR |= GPIO_PDOR_PDO( ( 1 << 5 ) );
-    GPIOC_PDOR |= GPIO_PDOR_PDO( ( 1 << 6 ) );
-    GPIOC_PDOR |= GPIO_PDOR_PDO( ( 1 << 7 ) );
-    GPIOC_PDOR |= GPIO_PDOR_PDO( ( 1 << 12 ) );
-    GPIOC_PDOR |= GPIO_PDOR_PDO( ( 1 << 13 ) );
-    GPIOC_PDOR |= GPIO_PDOR_PDO( ( 1 << 14 ) );
-    GPIOC_PDOR |= GPIO_PDOR_PDO( ( 1 << 15 ) );
-    GPIOC_PDOR |= GPIO_PDOR_PDO( ( 1 << 16 ) );
-    GPIOC_PDOR |= GPIO_PDOR_PDO( ( 1 << 17 ) );
-    GPIOC_PDOR |= GPIO_PDOR_PDO( ( 1 << 18 ) );
-    GPIOC_PDOR |= GPIO_PDOR_PDO( ( 1 << 19 ) );
-    GPIOD_PDOR |= GPIO_PDOR_PDO( ( 1 << 0 ) );
-    GPIOD_PDOR |= GPIO_PDOR_PDO( ( 1 << 2 ) );
-    GPIOD_PDOR |= GPIO_PDOR_PDO( ( 1 << 3 ) );
-    GPIOD_PDOR |= GPIO_PDOR_PDO( ( 1 << 4 ) );*/
-
-
     // WR=0;
     CLR_WR;
 
@@ -787,13 +1177,7 @@ void FEHLCD::_BackPixel() {
 
 void FEHLCD::SetRegisterColorValues()
 {
-    unsigned int color = 0x00000;
-
-    switch( _backcolor )
-    {
-        case Black: color = 0x00000; break;
-        case White: color = 0x3FFFF; break;
-    }
+    unsigned int color = _backcolor;
 
     unsigned char c1 = (unsigned char)( color & 0xFF );
     unsigned char c2 = (unsigned char)( ( color >> 8 ) & 0xFF );
@@ -839,11 +1223,7 @@ void FEHLCD::SetRegisterColorValues()
     backRegisterValues.DVal |= GPIO_PDOR_PDO( ( ( ( c3 & ( 1 << 1 ) ) ? ( 1 ) : ( 0 ) ) << 4 ) );
 
 
-    switch( _forecolor )
-    {
-        case Black: color = 0x00000; break;
-        case White: color = 0x3FFFF; break;
-    }
+    color = _forecolor;
 
     c1 = (unsigned char)( color & 0xFF );
     c2 = (unsigned char)( ( color >> 8 ) & 0xFF );

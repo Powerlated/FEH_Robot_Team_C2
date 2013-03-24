@@ -175,15 +175,12 @@ void InitFEHProteus()
 
     // Turn on Real Time Clock Oscillator
     RTC_CR = RTC_CR_OSCE_MASK;
-
+    // Wait for it to come online
     Sleep(100);
-
     // Enable Real Time Clock
     RTC_SR &=  ~RTC_SR_TCE_MASK;
     RTC_TSR = 0x0u;
     RTC_SR =  RTC_SR_TCE_MASK;
-
-
 
     // Initialize ADCs
     AnalogInputPin::InitADCs();
@@ -191,14 +188,10 @@ void InitFEHProteus()
 
     Propeller.Initialize();
 
-    // sleep long enough to make sure the LCD has booted
-    Sleep( 1000 );
-
     // Initialize LCD
     LCD.Initialize();
 
-    // sleep long enough to make sure the Propeller has initialized
-    Sleep( 4000 );
+    Sleep(5000);
 }
 
 void InitPowerButton()
