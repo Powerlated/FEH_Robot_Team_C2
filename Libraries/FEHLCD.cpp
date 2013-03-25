@@ -969,6 +969,13 @@ void FEHLCD::WriteChar(int charRow, int charCol, char charNum) {
 
 void FEHLCD::WriteCharAt(int x, int y, char charNum)
 {
+	if( charNum == '\n' )
+	{
+		CheckLine();
+		NextLine();
+		return;
+	}
+
     if(charNum > 125 || charNum <32)
     {
         charNum = 32;
