@@ -170,6 +170,9 @@ void FEHLCD::PrintImage(int x, int y)
             unsigned char r, g, b;
             if(image[k] ==0) {
                 r = 255; g=255; b=255;
+#ifdef TEAMH5
+				r = 0; g = 0; b = 255;
+#endif
             }
             else if(image[k]==1)
             {
