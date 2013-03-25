@@ -20,12 +20,15 @@ LIBS = -L"$(FEHPROTEUSINSTALL)/EWL/lib/armv7e-m"
 
 #AUTOCPP := $(shell cat ../$(TARGET).files | grep cpp | gawk '{ printf "..\\\%%s ", $$1 } END { printf "\n" }' )
 AUTOCPP := $(shell Tools/egrep cpp$$ ../$(TARGET).files)
+AUTOH := $(shell Tools/egrep h$$ ../$(TARGET).files)
 
 ifeq ($(OS),Windows_NT)
 AUTOOBJECTS := $(patsubst %.cpp,..\\%.o,$(AUTOCPP))
+AUTOH := $(patsubst %.h,..\\%.h,$(AUTOH))
 OBJECTS := $(AUTOOBJECTS) Startup\__arm_start.o Startup\__arm_end.o Startup\kinetis_sysinit.o Libraries\FEHMotor.o Drivers\mcg.o Drivers\uart.o Drivers\lptmr.o FEHProteus.o Drivers\FEHPropeller.o Libraries\FEHUtility.o Libraries\FEHIO.o Drivers\adc16.o Libraries\FEHBuzzer.o Libraries\FEHServo.o Libraries\FEHLCD.o Libraries\FEHBattery.o
 else
 AUTOOBJECTS := $(patsubst %.cpp,../%.o,$(AUTOCPP))
+AUTOH := $(patsubst %.h,../%.h,$(AUTOH))
 OBJECTS := $(AUTOOBJECTS) Startup/__arm_start.o Startup/__arm_end.o Startup/kinetis_sysinit.o Libraries/FEHMotor.o Drivers/mcg.o Drivers/uart.o Drivers/lptmr.o FEHProteus.o Drivers/FEHPropeller.o Libraries/FEHUtility.o Libraries/FEHIO.o Drivers/adc16.o Libraries/FehBuzzer.o Libraries/FEHServo.o Libraries/FEHLCD.o Libraries/FEHBattery.o
 endif
 
@@ -38,7 +41,7 @@ else
 	@rm -rf $(OBJECTS) ../$(TARGET).elf ../$(TARGET).s19 ../$(TARGET).map $(OBJECTS:%.o=%.d)
 endif
 
-%.o : %.cpp
+%.o : %.cpp $(AUTOH)
 	$(CXX) $(INCLUDES) $(ARGS) $(CFLAGS) -c $< -o $@
 
 $(TARGET).elf: $(OBJECTS)
