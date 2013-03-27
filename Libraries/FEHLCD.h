@@ -16,7 +16,9 @@ public:
         White,
         Red,
         Green,
-        Blue
+        Blue,
+		Scarlet,
+		Gray
     } FEHLCDColor;
 
     typedef enum
