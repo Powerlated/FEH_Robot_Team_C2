@@ -232,11 +232,13 @@ unsigned int FEHLCD::ConvertFEHColorTo24Bit(FEHLCDColor color) {
     unsigned int htmlColor;
     switch(color)
     {
-    case White: htmlColor=0xFFFFFFu; break;
-    case Black: htmlColor=0x000000u; break;
-    case Red:   htmlColor=0xFF0000u; break;
-    case Green: htmlColor=0x00FF00u; break;
-    case Blue:  htmlColor=0x0000FFu; break;
+    case White: 	htmlColor=0xFFFFFFu; break;
+    case Black: 	htmlColor=0x000000u; break;
+    case Red:   	htmlColor=0xFF0000u; break;
+    case Green: 	htmlColor=0x00FF00u; break;
+    case Blue:		htmlColor=0x0000FFu; break;
+	case Scarlet:	htmlColor=0x990000u; break;
+	case Gray:  	htmlColor=0x999999u; break;
     }
     return htmlColor;
 }
