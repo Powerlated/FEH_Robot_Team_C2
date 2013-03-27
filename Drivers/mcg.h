@@ -41,7 +41,7 @@ int atc (unsigned char irc, int irc_freq);
 //	__ramfunc void set_sys_dividers(uint32 outdiv1, uint32 outdiv2, uint32 outdiv3, uint32 outdiv4);
 //#elif (defined(CW))
 	//__relocate_code__ 
-    void set_sys_dividers(uint32 outdiv1, uint32 outdiv2, uint32 outdiv3, uint32 outdiv4);// __attribute__((section(".data")));
+	void set_sys_dividers(uint32 outdiv1, uint32 outdiv2, uint32 outdiv3, uint32 outdiv4);// __attribute__((section(".data")));
 //#endif	
 
 enum clk_option

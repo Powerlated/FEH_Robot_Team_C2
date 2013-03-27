@@ -42,15 +42,16 @@ unsigned char pll_init(unsigned char clk_option, unsigned char crystal_val)
 
 // First move to FBE mode
 //#if (defined(K60_CLK) || defined(ASB817)||defined(K53_CLK))
-     MCG_C2 = 0;
+	 MCG_C2 = 0;
 //#else
 // Enable external oscillator, RANGE=2, HGO=1, EREFS=1, LP=0, IRCS=0
 //    MCG_C2 = MCG_C2_RANGE(2) | MCG_C2_HGO_MASK | MCG_C2_EREFS_MASK;
 //#endif
 
 // after initialization of oscillator release latched state of oscillator and GPIO
-    SIM_SCGC4 |= SIM_SCGC4_LLWU_MASK;
-    LLWU_CS |= LLWU_CS_ACKISO_MASK;
+	 //todo not in pll_init_bl
+//	SIM_SCGC4 |= SIM_SCGC4_LLWU_MASK;
+//	LLWU_CS |= LLWU_CS_ACKISO_MASK;
   
 // Select external oscilator and Reference Divider and clear IREFS to start ext osc
 // CLKS=2, FRDIV=3, IREFS=0, IRCLKEN=0, IREFSTEN=0
@@ -58,7 +59,7 @@ unsigned char pll_init(unsigned char clk_option, unsigned char crystal_val)
 
   /* if we aren't using an osc input we don't need to wait for the osc to init */
 //#if (!defined(K60_CLK) && !defined(ASB817)&& !defined(K53_CLK))
-//    while (!(MCG_S & MCG_S_OSCINIT_MASK)){};  // wait for oscillator to initialize
+//	while (!(MCG_S & MCG_S_OSCINIT_MASK)){};  // wait for oscillator to initialize
 //#endif
 
   while (MCG_S & MCG_S_IREFST_MASK){}; // wait for Reference clock Status bit to clear
@@ -80,38 +81,38 @@ unsigned char pll_init(unsigned char clk_option, unsigned char crystal_val)
   MCG_C6 = 0x0;
 // Select the PLL VCO divider and system clock dividers depending on clocking option
   switch (clk_option) {
-    case 0:
-      // Set system options dividers
-      //MCG=PLL, core = MCG, bus = MCG, FlexBus = MCG, Flash clock= MCG/2
-      set_sys_dividers(0,0,0,1);
-      // Set the VCO divider and enable the PLL for 50MHz, LOLIE=0, PLLS=1, CME=0, VDIV=1
-      MCG_C6 = MCG_C6_PLLS_MASK | MCG_C6_VDIV(1); //VDIV = 1 (x25)
-      pll_freq = 50;
-      break;
+	case 0:
+	  // Set system options dividers
+	  //MCG=PLL, core = MCG, bus = MCG, FlexBus = MCG, Flash clock= MCG/2
+	  set_sys_dividers(0,0,0,1);
+	  // Set the VCO divider and enable the PLL for 50MHz, LOLIE=0, PLLS=1, CME=0, VDIV=1
+	  MCG_C6 = MCG_C6_PLLS_MASK | MCG_C6_VDIV(1); //VDIV = 1 (x25)
+	  pll_freq = 50;
+	  break;
    case 1:
-      // Set system options dividers
-      //MCG=PLL, core = MCG, bus = MCG/2, FlexBus = MCG/2, Flash clock= MCG/4
-     set_sys_dividers(0,1,1,3);
-      // Set the VCO divider and enable the PLL for 100MHz, LOLIE=0, PLLS=1, CME=0, VDIV=26
-      MCG_C6 = MCG_C6_PLLS_MASK | MCG_C6_VDIV(26); //VDIV = 26 (x50)
-      pll_freq = 100;
-      break;
-    case 2:
-      // Set system options dividers
-      //MCG=PLL, core = MCG, bus = MCG/2, FlexBus = MCG/2, Flash clock= MCG/4
-      set_sys_dividers(0,1,1,3);
-      // Set the VCO divider and enable the PLL for 96MHz, LOLIE=0, PLLS=1, CME=0, VDIV=24
-      MCG_C6 = MCG_C6_PLLS_MASK | MCG_C6_VDIV(24); //VDIV = 24 (x48)
-      pll_freq = 96;
-      break;
+	  // Set system options dividers
+	  //MCG=PLL, core = MCG, bus = MCG/2, FlexBus = MCG/2, Flash clock= MCG/4
+	 set_sys_dividers(0,1,1,3);
+	  // Set the VCO divider and enable the PLL for 100MHz, LOLIE=0, PLLS=1, CME=0, VDIV=26
+	  MCG_C6 = MCG_C6_PLLS_MASK | MCG_C6_VDIV(26); //VDIV = 26 (x50)
+	  pll_freq = 100;
+	  break;
+	case 2:
+	  // Set system options dividers
+	  //MCG=PLL, core = MCG, bus = MCG/2, FlexBus = MCG/2, Flash clock= MCG/4
+	  set_sys_dividers(0,1,1,3);
+	  // Set the VCO divider and enable the PLL for 96MHz, LOLIE=0, PLLS=1, CME=0, VDIV=24
+	  MCG_C6 = MCG_C6_PLLS_MASK | MCG_C6_VDIV(24); //VDIV = 24 (x48)
+	  pll_freq = 96;
+	  break;
    case 3:
-      // Set system options dividers
-      //MCG=PLL, core = MCG, bus = MCG, FlexBus = MCG, Flash clock= MCG/2
-      set_sys_dividers(0,0,0,1);
-      // Set the VCO divider and enable the PLL for 48MHz, LOLIE=0, PLLS=1, CME=0, VDIV=0
-      MCG_C6 = MCG_C6_PLLS_MASK; //VDIV = 0 (x24)
-      pll_freq = 48;
-      break;
+	  // Set system options dividers
+	  //MCG=PLL, core = MCG, bus = MCG, FlexBus = MCG, Flash clock= MCG/2
+	  set_sys_dividers(0,0,0,1);
+	  // Set the VCO divider and enable the PLL for 48MHz, LOLIE=0, PLLS=1, CME=0, VDIV=0
+	  MCG_C6 = MCG_C6_PLLS_MASK; //VDIV = 0 (x24)
+	  pll_freq = 48;
+	  break;
   }
   while (!(MCG_S & MCG_S_PLLST_MASK)){}; // wait for PLL status bit to set
 
@@ -181,7 +182,7 @@ void mcg_pee_2_blpi(void)
     while (MCG_S & MCG_S_PLLST_MASK){};  // Wait for PLL status flag to reflect FLL selected.
     
     // Step 3: FBE -> FBI
-    MCG_C2 &= ~MCG_C2_LP_MASK;  // FLL remains active in bypassed modes.
+	MCG_C2 &= ~MCG_C2_LP_MASK;  // FLL remains active in bypassed modes.
     MCG_C2 |= MCG_C2_IRCS_MASK;  // Select fast (1MHz) internal reference
     temp_reg = MCG_C1;
     temp_reg &= ~(MCG_C1_CLKS_MASK | MCG_C1_IREFS_MASK);
