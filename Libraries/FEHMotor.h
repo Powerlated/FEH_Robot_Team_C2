@@ -21,6 +21,7 @@ public:
 
 private:
     FEHMotorPort _motorport;
+	char _power;
 };
 
 #endif // FEHMOTOR_H

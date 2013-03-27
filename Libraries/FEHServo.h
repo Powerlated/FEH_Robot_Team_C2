@@ -26,6 +26,7 @@ private:
     FEHServoPort servo_port;
     unsigned short servo_min;
     unsigned short servo_max;
+	int _position;
 };
 
 #endif // FEHSERVO_H

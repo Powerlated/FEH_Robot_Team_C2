@@ -14,6 +14,9 @@ FEHServo::FEHServo( FEHServoPort _servo )
     servo_port = _servo;
     servo_min = 500;
     servo_max = 2500;
+
+	// _position == -1 => servo is off
+	_position = -1;
 }
 
 void FEHServo::SetMin( int _min )
@@ -44,23 +47,29 @@ void FEHServo::SetMax( int _max )
 
 void FEHServo::SetDegree( int _degree )
 {
-    if( _degree < 0 ) _degree = 0;
-    if( _degree > 180 ) _degree = 180;
-    //set rate based on min ,max and degre provided
-    unsigned short rate;
-    rate = servo_min + (unsigned short)((servo_max - servo_min) / 180.0 * (unsigned short)_degree);
+	if( _degree < 0 ) _degree = 0;
+	if( _degree > 180 ) _degree = 180;
 
-    //to get low byte, typecase to unsigned char
-    unsigned char rate_low = (unsigned char)( rate & 0xFF );
-    //to get high byte, right shift by eight and then cast
-    unsigned char rate_high = (unsigned char)((rate >> 8));
+	if( _degree != _position )
+	{
+		_position = _degree;
 
-    uart_putchar( UART5_BASE_PTR, 0x7F );
-    uart_putchar( UART5_BASE_PTR, 0x05 ); // servo channel set time instruction
-    uart_putchar( UART5_BASE_PTR, (unsigned char) servo_port ); // servo to set
-    uart_putchar( UART5_BASE_PTR, rate_high ); // on time high byte
-    uart_putchar( UART5_BASE_PTR, rate_low ); // on time low byte
-    uart_putchar( UART5_BASE_PTR, 0xFF );
+		//set rate based on min ,max and degre provided
+		unsigned short rate;
+		rate = servo_min + (unsigned short)((servo_max - servo_min) / 180.0 * (unsigned short)_degree);
+
+		//to get low byte, typecase to unsigned char
+		unsigned char rate_low = (unsigned char)( rate & 0xFF );
+		//to get high byte, right shift by eight and then cast
+		unsigned char rate_high = (unsigned char)((rate >> 8));
+
+		uart_putchar( UART5_BASE_PTR, 0x7F );
+		uart_putchar( UART5_BASE_PTR, 0x05 ); // servo channel set time instruction
+		uart_putchar( UART5_BASE_PTR, (unsigned char) servo_port ); // servo to set
+		uart_putchar( UART5_BASE_PTR, rate_high ); // on time high byte
+		uart_putchar( UART5_BASE_PTR, rate_low ); // on time low byte
+		uart_putchar( UART5_BASE_PTR, 0xFF );
+	}
 }
 
 void FEHServo::Calibrate()
@@ -133,8 +142,13 @@ void FEHServo::Calibrate()
 
 void FEHServo::Off()
 {
-    uart_putchar( UART5_BASE_PTR, 0x7F );
-    uart_putchar( UART5_BASE_PTR, 0x06 ); // servo off type
-    uart_putchar( UART5_BASE_PTR, (unsigned char) servo_port ); // servo to turn off
-    uart_putchar( UART5_BASE_PTR, 0xFF );
+	if( _position >= 0 )
+	{
+		_position = -1;
+
+		uart_putchar( UART5_BASE_PTR, 0x7F );
+		uart_putchar( UART5_BASE_PTR, 0x06 ); // servo off type
+		uart_putchar( UART5_BASE_PTR, (unsigned char) servo_port ); // servo to turn off
+		uart_putchar( UART5_BASE_PTR, 0xFF );
+	}
 }
