@@ -87,6 +87,7 @@ void FEHServo::Calibrate()
     // set servo to 0 degrees using default min
     while( middlebutton.Value() )
     {
+		_position = -1;
         this->SetDegree( 0 );
         while( leftbutton.Value() && rightbutton.Value() && middlebutton.Value() );
 
@@ -114,6 +115,7 @@ void FEHServo::Calibrate()
     // set servo to 180 using default max
     while( middlebutton.Value() )
     {
+		_position = -1;
         this->SetDegree( 180 );
         while( leftbutton.Value() && rightbutton.Value() && middlebutton.Value() );
 
