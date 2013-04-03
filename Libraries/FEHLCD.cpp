@@ -357,9 +357,19 @@ void FEHLCD::Write( float f )
 {
     char num[50];
     int d,r;
-    d = (int) f;
-    r = (int) ((f-d)*1000);
-    sprintf(num,"%d.%03d",d,r);
+	if( f >= 0 )
+	{
+		d = (int) f;
+		r = (int) ((f-d)*1000);
+		sprintf(num,"%d.%03d",d,r);
+	}
+	else
+	{
+		f *= -1;
+		d = (int) f;
+		r = (int) ((f-d)*1000);
+		sprintf(num,"-%d.%03d",d,r);
+	}
     Write(num);
 }
 
@@ -378,6 +388,13 @@ void FEHLCD::Write( bool b )
     {
         Write( "false" );
     }
+}
+
+void FEHLCD::Write( char c )
+{
+	CheckLine();
+	WriteChar( _currentline, _currentchar, c );
+	NextChar();
 }
 
 void FEHLCD::WriteLine( const char* str )

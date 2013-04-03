@@ -55,11 +55,12 @@ public:
     void FillCircle(int x0, int y0, int r);
 
     // Write information at a specific Pixel on the screen
-    void WriteAt(const char * str, int x, int y);
-    void WriteAt(int i, int x, int y);
-    void WriteAt(float f, int x, int y);
-    void WriteAt(double d, int x, int y);
-    void WriteAt(bool b, int x, int y);
+	void WriteAt( const char * str, int x, int y );
+	void WriteAt( int i, int x, int y );
+	void WriteAt( float f, int x, int y );
+	void WriteAt( double d, int x, int y );
+	void WriteAt( bool b, int x, int y );
+	void WriteAt( char c, int x, int y );
 
     // Write to the screen
     void Write( const char* str );
@@ -67,6 +68,7 @@ public:
     void Write( float f );
     void Write( double d );
     void Write( bool b );
+	void Write( char c );
 
     // Write to the screeen and advance to next line
     void WriteLine( const char* str );
@@ -74,6 +76,7 @@ public:
     void WriteLine( float f );
     void WriteLine( double d );
     void WriteLine( bool b );
+	void WriteLine( char c );
 
 private:
     typedef struct regColVal {
