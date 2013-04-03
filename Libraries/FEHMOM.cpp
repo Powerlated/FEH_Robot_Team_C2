@@ -91,6 +91,8 @@ void FEHMOM::InitializeMenu()
 	LCD.Clear();
 	LCD.WriteLine( "Use LEFT / RIGHT to change region" );
 	LCD.WriteLine( "Use MIDDLE to select" );
+	LCD.Write( "Region: " );
+	LCD.WriteLine( region );
 
 	// wait for user to press middle button
 	while( !buttons.MiddlePressed() )
