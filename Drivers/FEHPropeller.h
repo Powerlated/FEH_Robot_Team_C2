@@ -5,16 +5,16 @@
 class FEHPropeller
 {
 public:
-    FEHPropeller();
+	FEHPropeller();
 
-    bool Initialize();
-    bool IsInitialized();
+	bool Initialize();
+	bool IsInitialized();
 
-    void Reset();
-    void SetMotorRate( uint8 motor, uint8 speed, uint8 rate );
+	void Reset();
+	void SetMotorRate( uint8 motor, uint8 speed, uint8 rate );
 
 private:
-    bool _initialized;
+	bool _initialized;
 };
 
 #endif // PROPELLER_H

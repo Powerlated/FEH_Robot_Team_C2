@@ -74,6 +74,8 @@ void PortDISR()
     }
 }
 
+extern void UART0_ISR();
+
 extern void pit0_isr();
 
 /* The Interrupt Vector Table */
@@ -101,6 +103,7 @@ void (* const InterruptVector[])() __attribute__ ((section(".vectortable"))) = {
     Default_Handler,
     Default_Handler,
     Default_Handler,
+	Default_Handler, //20
     Default_Handler,
     Default_Handler,
     Default_Handler,
@@ -110,6 +113,7 @@ void (* const InterruptVector[])() __attribute__ ((section(".vectortable"))) = {
     Default_Handler,
     Default_Handler,
     Default_Handler,
+	Default_Handler, //30
     Default_Handler,
     Default_Handler,
     Default_Handler,
@@ -119,6 +123,7 @@ void (* const InterruptVector[])() __attribute__ ((section(".vectortable"))) = {
     Default_Handler,
     Default_Handler,
     Default_Handler,
+	Default_Handler, //40
     Default_Handler,
     Default_Handler,
     Default_Handler,
@@ -128,6 +133,7 @@ void (* const InterruptVector[])() __attribute__ ((section(".vectortable"))) = {
     Default_Handler,
     Default_Handler,
     Default_Handler,
+	Default_Handler, //50
     Default_Handler,
     Default_Handler,
     Default_Handler,
@@ -137,6 +143,8 @@ void (* const InterruptVector[])() __attribute__ ((section(".vectortable"))) = {
     Default_Handler,
     Default_Handler,
     Default_Handler,
+	Default_Handler, //60
+	UART0_ISR, // UART0
     Default_Handler,
     Default_Handler,
     Default_Handler,
@@ -145,13 +153,7 @@ void (* const InterruptVector[])() __attribute__ ((section(".vectortable"))) = {
     Default_Handler,
     Default_Handler,
     Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,
+	Default_Handler, //70
     Default_Handler,
     Default_Handler,
     Default_Handler,
