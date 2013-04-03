@@ -83,6 +83,10 @@ void FEHMOM::InitializeMenu()
 		LCD.WriteLine( " will be help you" );
 		Sleep( 5000 );
 	}
+	else
+	{
+		Sleep( 500 );
+	}
 
 	LCD.Clear();
 	LCD.WriteLine( "Use LEFT / RIGHT to change region" );
