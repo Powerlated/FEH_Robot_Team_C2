@@ -433,6 +433,13 @@ void FEHLCD::WriteLine( bool b )
     NextLine();
 }
 
+void FEHLCD::WriteLine( char c )
+{
+	CheckLine();
+	Write( c );
+	NextLine();
+}
+
 void FEHLCD::_Initialize()
 {
     // Setup pins
