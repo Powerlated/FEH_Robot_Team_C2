@@ -21,6 +21,7 @@ unsigned char _xbeebuffer[ XBEEBUFFERSIZE ];
 unsigned char _xbeebufferindex = 0;
 XBeePacketState _xbeestate = AwaitingStart;
 bool _xbeebytereceived = false;
+char _xbeebyte;
 
 FEHXBee::FEHXBee()
 {
@@ -44,8 +45,8 @@ bool FEHXBee::Initialize()
 		PORTA_PCR2 = PORT_PCR_MUX( 0x2 );
 
 		// Initialize propeller UART
-		//uart_init( UART0_BASE_PTR, CoreClockKHz, 9600 );
-		uart_init( UART0_BASE_PTR, CoreClockKHz, 115200 );
+		uart_init( UART0_BASE_PTR, CoreClockKHz, 9600 );
+//		uart_init( UART0_BASE_PTR, CoreClockKHz, 115200 );
 
 		// Setup interrupt on UART0
 		// disable receiver while changing settings
@@ -114,23 +115,19 @@ unsigned int FEHXBee::ReceiveDataSearch( char* data, unsigned int maxlength, uns
 //		data[ i ] = uart_getchar( UART0_BASE_PTR );
 //		LCD.Write( (int)data[ i ] );
 //		LCD.Write( " " );
-		bufferindex = _xbeebufferindex - 1;
-		if( bufferindex < 0 )
-		{
-			bufferindex = XBEEBUFFERSIZE - 1;
-		}
-		data[ i ] = _xbeebuffer[ bufferindex ];
+		data[ i ] = _xbeebyte;
+		_xbeebytereceived = false;
 
 		if( data[ i ] == 0x0D )
 			break;
 
-		LCD.WriteLine( (int)data[ i ] );
+//		LCD.WriteLine( (int)data[ i ] );
 
 		if( !foundfirst )
 		{
 			if( data[ i ] == expectedfirstchar )
 			{
-				LCD.Write( 'F' );
+//				LCD.Write( 'F' );
 				foundfirst = true;
 			}
 			else
@@ -180,6 +177,8 @@ void UART0_ISR()
 //	LCD.Write( c );
 
 	char c = uart_getchar( UART0_BASE_PTR );
+	_xbeebyte = c;
+	_xbeebytereceived = true;
 
 //	LCD.Write( (int)c );
 //	LCD.Write( " " );
@@ -193,7 +192,6 @@ void UART0_ISR()
 				_xbeestate = FoundStart;
 				_xbeebufferindex = 0;
 				_xbeebuffer[ _xbeebufferindex++ ] = c;
-				_xbeebytereceived = true;
 			}
 			break;
 		}

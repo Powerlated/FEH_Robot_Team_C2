@@ -53,6 +53,8 @@ public:
 	// returns the match time in seconds
 	unsigned char Time();
 
+	unsigned char WaitForPacket();
+
 private:
 	FEHXBee _xbee;
 

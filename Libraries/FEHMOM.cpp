@@ -27,6 +27,17 @@ bool _mom_foundpacket;
 
 FEHMOM::FEHMOM()
 {
+	_xbee.SetPacketCallBack( &MOMDataProcess );
+
+	//_enabled = true;
+	_region = -1;
+
+	_mom_x = 0.0f;
+	_mom_y = 0.0f;
+	_mom_heading = 0.0f;
+	_mom_objective = 0x0;
+	_mom_time = 0;
+	_mom_stop = false;
 }
 
 void FEHMOM::InitializeMenu()
@@ -34,59 +45,6 @@ void FEHMOM::InitializeMenu()
 	ButtonBoard buttons( FEHIO::Bank3 );
 
 	char region = 'A';
-	bool usesurrogate = true;
-
-	LCD.Clear();
-	LCD.WriteLine( "Use LEFT / RIGHT to change option" );
-	LCD.WriteLine( "Use MIDDLE to select" );
-
-	LCD.Write( "Use Surrogate MOM? " );
-	if( usesurrogate )
-	{
-		LCD.WriteLine( "YES" );
-	}
-	else
-	{
-		LCD.WriteLine( "NO" );
-	}
-
-	// wait for user to press middle button
-	while( !buttons.MiddlePressed() )
-	{
-		if( buttons.LeftPressed() || buttons.RightPressed() )
-		{
-			usesurrogate = !usesurrogate;
-			LCD.Clear();
-			LCD.WriteLine( "Use LEFT / RIGHT to change option" );
-			LCD.WriteLine( "Use MIDDLE to select" );
-
-			LCD.Write( "Use Surrogate MOM? " );
-			if( usesurrogate )
-			{
-				LCD.WriteLine( "YES" );
-			}
-			else
-			{
-				LCD.WriteLine( "NO" );
-			}
-			while( buttons.LeftPressed() || buttons.RightPressed() );
-			Sleep( 100 );
-		}
-	}
-
-	if( !usesurrogate )
-	{
-		LCD.WriteLine( " " );
-		LCD.WriteLine( "MOM is currently busy" );
-		LCD.WriteLine( "She will be back soon" );
-		LCD.WriteLine( "Until then, Surrogate MOM" );
-		LCD.WriteLine( " will be help you" );
-		Sleep( 5000 );
-	}
-	else
-	{
-		Sleep( 500 );
-	}
 
 	LCD.Clear();
 	LCD.WriteLine( "Use LEFT / RIGHT to change region" );
@@ -131,77 +89,11 @@ void FEHMOM::InitializeMenu()
 			Sleep( 100 );
 		}
 	}
-    while(buttons.MiddlePressed());
-    Sleep(100);
 
-    Initialize( region );
-
-
-    bool stones = false;
-    bool generator = false;
-
-    LCD.Clear();
-    LCD.WriteLine( "Use LEFT to change STONES," );
-    LCD.WriteLine( "RIGHT to change GENERATOR" );
-    LCD.WriteLine( "Use MIDDLE to select" );
-    LCD.WriteLine(" ");
-
-    LCD.Write( "STONES: " );
-    LCD.WriteLine( (stones ? "Right" : "Left" ));
-
-    LCD.Write( "GENERATOR: " );
-    LCD.WriteLine( (generator ? "Backward" : "Foreward" ));;
-
-    while( !buttons.MiddlePressed() )
-    {
-        if( buttons.LeftPressed() )
-        {
-            stones = ! stones;
-
-            LCD.Clear();
-            LCD.WriteLine( "Use LEFT to change STONES," );
-            LCD.WriteLine( "RIGHT to change GENERATOR" );
-            LCD.WriteLine( "Use MIDDLE to select" );
-
-            LCD.WriteLine(" ");
-            LCD.Write( "STONES: " );
-            LCD.WriteLine( (stones ? "Right" : "Left" ));
-
-
-            LCD.Write( "GENERATOR: " );
-            LCD.WriteLine( (generator ? "Backward" : "Foreward" ));
-
-            while( buttons.LeftPressed() );
-            Sleep( 100 );
-        }
-
-        if( buttons.RightPressed() )
-        {
-            generator = !generator;
-
-            LCD.Clear();
-            LCD.WriteLine( "Use LEFT to change STONES," );
-            LCD.WriteLine( "RIGHT to change GENERATOR" );
-            LCD.WriteLine( "Use MIDDLE to select" );
-
-            LCD.WriteLine(" ");
-            LCD.Write( "STONES: " );
-            LCD.WriteLine( (stones ? "Right" : "Left" ));
-
-
-            LCD.Write( "GENERATOR: " );
-            LCD.WriteLine( (generator ? "Backward" : "Foreward" ));
-
-            while( buttons.RightPressed() );
-            Sleep( 100 );
-        }
-    }
+	Initialize( region );
 
 	while( buttons.MiddlePressed() );
 	Sleep( 100 );
-    _mom_objective = (STONEMASK * ((int) stones)) | (GENERATORMASK * ((int) generator));
-    LCD.WriteLine(" ");
-    //LCD.Write(_mom_objective);
 }
 
 // Manually pick and configure a region
@@ -209,7 +101,207 @@ void FEHMOM::InitializeMenu()
 // char region => { a, b, c, d, e, f, g, h, i, j, k, l } || { A, B, C, D, E, F, G, H, I, J, K, L }
 void FEHMOM::Initialize( int region )
 {
-    _region = region;
+	if( !_xbee.IsInitialized() )
+		_xbee.Initialize();
+
+	if( !_enabled )
+	{
+//		_enabled = true;
+//		return;
+
+		// check range of region
+		if( region < 0 )
+		{
+			region = 0;
+		}
+		else if( region > 11 )
+		{
+			region = 11;
+		}
+
+		_region = region;
+
+		// configure xbee
+
+//		_xbee.DisableInterrupt();
+
+		LCD.Clear();
+
+		char txbuffer[ 10 ];
+		unsigned int txlength = 0;
+
+		char rxbuffer[ 10 ];
+		unsigned int rxlength = 0;
+
+		// enter AT mode
+		LCD.Write( "Enter cmd mode..." );
+		txbuffer[ 0 ] = '+';
+		txbuffer[ 1 ] = '+';
+		txbuffer[ 2 ] = '+';
+		txlength = _xbee.SendData( txbuffer, 3 );
+		//Sleep( 2000 );
+		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
+		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+		{
+			LCD.WriteLine( "Error with MOM configuration. Data: " );
+			return;
+		}
+		for( int i = 0; i < rxlength; i++ )
+		{
+			LCD.Write( rxbuffer[ i ] );
+//			LCD.Write( " " );
+		}
+		LCD.WriteLine( " " );
+
+		// set my address
+		LCD.Write( "Set wireless id..." );
+		txbuffer[ 0 ] = 'A';
+		txbuffer[ 1 ] = 'T';
+		txbuffer[ 2 ] = 'M';
+		txbuffer[ 3 ] = 'Y';
+		txbuffer[ 4 ] = '0' + ( _region / 4 + 1 );
+		txbuffer[ 5 ] = '1';
+		txbuffer[ 6 ] = '0';
+		txbuffer[ 7 ] = '0' + ( _region % 4 );
+		txbuffer[ 8 ] = '\r';
+		txlength = _xbee.SendData( txbuffer, 9 );
+	//	Sleep( 100 );
+		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
+		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+		{
+			LCD.WriteLine( "Error with MOM configuration" );
+			return;
+		}
+		for( int i = 0; i < rxlength; i++ )
+		{
+			LCD.Write( rxbuffer[ i ] );
+//			LCD.Write( " " );
+		}
+		LCD.WriteLine( " " );
+
+		// set my pan id
+		LCD.Write( "Set network id..." );
+		txbuffer[ 0 ] = 'A';
+		txbuffer[ 1 ] = 'T';
+		txbuffer[ 2 ] = 'I';
+		txbuffer[ 3 ] = 'D';
+		txbuffer[ 4 ] = '0' + ( _region / 4 + 1 );
+		txbuffer[ 5 ] = '0';
+		txbuffer[ 6 ] = '0';
+		txbuffer[ 7 ] = '0';
+		txbuffer[ 8 ] = '\r';
+		txlength = _xbee.SendData( txbuffer, 9 );
+	//	Sleep( 100 );
+		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
+		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+		{
+			LCD.WriteLine( "Error with MOM configuration" );
+			return;
+		}
+		for( int i = 0; i < rxlength; i++ )
+		{
+			LCD.Write( rxbuffer[ i ] );
+		}
+		LCD.WriteLine( " " );
+
+		// set my destination (low)
+		LCD.Write( "Set course id (low)..." );
+		txbuffer[ 0 ] = 'A';
+		txbuffer[ 1 ] = 'T';
+		txbuffer[ 2 ] = 'D';
+		txbuffer[ 3 ] = 'L';
+		txbuffer[ 4 ] = '0' + ( _region / 4 + 1 );
+		txbuffer[ 5 ] = '0';
+		txbuffer[ 6 ] = '0';
+		txbuffer[ 7 ] = '0' + ( _region % 4 );
+		txbuffer[ 8 ] = '\r';
+		txlength = _xbee.SendData( txbuffer, 9 );
+	//	Sleep( 100 );
+		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
+		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+		{
+			LCD.WriteLine( "Error with MOM configuration" );
+			return;
+		}
+		for( int i = 0; i < rxlength; i++ )
+		{
+			LCD.Write( rxbuffer[ i ] );
+		}
+		LCD.WriteLine( " " );
+
+		// set my destination (high)
+		LCD.Write( "Set course id (high)..." );
+		txbuffer[ 0 ] = 'A';
+		txbuffer[ 1 ] = 'T';
+		txbuffer[ 2 ] = 'D';
+		txbuffer[ 3 ] = 'H';
+		txbuffer[ 4 ] = '0';
+		txbuffer[ 5 ] = '0';
+		txbuffer[ 6 ] = '0';
+		txbuffer[ 7 ] = '0';
+		txbuffer[ 8 ] = '\r';
+		txlength = _xbee.SendData( txbuffer, 9 );
+	//	Sleep( 100 );
+		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
+		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+		{
+			LCD.WriteLine( "Error with MOM configuration" );
+			return;
+		}
+		for( int i = 0; i < rxlength; i++ )
+		{
+			LCD.Write( rxbuffer[ i ] );
+		}
+		LCD.WriteLine( " " );
+
+		// write to flash
+		LCD.Write( "Writing config..." );
+		txbuffer[ 0 ] = 'A';
+		txbuffer[ 1 ] = 'T';
+		txbuffer[ 2 ] = 'W';
+		txbuffer[ 3 ] = 'R';
+		txbuffer[ 4 ] = '\r';
+		txlength = _xbee.SendData( txbuffer, 5 );
+	//	Sleep( 100 );
+		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
+		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+		{
+			LCD.WriteLine( "Error with MOM configuration" );
+			return;
+		}
+		for( int i = 0; i < rxlength; i++ )
+		{
+			LCD.Write( rxbuffer[ i ] );
+		}
+		LCD.WriteLine( " " );
+
+		// exit command mode
+		LCD.Write( "Exit command mode..." );
+		txbuffer[ 0 ] = 'A';
+		txbuffer[ 1 ] = 'T';
+		txbuffer[ 2 ] = 'C';
+		txbuffer[ 3 ] = 'N';
+		txbuffer[ 4 ] = '\r';
+		txlength = _xbee.SendData( txbuffer, 5 );
+	//	Sleep( 100 );
+		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
+		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+		{
+			LCD.WriteLine( "Error with MOM configuration" );
+			return;
+		}
+		for( int i = 0; i < rxlength; i++ )
+		{
+			LCD.Write( rxbuffer[ i ] );
+		}
+		LCD.WriteLine( " " );
+
+		// show success
+		LCD.Write( "Successfully initialized  region: " );
+		LCD.WriteLine( CurrentRegionLetter() );
+
+//		_xbee.EnableInterrupt();
+	}
 }
 
 void FEHMOM::Initialize( char region )
@@ -291,6 +383,50 @@ unsigned char FEHMOM::Time()
 	return _mom_time;
 }
 
+unsigned char FEHMOM::WaitForPacket()
+{
+	unsigned long starttime = TimeNowMSec();
+	while( !_mom_foundpacket && ( TimeNowMSec() - starttime ) < 1000 );
+	if( _mom_foundpacket )
+	{
+		_mom_foundpacket = false;
+		return _mom_time;
+	}
+	else
+	{
+		return 0x00;
+	}
+}
+
 void MOMDataProcess( unsigned char *data, unsigned char length )
 {
+	if( _enabled )
+	{
+		// verify packet length
+		if( length == 9 )
+		{
+			_mom_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 72.0f;
+			_mom_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f;
+			_mom_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f;
+			_mom_objective = data[ 7 ];
+			_mom_time = data[ 8 ];
+			_mom_stop = ( _mom_time == STOPDATA );
+
+			_mom_foundpacket = true;
+
+//			LCD.Clear();
+//			LCD.Write( _mom_x );
+//			LCD.Write( " " );
+//			LCD.Write( _mom_y );
+//			LCD.Write( " " );
+//			LCD.Write( _mom_heading );
+//			LCD.WriteLine( " " );
+//			LCD.WriteLine( ( MOM.Stone() ) ? ( "RIGHT stone" ) : ( "LEFT stone" ) );
+//			LCD.WriteLine( ( MOM.Generator() ) ? ( "Generator backward" ) : ( "Generator forward" ) );
+//			LCD.WriteLine( ( MOM.TopButton() ) ? ( "Top pressed" ) : ( "Top released" ) );
+//			LCD.WriteLine( ( MOM.BottomButton() ) ? ( "Bottom pressed" ) : ( "Bottom released" ) );
+//			LCD.Write( "Time: " );
+//			LCD.WriteLine( _mom_time );
+		}
+	}
 }
