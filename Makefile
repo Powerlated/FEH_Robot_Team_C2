@@ -1,22 +1,22 @@
 GITBINARY := git
 FEHURL := feh.osu.edu
-FIRMWAREREPO := FEHRobotControllerFirmware
+FIRMWAREREPO := fehproteusfirmware
 
-ifeq ($(FEHPROTEUSINSTALL),)
-FEHPROTEUSINSTALL = C:\FEHProteus
+ifeq ($(FEHQTINSTALL),)
+FEHQTINSTALL = C:\apps\FEHQt
 endif
 
 CXX = arm-none-eabi-g++
 LD = $(CXX)
 
-SPECS = "$(FEHPROTEUSINSTALL)/GCC/arm-none-eabi/lib/armv7e-m/ewl_c++_noio.specs"
+SPECS = "$(FEHQTINSTALL)/GCC/arm-none-eabi/lib/armv7e-m/ewl_c++_noio.specs"
 ARGS = -O0 -ffunction-sections -fdata-sections -fno-exceptions -c -fmessage-length=0 -specs=$(SPECS)
 
 ##-Wa,-adhlns="$@.lst"
 CFLAGS =  -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -g3 -gdwarf-2 -gstrict-dwarf
 
-INCLUDES = -I.. -I. -IDrivers/ -ILibraries/ -IStartup/  -I"$(FEHPROTEUSINSTALL)/EWL/EWL_C/include" -I"$(FEHPROTEUSINSTALL)/EWL/EWL_C++/include" -I"$(FEHPROTEUSINSTALL)/EWL/EWL_Runtime/include"
-LIBS = -L"$(FEHPROTEUSINSTALL)/EWL/lib/armv7e-m"
+INCLUDES = -I.. -I. -IDrivers/ -ILibraries/ -IStartup/  -I"$(FEHQTINSTALL)/EWL/EWL_C/include" -I"$(FEHQTINSTALL)/EWL/EWL_C++/include" -I"$(FEHQTINSTALL)/EWL/EWL_Runtime/include"
+LIBS = -L"$(FEHQTINSTALL)/EWL/lib/armv7e-m"
 
 #AUTOCPP := $(shell cat ../$(TARGET).files | grep cpp | gawk '{ printf "..\\\%%s ", $$1 } END { printf "\n" }' )
 AUTOCPP := $(shell Tools/egrep cpp$$ ../$(TARGET).files)
