@@ -478,8 +478,8 @@ void AnalogInputPin::InitADCs()
                                     | ADC_SC3_AVGS(AVGS_4);      // Average 4 samples
 }
 
-int FEHEncoder::numEncoders = 0;
-FEHEncoder * FEHEncoder::encoders[32];
+#define NULL 0
+FEHEncoder::PinInfo * FEHEncoder::pinList = NULL;
 
 void pit0_isr(void) {
     FEHEncoder::ProcessInt();
@@ -508,10 +508,65 @@ void FEHEncoder::SetCounterInit(unsigned int val) {
     PIT_LDVAL0  =  val;
 }
 
-FEHEncoder::FEHEncoder(FEHIO::FEHIOPin pin_) : AnalogInputPin(pin_){
-    state = LOW_STATE;
-    encoders[numEncoders] = this;
-    numEncoders++;
+FEHEncoder::FEHEncoder(FEHIO::FEHIOPin pin_) : AnalogInputPin(pin_)
+{
+    if(pinList == NULL) {
+        // Initialize linked list of encoders within the pPinInfo Object
+        this->pNext = NULL;
+        this->pPrev = NULL;
+
+        // Add encoder linked list to pinInfo
+        pPinInfo = new PinInfo;
+        pPinInfo->encoderList = this;
+        pPinInfo->numEncoders = 1;
+        pPinInfo->pin = pin_;
+        pPinInfo->pNext = NULL;
+        pPinInfo->pPrev = NULL;
+        pPinInfo->state = LOW_STATE;
+
+        // Since the pinList is empty, set the pinInfo to the head
+        pinList = pPinInfo;
+    }
+    else // There is already a list in place (see if this pin is already in it)
+    {
+        PinInfo * pCurPin = pinList;
+        // Loop through list trying to find our pin
+        while(pCurPin->pin!= pin_ && pCurPin->pNext!=NULL) {
+            pCurPin = pCurPin->pNext;
+        }
+
+        // If the pin is in the list
+        if(pCurPin->pin == pin_) {
+            pPinInfo = pCurPin;
+            FEHEncoder * pCurEnc = pPinInfo->encoderList;
+            // Loop to end of encoder list
+            while(pCurEnc->pNext != NULL) {
+                pCurEnc = pCurEnc->pNext;
+            }
+            // Link the encoder info the end of the list
+            pCurEnc->pNext = this;
+            this->pPrev = pCurEnc;
+            this->pNext = NULL;
+            pPinInfo->numEncoders++;
+        }
+        else { // Need to add a new pin to the list
+            this->pNext = NULL;
+            this->pPrev = NULL;
+
+            // Add encoder linked list to pinInfo
+            pPinInfo = new PinInfo;
+            pPinInfo->encoderList = this;
+            pPinInfo->numEncoders = 1;
+            pPinInfo->pin = pin_;
+            pPinInfo->pNext = NULL;
+            pPinInfo->state = LOW_STATE;
+
+            // Link the end of the list to the new pin
+            pPinInfo->pPrev = pCurPin;
+            pCurPin->pNext = pPinInfo;
+        }
+    }
+
     ResetCounts();
     lowThreshold = 70*256;
     highThreshold = 210*256;
@@ -522,23 +577,90 @@ void FEHEncoder::SetThresholds(float low, float high) {
     highThreshold = high/3.3*0x10000;
 }
 
-void FEHEncoder::ProcessInt() {
-    for(int i=0; i< numEncoders; i++)
-    {
-        encoders[i]->ProcessIntSelf();
+FEHEncoder::~FEHEncoder()
+{
+    // Remove this encoder from the encoder list in the pin info
+    FEHEncoder * pPrevEnc = this->pPrev;
+    FEHEncoder * pNextEnc = this->pNext;
+
+    if(pPrevEnc==NULL && pNextEnc==NULL) {
+        //Then this was a lone encoder, must kill the pinInfo entry too
+        PinInfo * pPrevPin = pPinInfo->pPrev;
+        PinInfo * pNextPin = pPinInfo->pNext;
+        if(pPrevPin==NULL && pNextPin==NULL) {
+            // The pin list is now empty
+            pinList = NULL;
+        }
+        else {
+            if(pPrevPin!=NULL) {
+                pPrevPin->pNext = pNextPin;
+            }
+            else { // Reset the head
+                pinList = pNextPin;
+            }
+
+            if(pNextPin!=NULL) {
+                pNextPin->pPrev = pPrevPin;
+            }
+        }
+        // Delete the pinInfo
+        delete pPinInfo;
+    }
+    else {
+        // If we aren't at the start of the list
+        if(pPrevEnc!=NULL) {
+            pPrevEnc->pNext = pNextEnc;
+        }
+        else { // Reset the head
+            pPinInfo->encoderList = pNextEnc;
+        }
+
+        if(pNextEnc!=NULL) {
+            pNextEnc->pPrev = pPrevEnc;
+        }
+        pPinInfo->numEncoders--;
     }
 }
 
-void FEHEncoder::ProcessIntSelf() {
+void FEHEncoder::ProcessInt() {
+
+    PinInfo * pCurPin = pinList;
+    while(pCurPin != NULL)
+    {
+        EncoderState oldState = pCurPin->state;
+        // Process interrupt for the first encoder on each pin
+        bool countReceived = pCurPin->encoderList->ProcessIntSelf();
+
+        // If the state changed and there are more encoders tied to this pin
+        if(countReceived && pCurPin->numEncoders > 1) {
+            // Get the pointer to the next object
+            FEHEncoder * pCurEnc = pCurPin->encoderList->pNext;
+            while(pCurEnc != NULL) {
+                // Update other encoders
+                pCurEnc->counts++;
+
+                // Move to the next in the list
+                pCurEnc = pCurEnc->pNext;
+            }
+        }
+        pCurPin = pCurPin->pNext;
+    }
+}
+
+bool FEHEncoder::ProcessIntSelf() {
     int value = EncoderValue();
+    EncoderState state = pPinInfo->state;
     if(state == LOW_STATE && value>highThreshold) {
-        state = HIGH_STATE;
+        pPinInfo->state = HIGH_STATE;
         counts++;
+        return true;
     }
     if(state== HIGH_STATE && value<lowThreshold) {
-        state = LOW_STATE;
+        pPinInfo->state = LOW_STATE;
         counts++;
+        return true;
     }
+    return false;
 }
 
 int FEHEncoder::Counts()
