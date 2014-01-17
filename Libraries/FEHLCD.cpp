@@ -6,6 +6,7 @@
 #include "lptmr.h"
 #include "stdio.h"
 #include "image.h"
+#include <FEHBuzzer.h>
 
 #define CLR_CS GPIOC_PDOR &= ~GPIO_PDOR_PDO( ( 1 << 3 ) )
 #define SET_CS GPIOC_PDOR |= GPIO_PDOR_PDO( ( 1 << 3 ) )
@@ -129,6 +130,320 @@ FEHLCD LCD;
 
 bool initialized = false;
 
+
+#define LCD_WIDTH			320
+#define LCD_HEIGHT			240
+
+//Set DotClk Frequency
+#define DotClk_H        0x01//01
+#define DotClk_M		0xa0//50
+#define DotClk_L		0xff
+
+//Set the LCD panel mode
+#define Panel_Data_Width_Bit   0 //0:18bit; 1:24bit;
+
+
+/*--------------------Display pixel format[6:4] (POR = 000)
+                        000 Reserved
+                        001 3-bit/pixel
+                        010 8-bit/pixel
+                        011 12-bit/pixel
+                        100 Reserved
+                        101 16-bit/pixel
+                        110 18-bit/pixel
+                        111 24-bit/pixel-------------------*/
+#define Display_Pixel_Format   6
+
+
+
+/*--------------------Pixel Data Interface Format (POR = 101)
+                        000 8-bit
+                        001 12-bit
+                        010 16-bit packed
+                        011 16-bit (565 format)
+                        100 18-bit
+                        101 24-bit
+                        110 9-bit
+                        Others Reserved-------------------*/
+#define Pixel_Data_Interface_Format  4//3
+
+#define DotClk_Polarity        1 //0:Data latch in rising edge; 1:Data latch in falling edge
+#define Hsync_Polarity         0 //0:Active low; 1:Active high
+#define Vsync_Polarity         0 //0:Active low; 1:Active high
+
+#define LCD_Panel_Mode         0 //0:Hsync+Vsync +DE mode; 1:TTL mode
+#define TFT_Type               0 //0 or 1:TFT mode; 2:Serial RGB mode; 3:Serial RGB+dummy mode
+#define LCD_Data_Pin_Strength  3 //0 to 3:weakest to strongest
+#define LCD_Control_Pin_Strength  3 //0 to 3:weakest to strongest
+
+#define HPS      (LCD_WIDTH-1)  //Set the horizontal panel size
+#define VPS      (LCD_HEIGHT-1)  //Set the vertical panel size
+
+  /*---------------G[5:3] : Even line RGB sequence (POR = 000)
+                        000 RGB
+                        001 RBG
+                        010 GRB
+                        011 GBR
+                        100 BRG
+                        101 BGR
+                        11x Reserved ------------------*/
+  /*---------------G[2:1] : Odd line RGB sequence (POR = 000)
+                        000 RGB
+                        001 RBG
+                        010 GRB
+                        011 GBR
+                        100 BRG
+                        101 BGR
+                        11x Reserved ------------------*/
+
+#define G  0
+
+#define Panel_Mode1  (Panel_Data_Width_Bit<<5)|(1<<4)|(1<<3)|(DotClk_Polarity<<2)|(Hsync_Polarity<<1)|(Vsync_Polarity)
+#define Panel_Mode2  (LCD_Panel_Mode<<7)|(TFT_Type<<5)|(LCD_Data_Pin_Strength<<2)|(LCD_Control_Pin_Strength<<0)
+#define Panel_Mode3  G
+
+//Horizontal Cycle = Horizontal Pulse Width + Horizontal Back Porch + Horizontal Display Period + Horizontal Front Porch
+//Horizontal Start Position = Horizontal Pulse Width + Horizontal Back Porch
+#define LCD_HORI_FRONT_PORCH		0x45//0x40//0x90//0x30//2
+#define LCD_HORI_BACK_PORCH			0x12//0x10//0x05//0x0F//2
+#define LCD_HORI_PULSE_WIDTH		0x02//1e //0x50//0x1e//0x60//41
+
+//Vertical Cycle = Vertical Pulse Width + Vertical Back Porch + Vertical Display Period + Vertical Front Porch
+//Vertical Start Position = Vertical Pulse Width + Vertical Back Porch
+#define LCD_VERT_FRONT_PORCH		14//3//2
+#define LCD_VERT_BACK_PORCH			9//2//0//2
+#define LCD_VERT_PULSE_WIDTH		2//2//10
+
+#define REFRESH_RATE				70	//Hz
+
+#define LCD_HORI_CYCLE				(LCD_HORI_PULSE_WIDTH + LCD_HORI_BACK_PORCH + LCD_WIDTH + LCD_HORI_FRONT_PORCH)
+#define LCD_VERT_CYCLE				(LCD_VERT_PULSE_WIDTH + LCD_VERT_BACK_PORCH + LCD_HEIGHT + LCD_VERT_FRONT_PORCH)
+
+#define LCD_HORI_START				(LCD_HORI_PULSE_WIDTH + LCD_HORI_BACK_PORCH)
+#define LCD_VERT_START				(LCD_VERT_PULSE_WIDTH + LCD_VERT_BACK_PORCH)
+
+
+void FEHLCD::_Initialize()
+{
+    // Setup pins
+    // CS - C3
+    // RS - B18
+    // RD - B16
+    // WR - B17
+    // RESET - B3
+    PORTC_PCR3 = ( PORT_PCR_MUX( 1 ) );
+    PORTB_PCR18 = ( PORT_PCR_MUX( 1 ) );
+    PORTB_PCR16 = ( PORT_PCR_MUX( 1 ) );
+    PORTB_PCR17 = ( PORT_PCR_MUX( 1 ) );
+    PORTB_PCR3 = ( PORT_PCR_MUX( 1 ) );
+    GPIOC_PDDR |= ( 1 << 3 );
+    GPIOB_PDDR |= ( ( 1 << 18 ) );
+    GPIOB_PDDR |= ( ( 1 << 16 ) );
+    GPIOB_PDDR |= ( ( 1 << 17 ) );
+    SET_RESET;
+    GPIOB_PDDR |= ( ( 1 << 3 ) );
+    // CS = 1;
+    SET_CS;
+
+
+    // D0 - B9
+    // D1 - B8
+    // D2 - C4
+    // D3 - C5
+    // D4 - C6
+    // D5 - C7
+    // D6 - C12
+    // D7 - C13
+    // D8 - C14
+    // D9 - C15
+    // D10 - C16
+    // D11 - C17
+    // D12 - C18
+    // D13 - C19
+    // D14 - D0
+    // D15 - D2
+    // D16 - D3
+    // D17 - D4
+    PORTB_PCR9 = ( PORT_PCR_MUX( 1 ) );
+    PORTB_PCR8 = ( PORT_PCR_MUX( 1 ) );
+    PORTC_PCR4 = ( PORT_PCR_MUX( 1 ) );
+    PORTC_PCR5 = ( PORT_PCR_MUX( 1 ) );
+    PORTC_PCR6 = ( PORT_PCR_MUX( 1 ) );
+    PORTC_PCR7 = ( PORT_PCR_MUX( 1 ) );
+    PORTC_PCR12 = ( PORT_PCR_MUX( 1 ) );
+    PORTC_PCR13 = ( PORT_PCR_MUX( 1 ) );
+    PORTC_PCR14 = ( PORT_PCR_MUX( 1 ) );
+    PORTC_PCR15 = ( PORT_PCR_MUX( 1 ) );
+    PORTC_PCR16 = ( PORT_PCR_MUX( 1 ) );
+    PORTC_PCR17 = ( PORT_PCR_MUX( 1 ) );
+    PORTC_PCR18 = ( PORT_PCR_MUX( 1 ) );
+    PORTC_PCR19 = ( PORT_PCR_MUX( 1 ) );
+    PORTD_PCR0 = ( PORT_PCR_MUX( 1 ) );
+    PORTD_PCR2 = ( PORT_PCR_MUX( 1 ) );
+    PORTD_PCR3 = ( PORT_PCR_MUX( 1 ) );
+    PORTD_PCR4 = ( PORT_PCR_MUX( 1 ) );
+    GPIOB_PDDR |= ( ( 1 << 9 ) | ( 1 << 8 ) );
+    GPIOC_PDDR |= ( ( 1 << 4 ) | ( 1 << 5 ) | ( 1 << 6 ) | ( 1 << 7 ) | ( 1 << 12 ) | ( 1 << 13 ) | ( 1 << 14 ) | ( 1 << 15 ) | ( 1 << 16 ) | ( 1 << 17 ) | ( 1 << 18 ) | ( 1 << 19 ) );
+    GPIOD_PDDR |= ( ( 1 << 0 ) | ( 1 << 2 ) | ( 1 << 3 ) | ( 1 << 4 ) );
+
+
+
+
+    //PLL frequency=((0x2A+1)*8(crystal clock))/(0x02+1)
+    WriteIndex(0xE2);
+    WriteParameter(0x1D);	 //0x2A
+    WriteParameter(0x02);
+    WriteParameter(0x04);
+
+    //Start the PLL
+    WriteIndex(0xE0);
+    WriteParameter(0x01);
+
+    Sleep(100);
+
+    WriteIndex(0xE0);
+    WriteParameter(0x03);
+
+    //software reset
+    WriteIndex(0x01);
+
+    Sleep(1);
+
+    //Set DotClk Frequency
+    WriteIndex(0xE6);
+    WriteParameter(DotClk_H);	//0x01
+    WriteParameter(DotClk_M);
+    WriteParameter(DotClk_L);
+
+
+    ///
+    //WriteIndex(0xE6);
+    ////WriteParameter(LCDC_FPR&0x0F0000)>>16);
+    //WriteParameter(LCDC_FPR&0x00FF00)>>8);
+    //WriteParameter(LCDC_FPR&0x0000FF));
+    ////
+
+
+    //Set the LCD panel mode
+    WriteIndex(0xB0);
+    WriteParameter(Panel_Mode1);	     //0x3C
+    WriteParameter(Panel_Mode2);	       //0x0F
+    WriteParameter(HPS>>8);
+    WriteParameter(HPS);
+    WriteParameter(VPS>>8);
+    WriteParameter(VPS);  		  /////////
+    WriteParameter(Panel_Mode3);     //0
+
+
+    WriteIndex(0xB4);
+    WriteParameter(LCD_HORI_CYCLE>>8);	     //0x02
+    WriteParameter(LCD_HORI_CYCLE);	  	 //0x0D
+    WriteParameter(LCD_HORI_FRONT_PORCH>>8);
+    WriteParameter(LCD_HORI_FRONT_PORCH);	   //0x02
+    WriteParameter(LCD_HORI_PULSE_WIDTH);	//////////0x29
+    WriteParameter(0x00);
+    WriteParameter(0x00); 	//0xD1
+    WriteParameter(0x00);
+
+
+    WriteIndex(0xB6);
+    WriteParameter(LCD_VERT_CYCLE>>8);      //0x01
+    WriteParameter(LCD_VERT_CYCLE);	   //0x1e
+    WriteParameter(LCD_VERT_FRONT_PORCH>>8);
+    WriteParameter(LCD_VERT_FRONT_PORCH);  //0x02
+    WriteParameter(LCD_VERT_PULSE_WIDTH);  //0x0A		///////
+    WriteParameter(0x00);
+    WriteParameter(0x00);
+
+    WriteIndex(0xBA);
+    WriteParameter(0x0F);
+
+    Sleep(100);
+
+    WriteIndex(0x3A);//set display pixel format
+    WriteParameter(Display_Pixel_Format<<4);
+
+
+    WriteIndex(0x2A);	 //set coloum address and page address
+    WriteParameter(0x00);
+    WriteParameter(0x00);
+    WriteParameter(HPS>>8);
+    WriteParameter(HPS);
+
+    WriteIndex(0x2B);
+    WriteParameter(0x00);
+    WriteParameter(0x00);
+    WriteParameter(VPS>>8);
+    WriteParameter(VPS);
+
+    WriteIndex(0x36);
+    WriteParameter(0x00);
+
+    WriteIndex(0xF0);	   //Set Pixel Data Interface
+    WriteParameter(Pixel_Data_Interface_Format);	   //0x04:18bit,0x03:16bit,0x05:24bit
+
+
+    WriteIndex(0xB8);
+    WriteParameter(0x0f);
+    WriteParameter(0x01);
+
+
+
+
+    //Buzzer.Beep();
+
+    // Wait for the LCD to become responsive
+    // I don't know why it takes so long.
+    // The random pixels should mean its ready immediately
+    //Sleep(2000);
+
+    // RESET = 1;
+    SET_RESET;
+
+
+
+    // Wait for it to finish resetting
+    Sleep(100 );
+
+    // uchar i;
+
+    // widx(0x36); //set adress mode
+    WriteIndex( 0x36 );
+
+    // wpat( 0x00 ); //set page,column,line,RGB adress order;display data latch data,fli horizontal,vertical
+    WriteParameter( 0x00 );
+
+    // widx( 0xf0 ); //set pixel data interface
+    WriteIndex( 0xF0 );
+
+    // wpat( 0x04 ); //select 18bit
+    WriteParameter( 0x04 );
+
+    // widx( 0x29 );  //display on
+    //WriteIndex( 0x29 );
+
+    LCD.Clear(FEHLCD::White);
+    LCD.PrintImage(111,30);
+    LCD.SetFontColor(FEHLCD::Black);
+    LCD.WriteAt("FEH Proteus",90,175);
+
+    WriteIndex(0x29);  //display on
+    Sleep(100);
+
+    WriteIndex(0xBE);
+    WriteParameter(0x0E);	 //(set PWM frequency) PWM signal frequency = PLL clock / (256 * PWMF[7:0]) / 256
+    WriteParameter(0xF0);	 // (dummy value if DBC is used)
+    WriteParameter(0x01);	// (enable PWM controlled by DBC)
+    WriteParameter(0x00);
+    WriteParameter(0x00);
+    WriteParameter(0x0F);
+
+
+    LCD.SetFontColor(FEHLCD::White);
+    LCD.SetBackgroundColor(FEHLCD::Black);
+
+}
+
 FEHLCD::FEHLCD()
 {
     _forecolor = Black;
@@ -172,9 +487,6 @@ void FEHLCD::PrintImage(int x, int y)
             unsigned char r, g, b;
             if(image[k] ==0) {
                 r = 255; g=255; b=255;
-#ifdef TEAMH5
-				r = 0; g = 0; b = 255;
-#endif
             }
             else if(image[k]==1)
             {
@@ -290,7 +602,6 @@ void FEHLCD::SetFontColor( unsigned int color ) {
     _forecolor = Convert24BitColorTo16Bit(color);
     SetRegisterColorValues();
 }
-
 void FEHLCD::WriteAt(const char * str, int x, int y)
 {
     int i=0;
@@ -300,15 +611,12 @@ void FEHLCD::WriteAt(const char * str, int x, int y)
         i++;
     }
 }
-
 void FEHLCD::WriteAt(int i, int x, int y)
 {
     char num[50];
     sprintf(num,"%d",i);
     WriteAt(num,x,y);
 }
-
-
 void FEHLCD::WriteAt(float f, int x, int y)
 {
     char num[50];
@@ -318,12 +626,10 @@ void FEHLCD::WriteAt(float f, int x, int y)
     sprintf(num,"%d.%03d",d,r);
     WriteAt(num,x,y);
 }
-
 void FEHLCD::WriteAt(double d, int x, int y)
 {
     WriteAt((float)d,x,y);
 }
-
 void FEHLCD::WriteAt(bool b, int x, int y)
 {
     if(b)
@@ -335,8 +641,6 @@ void FEHLCD::WriteAt(bool b, int x, int y)
         WriteAt("false",x,y);
     }
 }
-
-
 void FEHLCD::Write( const char *str )
 {
     int i=0;
@@ -347,14 +651,12 @@ void FEHLCD::Write( const char *str )
         i++;
     }
 }
-
 void FEHLCD::Write( int i )
 {
     char num[50];
     sprintf(num,"%d",i);
     Write(num);
 }
-
 void FEHLCD::Write( float f )
 {
     char num[50];
@@ -374,12 +676,10 @@ void FEHLCD::Write( float f )
 	}
     Write(num);
 }
-
 void FEHLCD::Write( double d )
 {
     Write((float) d);
 }
-
 void FEHLCD::Write( bool b )
 {
     if( b )
@@ -391,157 +691,47 @@ void FEHLCD::Write( bool b )
         Write( "false" );
     }
 }
-
 void FEHLCD::Write( char c )
 {
 	CheckLine();
 	WriteChar( _currentline, _currentchar, c );
 	NextChar();
 }
-
 void FEHLCD::WriteLine( const char* str )
 {
     CheckLine();
     Write( str );
     NextLine();
 }
-
-
 void FEHLCD::WriteLine( int i )
 {
     CheckLine();
     Write( i );
     NextLine();
 }
-
 void FEHLCD::WriteLine( float f )
 {
     CheckLine();
     Write( f );
     NextLine();
 }
-
 void FEHLCD::WriteLine( double d )
 {
     CheckLine();
     Write( d );
     NextLine();
 }
-
 void FEHLCD::WriteLine( bool b )
 {
     CheckLine();
     Write( b );
     NextLine();
 }
-
 void FEHLCD::WriteLine( char c )
 {
 	CheckLine();
 	Write( c );
 	NextLine();
-}
-
-void FEHLCD::_Initialize()
-{
-    // Setup pins
-    // CS - C3
-    // RS - B18
-    // RD - B16
-    // WR - B17
-    // RESET - B3
-    PORTC_PCR3 = ( PORT_PCR_MUX( 1 ) );
-    PORTB_PCR18 = ( PORT_PCR_MUX( 1 ) );
-    PORTB_PCR16 = ( PORT_PCR_MUX( 1 ) );
-    PORTB_PCR17 = ( PORT_PCR_MUX( 1 ) );
-    PORTB_PCR3 = ( PORT_PCR_MUX( 1 ) );
-    GPIOC_PDDR |= ( 1 << 3 );
-    GPIOB_PDDR |= ( ( 1 << 18 ) );
-    GPIOB_PDDR |= ( ( 1 << 16 ) );
-    GPIOB_PDDR |= ( ( 1 << 17 ) );
-    SET_RESET;
-    GPIOB_PDDR |= ( ( 1 << 3 ) );
-    // CS = 1;
-    SET_CS;
-
-
-    // D0 - B9
-    // D1 - B8
-    // D2 - C4
-    // D3 - C5
-    // D4 - C6
-    // D5 - C7
-    // D6 - C12
-    // D7 - C13
-    // D8 - C14
-    // D9 - C15
-    // D10 - C16
-    // D11 - C17
-    // D12 - C18
-    // D13 - C19
-    // D14 - D0
-    // D15 - D2
-    // D16 - D3
-    // D17 - D4
-    PORTB_PCR9 = ( PORT_PCR_MUX( 1 ) );
-    PORTB_PCR8 = ( PORT_PCR_MUX( 1 ) );
-    PORTC_PCR4 = ( PORT_PCR_MUX( 1 ) );
-    PORTC_PCR5 = ( PORT_PCR_MUX( 1 ) );
-    PORTC_PCR6 = ( PORT_PCR_MUX( 1 ) );
-    PORTC_PCR7 = ( PORT_PCR_MUX( 1 ) );
-    PORTC_PCR12 = ( PORT_PCR_MUX( 1 ) );
-    PORTC_PCR13 = ( PORT_PCR_MUX( 1 ) );
-    PORTC_PCR14 = ( PORT_PCR_MUX( 1 ) );
-    PORTC_PCR15 = ( PORT_PCR_MUX( 1 ) );
-    PORTC_PCR16 = ( PORT_PCR_MUX( 1 ) );
-    PORTC_PCR17 = ( PORT_PCR_MUX( 1 ) );
-    PORTC_PCR18 = ( PORT_PCR_MUX( 1 ) );
-    PORTC_PCR19 = ( PORT_PCR_MUX( 1 ) );
-    PORTD_PCR0 = ( PORT_PCR_MUX( 1 ) );
-    PORTD_PCR2 = ( PORT_PCR_MUX( 1 ) );
-    PORTD_PCR3 = ( PORT_PCR_MUX( 1 ) );
-    PORTD_PCR4 = ( PORT_PCR_MUX( 1 ) );
-    GPIOB_PDDR |= ( ( 1 << 9 ) | ( 1 << 8 ) );
-    GPIOC_PDDR |= ( ( 1 << 4 ) | ( 1 << 5 ) | ( 1 << 6 ) | ( 1 << 7 ) | ( 1 << 12 ) | ( 1 << 13 ) | ( 1 << 14 ) | ( 1 << 15 ) | ( 1 << 16 ) | ( 1 << 17 ) | ( 1 << 18 ) | ( 1 << 19 ) );
-    GPIOD_PDDR |= ( ( 1 << 0 ) | ( 1 << 2 ) | ( 1 << 3 ) | ( 1 << 4 ) );
-
-    // Wait for the LCD to become responsive
-    // I don't know why it takes so long.
-    // The random pixels should mean its ready immediately
-    Sleep(3000);
-
-    // RESET = 1;
-    SET_RESET;
-
-
-
-    // Wait for it to finish resetting
-    Sleep(100 );
-
-    // uchar i;
-
-    // widx(0x36); //set adress mode
-    WriteIndex( 0x36 );
-
-    // wpat( 0x00 ); //set page,column,line,RGB adress order;display data latch data,fli horizontal,vertical
-    WriteParameter( 0x00 );
-
-    // widx( 0xf0 ); //set pixel data interface
-    WriteIndex( 0xF0 );
-
-    // wpat( 0x04 ); //select 18bit
-    WriteParameter( 0x04 );
-
-    // widx( 0x29 );  //display on
-    WriteIndex( 0x29 );
-
-    LCD.Clear(FEHLCD::White);
-    LCD.PrintImage(111,30);
-    LCD.SetFontColor(FEHLCD::Black);
-    LCD.WriteAt("FEH Proteus",90,175);
-
-    LCD.SetFontColor(FEHLCD::White);
-    LCD.SetBackgroundColor(FEHLCD::Black);
 }
 
 void FEHLCD::WriteIndex( unsigned char index )
