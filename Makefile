@@ -59,4 +59,3 @@ run:
 ifeq ($(OS),Windows_NT)
 	-explorer ..\.
 endif
-
