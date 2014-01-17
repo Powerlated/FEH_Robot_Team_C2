@@ -125,20 +125,40 @@ private:
         HIGH_STATE
     } EncoderState;
 
-    static int numEncoders;
-    static FEHEncoder * encoders[32];
     static void SetCounterInit(unsigned int);
 
-    EncoderState state;
     int counts;
     int lowThreshold;
     int highThreshold;
-    void ProcessIntSelf();
+
+    // These hold the next and previous encoders tied to the same pin
+    FEHEncoder * pNext;
+    FEHEncoder * pPrev;
+
+    bool ProcessIntSelf();
     int EncoderValue();
+
+    struct PinInfo;
+    typedef struct PinInfo PinInfo;
+
+    struct PinInfo
+    {
+        FEHIO::FEHIOPin pin;
+        EncoderState state;
+        int numEncoders;
+        FEHEncoder * encoderList;
+        PinInfo * pNext;
+        PinInfo * pPrev;
+    };
+
+
+    static PinInfo * pinList;
+    PinInfo * pPinInfo;
 
 public:
     static void Init();
     FEHEncoder(FEHIO::FEHIOPin);
+    ~FEHEncoder();
     int Counts();
     void ResetCounts();
     void SetThresholds(float low, float high);

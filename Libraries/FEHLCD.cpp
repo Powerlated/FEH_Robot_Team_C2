@@ -134,11 +134,13 @@ FEHLCD::FEHLCD()
     _forecolor = Black;
     _backcolor = White;
 
-    _currentline = 0;
-    _currentchar = 0;
+
 
     _maxlines = 14;
     _maxcols = 26;
+	
+    _currentline = 0;
+    _currentchar = 0;
 
     _width = 320;
     _height = 240;
@@ -506,7 +508,7 @@ void FEHLCD::_Initialize()
     // Wait for the LCD to become responsive
     // I don't know why it takes so long.
     // The random pixels should mean its ready immediately
-    Sleep(2000);
+    Sleep(3000);
 
     // RESET = 1;
     SET_RESET;
@@ -540,7 +542,6 @@ void FEHLCD::_Initialize()
 
     LCD.SetFontColor(FEHLCD::White);
     LCD.SetBackgroundColor(FEHLCD::Black);
-
 }
 
 void FEHLCD::WriteIndex( unsigned char index )
