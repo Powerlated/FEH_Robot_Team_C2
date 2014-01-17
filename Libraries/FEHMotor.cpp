@@ -27,9 +27,17 @@ void FEHMotor::SetPower( int8 power )
 
 void FEHMotor::SetPercent( int8 _percent )
 {
-	int8 power = (int8)( ( (float)_percent ) / 100.0 * 127.0 );
-	if( _power != power )
-	{
+	float fPercent;
+
+	if(_percent & 0x80) {
+		fPercent = -128 + (_percent &0x7f);
+	}
+	else {
+		fPercent = _percent;
+	}
+	int8 power = ((int) ( fPercent  / 100.0 * 127.0 )) & 0xFF;
+	
+	if( _power != power ) {
 		_power = power;
 		Propeller.SetMotorRate( (unsigned char)_motorport, (unsigned char)power, (unsigned char)30 );
 	}
