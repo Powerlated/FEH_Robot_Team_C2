@@ -15,4 +15,5 @@ extern int CoreClockKHz;
 extern int CoreClockMHz;
 extern int PeripheralClockKHz;
 
+
 #endif // FEHPROTEUS_H
