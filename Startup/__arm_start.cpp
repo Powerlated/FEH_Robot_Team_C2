@@ -206,7 +206,9 @@ void InitFEHProteus()
 	// Turn on Real Time Clock Oscillator
 	RTC_CR = RTC_CR_OSCE_MASK;
 	// Wait for it to come online
-	Sleep(100);
+	// Use time_delay_ms (which uses the Low power timer) since Sleep needs the RTC
+	time_delay_ms(100);
+	
 	// Enable Real Time Clock
 	RTC_SR &=  ~RTC_SR_TCE_MASK;
 	RTC_TSR = 0x0u;
