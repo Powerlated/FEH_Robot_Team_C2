@@ -16,26 +16,31 @@ void FEHMotor::Stop()
 	}
 }
 
-void FEHMotor::SetPower( int8 power )
+void FEHMotor::SetPower( int power )
 {
-	if( _power != power )
+	int8 power8;
+	if(power > 127)
+		power8 = 127;
+	else if (power< -128)
+		power8 = -128;
+	else
+		power8 = power;
+	
+	if( _power != power8 )
 	{
-		_power = power;
-		Propeller.SetMotorRate( (unsigned char)_motorport, (unsigned char)power, (unsigned char)30 );
+		_power = power8;
+		Propeller.SetMotorRate( (unsigned char)_motorport, (unsigned char)power8, (unsigned char)30 );
 	}
 }
 
-void FEHMotor::SetPercent( int8 _percent )
+void FEHMotor::SetPercent( float _percent )
 {
-	float fPercent;
-
-	if(_percent & 0x80) {
-		fPercent = -128 + (_percent &0x7f);
-	}
-	else {
-		fPercent = _percent;
-	}
-	int8 power = ((int) ( fPercent  / 100.0 * 127.0 )) & 0xFF;
+	if (_percent < -100)
+		_percent = -100.;
+	else if (_percent > 100)
+		_percent = 100.;
+	
+	int8 power = ((int) ( _percent  / 100.0 * 127.0 )) & 0xFF;
 	
 	if( _power != power ) {
 		_power = power;
