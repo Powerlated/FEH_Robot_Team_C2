@@ -17,7 +17,7 @@ public:
     } FEHServoPort;
 
     FEHServo( FEHServoPort );
-    void SetDegree( int );
+    void SetDegree( float );
     void Calibrate();
     void Off();
     void SetMax( int );

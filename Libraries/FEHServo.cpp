@@ -45,7 +45,7 @@ void FEHServo::SetMax( int _max )
     }
 }
 
-void FEHServo::SetDegree( int _degree )
+void FEHServo::SetDegree( float _degree )
 {
 	if( _degree < 0 ) _degree = 0;
 	if( _degree > 180 ) _degree = 180;
