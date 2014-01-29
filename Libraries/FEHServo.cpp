@@ -54,9 +54,9 @@ void FEHServo::SetDegree( float _degree )
 	{
 		_position = _degree;
 
-		//set rate based on min ,max and degre provided
+		//set rate based on min ,max and degree provided
 		unsigned short rate;
-		rate = servo_min + (unsigned short)((servo_max - servo_min) / 180.0 * (unsigned short)_degree);
+		rate = servo_min + (unsigned short)((servo_max - servo_min) / 180.0 * _degree);
 
 		//to get low byte, typecase to unsigned char
 		unsigned char rate_low = (unsigned char)( rate & 0xFF );
