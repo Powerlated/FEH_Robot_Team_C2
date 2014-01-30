@@ -74,6 +74,8 @@ void FEHServo::SetDegree( float _degree )
 
 void FEHServo::Calibrate()
 {
+	unsigned short temp_min;
+	
     LCD.Clear( FEHLCD::Black );
     LCD.SetFontColor( FEHLCD::White );
     DigitalInputPin leftbutton( FEHIO::P3_0 );
@@ -106,32 +108,51 @@ void FEHServo::Calibrate()
     }
     while(!middlebutton.Value());
     Sleep(500);
+	
+	temp_min = servo_min;
+	
+	//detect if the user accidentally set a max instead of a min
+	if (servo_min < 1500)
+		servo_min = 2500;
+	else
+		servo_min = 500;
 
     LCD.Clear( FEHLCD::Black );
     LCD.WriteLine( "Use left and right buttons" );
     LCD.WriteLine( "to select max." );
     LCD.WriteLine( "Press middle button" );
     LCD.WriteLine( "when complete." );
-    // set servo to 180 using default max
+    // set servo to 0 using default max (min if user accidentally set max)
     while( middlebutton.Value() )
     {
 		_position = -1;
-        this->SetDegree( 180 );
+        this->SetDegree( 0 );
         while( leftbutton.Value() && rightbutton.Value() && middlebutton.Value() );
 
         // set max using left and right buttons
         if ( !leftbutton.Value() )
         {
-            servo_max = servo_max - 1;
-            if( servo_max < 500 ) servo_max = 500;
+            servo_min = servo_min - 1;
+            if( servo_min < 500 ) servo_min = 500;
         }
         if ( !rightbutton.Value() )
         {
-            servo_max = servo_max + 1;
-            if( servo_max > 2500 ) servo_max = 2500;
+            servo_min = servo_min + 1;
+            if( servo_min > 2500 ) servo_min = 2500;
         }
         Sleep( 5 );
     }
+	
+	//set the smaller value to min and larger value to max
+	if (servo_min < temp_min)
+	{
+		servo_max = temp_min;
+	}
+	else
+	{
+		servo_max = servo_min;
+		servo_min = temp_min;
+	}
 
     // Print out servo min and servo max
     LCD.Clear( FEHLCD::Black );
