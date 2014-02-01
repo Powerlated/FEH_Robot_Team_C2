@@ -1,46 +1,45 @@
-#include "FEHMOM.h"
+#include "FEHWONKA.h"
 #include "FEHIO.h"
 #include "FEHLCD.h"
 #include "FEHUtility.h"
 
-FEHMOM MOM;
+FEHWONKA WONKA;
 
-#define STONEMASK 0x01
-#define GENERATORMASK 0x02
-#define TOPBUTTONMASK 0x04
-#define BOTTOMBUTTONMASK 0x8
+#define OVENMASK 0x03 // first two bits
+#define OVENPRESSMASK 0x0C // second two bits
+#define CHUTEMASK 0x10 // fifth bit
 
 #define STOPDATA 0xAA
 
-void MOMDataProcess( unsigned char *data, unsigned char length );
+void WONKADataProcess( unsigned char *data, unsigned char length );
 
 bool _enabled;
 int _region;
 
-float _mom_x;
-float _mom_y;
-float _mom_heading;
-unsigned char _mom_objective;
-unsigned char _mom_time;
-bool _mom_stop;
-bool _mom_foundpacket;
+float _WONKA_x;
+float _WONKA_y;
+float _WONKA_heading;
+unsigned char _WONKA_objective;
+unsigned char _WONKA_time;
+bool _WONKA_stop;
+bool _WONKA_foundpacket;
 
-FEHMOM::FEHMOM()
+FEHWONKA::FEHWONKA()
 {
-	_xbee.SetPacketCallBack( &MOMDataProcess );
+    _xbee.SetPacketCallBack( &WONKADataProcess );
 
 	//_enabled = true;
 	_region = -1;
 
-	_mom_x = 0.0f;
-	_mom_y = 0.0f;
-	_mom_heading = 0.0f;
-	_mom_objective = 0x0;
-	_mom_time = 0;
-	_mom_stop = false;
+    _WONKA_x = 0.0f;
+    _WONKA_y = 0.0f;
+    _WONKA_heading = 0.0f;
+    _WONKA_objective = 0x0;
+    _WONKA_time = 0;
+    _WONKA_stop = false;
 }
 
-void FEHMOM::InitializeMenu()
+void FEHWONKA::InitializeMenu()
 {
 	ButtonBoard buttons( FEHIO::Bank3 );
 
@@ -99,7 +98,7 @@ void FEHMOM::InitializeMenu()
 // Manually pick and configure a region
 // int region => { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }
 // char region => { a, b, c, d, e, f, g, h, i, j, k, l } || { A, B, C, D, E, F, G, H, I, J, K, L }
-void FEHMOM::Initialize( int region )
+void FEHWONKA::Initialize( int region )
 {
 	if( !_xbee.IsInitialized() )
 		_xbee.Initialize();
@@ -143,7 +142,7 @@ void FEHMOM::Initialize( int region )
 		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
 		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
 		{
-			LCD.WriteLine( "Error with MOM configuration. Data: " );
+            LCD.WriteLine( "Error with WONKA configuration. Data: " );
 			return;
 		}
 		for( int i = 0; i < rxlength; i++ )
@@ -169,7 +168,7 @@ void FEHMOM::Initialize( int region )
 		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
 		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
 		{
-			LCD.WriteLine( "Error with MOM configuration" );
+            LCD.WriteLine( "Error with WONKA configuration" );
 			return;
 		}
 		for( int i = 0; i < rxlength; i++ )
@@ -195,7 +194,7 @@ void FEHMOM::Initialize( int region )
 		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
 		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
 		{
-			LCD.WriteLine( "Error with MOM configuration" );
+            LCD.WriteLine( "Error with WONKA configuration" );
 			return;
 		}
 		for( int i = 0; i < rxlength; i++ )
@@ -220,7 +219,7 @@ void FEHMOM::Initialize( int region )
 		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
 		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
 		{
-			LCD.WriteLine( "Error with MOM configuration" );
+            LCD.WriteLine( "Error with WONKA configuration" );
 			return;
 		}
 		for( int i = 0; i < rxlength; i++ )
@@ -245,7 +244,7 @@ void FEHMOM::Initialize( int region )
 		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
 		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
 		{
-			LCD.WriteLine( "Error with MOM configuration" );
+            LCD.WriteLine( "Error with WONKA configuration" );
 			return;
 		}
 		for( int i = 0; i < rxlength; i++ )
@@ -266,7 +265,7 @@ void FEHMOM::Initialize( int region )
 		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
 		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
 		{
-			LCD.WriteLine( "Error with MOM configuration" );
+            LCD.WriteLine( "Error with WONKA configuration" );
 			return;
 		}
 		for( int i = 0; i < rxlength; i++ )
@@ -287,7 +286,7 @@ void FEHMOM::Initialize( int region )
 		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
 		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
 		{
-			LCD.WriteLine( "Error with MOM configuration" );
+            LCD.WriteLine( "Error with WONKA configuration" );
 			return;
 		}
 		for( int i = 0; i < rxlength; i++ )
@@ -304,7 +303,7 @@ void FEHMOM::Initialize( int region )
 	}
 }
 
-void FEHMOM::Initialize( char region )
+void FEHWONKA::Initialize( char region )
 {
 	if( region >= 'A' && region <= 'L' )
 	{
@@ -316,20 +315,20 @@ void FEHMOM::Initialize( char region )
 	}
 }
 
-// Enable receiving of MOM data
-void FEHMOM::Enable()
+// Enable receiving of WONKA data
+void FEHWONKA::Enable()
 {
 	_enabled = true;
 }
 
-// Disable receiving of MOM data
-void FEHMOM::Disable()
+// Disable receiving of WONKA data
+void FEHWONKA::Disable()
 {
 	_enabled = false;
 }
 
 // return the current course number { 1, 2, 3 }
-unsigned char FEHMOM::CurrentCourse()
+unsigned char FEHWONKA::CurrentCourse()
 {
 	if( _region >= 0 )
 	{
@@ -340,57 +339,51 @@ unsigned char FEHMOM::CurrentCourse()
 }
 
 // returns the letter of the current region { A, B, C, D, E, F, G, H, I, J, K, L }
-char FEHMOM::CurrentRegionLetter()
+char FEHWONKA::CurrentRegionLetter()
 {
 	return ( 'A' + (char)_region );
 }
 
 // returns the number of the current course { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }
-int FEHMOM::CurrentRegion()
+int FEHWONKA::CurrentRegion()
 {
 	return _region;
 }
 
 // Objective functions:
 
-// returns true if the RIGHT Stone should be moved
-bool FEHMOM::Stone()
+// returns the number of oven button presses required
+int FEHWONKA::Oven()
 {
-	return ( ( _mom_objective & STONEMASK ) > 0 );
+    return ( _WONKA_objective & OVENMASK );
 }
 
-// returns true if Generator switch should be moved BACKWARD
-bool FEHMOM::Generator()
+// returns the number of times the oven button has been pressed
+int FEHWONKA::OvenPressed()
 {
-	return ( ( _mom_objective & GENERATORMASK ) > 0 );
+    return ( ( _WONKA_objective & OVENPRESSMASK ) >> 2 );
 }
 
-// returns true if Top Satellite button has been pressed
-bool FEHMOM::TopButton()
+// returns true if the chute switch has been activated
+bool FEHWONKA::Chute()
 {
-	return ( ( _mom_objective & TOPBUTTONMASK ) > 0 );
-}
-
-// returns true if Bottom Satellite button has been pressed
-bool FEHMOM::BottomButton()
-{
-	return ( ( _mom_objective & BOTTOMBUTTONMASK ) > 0 );
+    return ( ( _WONKA_objective & CHUTEMASK ) > 0 );
 }
 
 // returns the match time in seconds
-unsigned char FEHMOM::Time()
+unsigned char FEHWONKA::Time()
 {
-	return _mom_time;
+    return _WONKA_time;
 }
 
-unsigned char FEHMOM::WaitForPacket()
+unsigned char FEHWONKA::WaitForPacket()
 {
 	unsigned long starttime = TimeNowMSec();
-	while( !_mom_foundpacket && ( TimeNowMSec() - starttime ) < 1000 );
-	if( _mom_foundpacket )
+    while( !_WONKA_foundpacket && ( TimeNowMSec() - starttime ) < 1000 );
+    if( _WONKA_foundpacket )
 	{
-		_mom_foundpacket = false;
-		return _mom_time;
+        _WONKA_foundpacket = false;
+        return _WONKA_time;
 	}
 	else
 	{
@@ -398,35 +391,36 @@ unsigned char FEHMOM::WaitForPacket()
 	}
 }
 
-void MOMDataProcess( unsigned char *data, unsigned char length )
+void WONKADataProcess( unsigned char *data, unsigned char length )
 {
 	if( _enabled )
 	{
 		// verify packet length
 		if( length == 9 )
 		{
-			_mom_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 72.0f;
-			_mom_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f;
-			_mom_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f;
-			_mom_objective = data[ 7 ];
-			_mom_time = data[ 8 ];
-			_mom_stop = ( _mom_time == STOPDATA );
+            _WONKA_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 72.0f;
+            _WONKA_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f;
+            _WONKA_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f;
+            _WONKA_objective = data[ 7 ];
+            _WONKA_time = data[ 8 ];
+            _WONKA_stop = ( _WONKA_time == STOPDATA );
 
-			_mom_foundpacket = true;
+            _WONKA_foundpacket = true;
 
 //			LCD.Clear();
-//			LCD.Write( _mom_x );
+//			LCD.Write( _WONKA_x );
 //			LCD.Write( " " );
-//			LCD.Write( _mom_y );
+//			LCD.Write( _WONKA_y );
 //			LCD.Write( " " );
-//			LCD.Write( _mom_heading );
+//			LCD.Write( _WONKA_heading );
 //			LCD.WriteLine( " " );
-//			LCD.WriteLine( ( MOM.Stone() ) ? ( "RIGHT stone" ) : ( "LEFT stone" ) );
-//			LCD.WriteLine( ( MOM.Generator() ) ? ( "Generator backward" ) : ( "Generator forward" ) );
-//			LCD.WriteLine( ( MOM.TopButton() ) ? ( "Top pressed" ) : ( "Top released" ) );
-//			LCD.WriteLine( ( MOM.BottomButton() ) ? ( "Bottom pressed" ) : ( "Bottom released" ) );
+//          LCD.Write("Oven Button: ");
+//			LCD.WriteLine( WONKA.Oven() );
+//          LCD.Write("Presses: ")
+//			LCD.WriteLine( WONKA.OvenPresses() );
+//			LCD.WriteLine( ( WONKA.Chute() ) ? ( "Chute Closed" ) : ( "Chute Open" ) );
 //			LCD.Write( "Time: " );
-//			LCD.WriteLine( _mom_time );
+//			LCD.WriteLine( _WONKA_time );
 		}
 	}
 }

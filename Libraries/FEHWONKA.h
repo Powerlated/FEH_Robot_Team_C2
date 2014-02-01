@@ -1,12 +1,12 @@
-#ifndef FEHMOM_H
-#define FEHMOM_H
+#ifndef FEHWONKA_H
+#define FEHWONKA_H
 
 #include <FEHXBee.h>
 
-class FEHMOM
+class FEHWONKA
 {
 public:
-	FEHMOM();
+    FEHWONKA();
 
 	// Creates a menu to allow you to pick the correct region
 	// Assumes ButtonBoard is plugged into Bank3
@@ -21,10 +21,10 @@ public:
 	void Initialize( int region );
 	void Initialize( char region );
 
-	// Enable receiving of MOM data
+    // Enable receiving of WONKA data
 	void Enable();
 
-	// Disable receiving of MOM data
+    // Disable receiving of WONKA data
 	void Disable();
 
 	// return the current course number { 1, 2, 3 }
@@ -38,17 +38,14 @@ public:
 
 
 	// Objective functions:
-	// returns true if the RIGHT Stone should be moved
-	bool Stone();
+    // returns the number of oven button presses
+    int Oven();
 
-	// returns true if Generator switch should be moved BACKWARD
-	bool Generator();
+    // returns the number of times the oven button has been pressed
+    int OvenPressed();
 
-	// returns true if Top Satellite button has been pressed
-	bool TopButton();
-
-	// returns true if Bottom Satellite button has been pressed
-	bool BottomButton();
+    // returns true if the chute switch is activated
+    bool Chute();
 
 	// returns the match time in seconds
 	unsigned char Time();
@@ -61,6 +58,6 @@ private:
 	int _region;
 };
 
-extern FEHMOM MOM;
+extern FEHWONKA WONKA;
 
-#endif // FEHMOM_H
+#endif // FEHWONKA_H
