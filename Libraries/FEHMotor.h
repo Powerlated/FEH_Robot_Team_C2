@@ -17,8 +17,8 @@ public:
     FEHMotor( FEHMotorPort motorport );
 
     void Stop();
-    void SetPower( int8 power );
-	void SetPercent( int8 percent );
+    void SetPower( int power );
+	void SetPercent( float percent );
 
 private:
     FEHMotorPort _motorport;
