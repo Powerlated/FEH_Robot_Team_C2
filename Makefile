@@ -28,11 +28,11 @@ AUTOH := $(shell Tools/egrep h$$ ../$(TARGET).files)
 ifeq ($(OS),Windows_NT)
 AUTOOBJECTS := $(patsubst %.cpp,..\\%.o,$(AUTOCPP))
 AUTOH := $(patsubst %.h,..\\%.h,$(AUTOH))
-OBJECTS := $(AUTOOBJECTS) Startup\__arm_start.o Startup\__arm_end.o Startup\kinetis_sysinit.o Libraries\FEHMotor.o Drivers\mcg.o Drivers\uart.o Drivers\lptmr.o FEHProteus.o Drivers\FEHPropeller.o Libraries\FEHUtility.o Libraries\FEHIO.o Drivers\adc16.o Libraries\FEHBuzzer.o Libraries\FEHServo.o Libraries\FEHLCD.o Libraries\FEHBattery.o Drivers\FEHXBee.o Libraries\FEHMOM.o
+OBJECTS := $(AUTOOBJECTS) Startup\__arm_start.o Startup\__arm_end.o Startup\kinetis_sysinit.o Libraries\FEHMotor.o Drivers\mcg.o Drivers\uart.o Drivers\lptmr.o FEHProteus.o Drivers\FEHPropeller.o Libraries\FEHUtility.o Libraries\FEHIO.o Drivers\adc16.o Libraries\FEHBuzzer.o Libraries\FEHServo.o Libraries\FEHLCD.o Libraries\FEHBattery.o Drivers\FEHXBee.o Libraries\FEHWONKA.o
 else
 AUTOOBJECTS := $(patsubst %.cpp,../%.o,$(AUTOCPP))
 AUTOH := $(patsubst %.h,../%.h,$(AUTOH))
-OBJECTS := $(AUTOOBJECTS) Startup/__arm_start.o Startup/__arm_end.o Startup/kinetis_sysinit.o Libraries/FEHMotor.o Drivers/mcg.o Drivers/uart.o Drivers/lptmr.o FEHProteus.o Drivers/FEHPropeller.o Libraries/FEHUtility.o Libraries/FEHIO.o Drivers/adc16.o Libraries/FehBuzzer.o Libraries/FEHServo.o Libraries/FEHLCD.o Libraries/FEHBattery.o Drivers/FEHXBee.o Libraries/FEHMOM.o
+OBJECTS := $(AUTOOBJECTS) Startup/__arm_start.o Startup/__arm_end.o Startup/kinetis_sysinit.o Libraries/FEHMotor.o Drivers/mcg.o Drivers/uart.o Drivers/lptmr.o FEHProteus.o Drivers/FEHPropeller.o Libraries/FEHUtility.o Libraries/FEHIO.o Drivers/adc16.o Libraries/FehBuzzer.o Libraries/FEHServo.o Libraries/FEHLCD.o Libraries/FEHBattery.o Drivers/FEHXBee.o Libraries/FEHWONKA.o
 endif
 
 all: $(TARGET).elf $(TARGET).s19
