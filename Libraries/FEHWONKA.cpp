@@ -391,6 +391,23 @@ unsigned char FEHWONKA::WaitForPacket()
 	}
 }
 
+float FEHWONKA::X()
+{
+	return _WONKA_x;
+}
+
+float FEHWONKA::Y()
+{
+	return _WONKA_y;
+}
+
+float FEHWONKA::Heading()
+{
+	return _WONKA_heading;
+}
+
+
+
 void WONKADataProcess( unsigned char *data, unsigned char length )
 {
 	if( _enabled )

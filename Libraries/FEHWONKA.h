@@ -52,6 +52,10 @@ public:
 
 	unsigned char WaitForPacket();
 
+	float X();
+	float Y();
+	float Heading();
+
 private:
 	FEHXBee _xbee;
 
