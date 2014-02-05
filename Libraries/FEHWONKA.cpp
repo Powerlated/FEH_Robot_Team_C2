@@ -27,7 +27,7 @@ bool _WONKA_foundpacket;
 
 FEHWONKA::FEHWONKA( FEHServo::FEHServoPort irbeaconport)
 {
-	FEHservo irbeacon( irbeaconport );
+	FEHServo irbeacon( irbeaconport );
 
 	_irbeacon = irbeacon;
 
