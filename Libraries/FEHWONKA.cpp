@@ -23,13 +23,11 @@ unsigned char _WONKA_objective;
 unsigned char _WONKA_time;
 bool _WONKA_stop;
 bool _WONKA_foundpacket;
-FEHServo _irbeacon;
+FEHServo _irbeacon (FEHServo::Servo7 );
 
 
 FEHWONKA::FEHWONKA()
 {
-	FEHServo _irbeacon( FEHServo::Servo7 );
-
     _xbee.SetPacketCallBack( &WONKADataProcess );
 
 	//_enabled = true;
@@ -330,7 +328,7 @@ void FEHWONKA::Enable()
 void FEHWONKA::Disable()
 {
 	_enabled = false;
-	_irbeacon.off();
+	_irbeacon.Off();
 }
 
 // return the current course number { 1, 2, 3 }
