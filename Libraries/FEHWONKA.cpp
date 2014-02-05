@@ -2,6 +2,7 @@
 #include "FEHIO.h"
 #include "FEHLCD.h"
 #include "FEHUtility.h"
+#include "FEHServo.h"
 
 FEHWONKA WONKA;
 
@@ -15,7 +16,6 @@ void WONKADataProcess( unsigned char *data, unsigned char length );
 
 bool _enabled;
 int _region;
-
 float _WONKA_x;
 float _WONKA_y;
 float _WONKA_heading;
@@ -24,8 +24,13 @@ unsigned char _WONKA_time;
 bool _WONKA_stop;
 bool _WONKA_foundpacket;
 
-FEHWONKA::FEHWONKA()
+
+FEHWONKA::FEHWONKA( FEHServo::FEHServoPort irbeaconport)
 {
+	FEHservo irbeacon( irbeaconport );
+
+	_irbeacon = irbeacon;
+
     _xbee.SetPacketCallBack( &WONKADataProcess );
 
 	//_enabled = true;
