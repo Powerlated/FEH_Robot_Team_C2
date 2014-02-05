@@ -2,13 +2,12 @@
 #define FEHWONKA_H
 
 #include <FEHXBee.h>
-#include "FEHServo.h"
 
 class FEHWONKA
 {
 public:
 
-    FEHWONKA( FEHServo::FEHServoPort );
+    FEHWONKA();
 
 	// Creates a menu to allow you to pick the correct region
 	// Assumes ButtonBoard is plugged into Bank3
@@ -61,7 +60,6 @@ public:
 private:
 	FEHXBee _xbee;
 	int _region;
-	FEHServo _irbeacon;
 };
 
 extern FEHWONKA WONKA;

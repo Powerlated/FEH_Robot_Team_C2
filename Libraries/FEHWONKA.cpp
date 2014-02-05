@@ -4,7 +4,7 @@
 #include "FEHUtility.h"
 #include "FEHServo.h"
 
-//FEHWONKA WONKA;
+FEHWONKA WONKA;
 
 #define OVENMASK 0x03 // first two bits
 #define OVENPRESSMASK 0x0C // second two bits
@@ -23,13 +23,12 @@ unsigned char _WONKA_objective;
 unsigned char _WONKA_time;
 bool _WONKA_stop;
 bool _WONKA_foundpacket;
+FEHServo _irbeacon;
 
 
-FEHWONKA::FEHWONKA( FEHServoPort irbeaconport)
+FEHWONKA::FEHWONKA()
 {
-	FEHServo irbeacon( irbeaconport );
-
-	_irbeacon = irbeacon;
+	FEHServo _irbeacon( FEHServo::Servo7 );
 
     _xbee.SetPacketCallBack( &WONKADataProcess );
 
@@ -324,12 +323,14 @@ void FEHWONKA::Initialize( char region )
 void FEHWONKA::Enable()
 {
 	_enabled = true;
+	_irbeacon.SetDegree(180);
 }
 
 // Disable receiving of WONKA data
 void FEHWONKA::Disable()
 {
 	_enabled = false;
+	_irbeacon.off();
 }
 
 // return the current course number { 1, 2, 3 }
