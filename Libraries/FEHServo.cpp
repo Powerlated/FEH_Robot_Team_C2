@@ -72,9 +72,23 @@ void FEHServo::SetDegree( int _degree )
 	}
 }
 
-void FEHServo::On()
+void FEHServo::DigitalOn()
 {
-    SetDegree(180);
+    uart_putchar( UART5_BASE_PTR, 0x7F );
+    uart_putchar( UART5_BASE_PTR, 0x09 );
+    uart_putchar( UART5_BASE_PTR, (unsigned char) servo_port );
+    uart_putchar( UART5_BASE_PTR, 0x01 );
+    uart_putchar( UART5_BASE_PTR, 0xFF );
+
+}
+
+void FEHServo::DigitalOff()
+{
+    uart_putchar( UART5_BASE_PTR, 0x7F );
+    uart_putchar( UART5_BASE_PTR, 0x09 );
+    uart_putchar( UART5_BASE_PTR, (unsigned char) servo_port );
+    uart_putchar( UART5_BASE_PTR, 0x00 );
+    uart_putchar( UART5_BASE_PTR, 0xFF );
 }
 
 void FEHServo::Calibrate()

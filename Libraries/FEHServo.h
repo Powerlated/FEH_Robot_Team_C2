@@ -20,7 +20,8 @@ public:
     void SetDegree( int );
     void Calibrate();
     void Off();
-    void On();
+    void DigitalOn();
+    void DigitalOff();
     void SetMax( int );
     void SetMin( int );
 private:

@@ -23,7 +23,7 @@ unsigned char _WONKA_objective;
 unsigned char _WONKA_time;
 bool _WONKA_stop;
 bool _WONKA_foundpacket;
-FEHServo _irbeacon (FEHServo::Servo7 );
+FEHServo _irbeacon ( FEHServo::Servo7 );
 
 
 FEHWONKA::FEHWONKA()
@@ -321,14 +321,14 @@ void FEHWONKA::Initialize( char region )
 void FEHWONKA::Enable()
 {
 	_enabled = true;
-	_irbeacon.On();
+	_irbeacon.DigitalOn();
 }
 
 // Disable receiving of WONKA data
 void FEHWONKA::Disable()
 {
 	_enabled = false;
-	_irbeacon.Off();
+	_irbeacon.DigitalOff();
 }
 
 // return the current course number { 1, 2, 3 }
