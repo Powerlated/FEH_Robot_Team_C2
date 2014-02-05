@@ -58,7 +58,6 @@ public:
 
 private:
 	FEHXBee _xbee;
-
 	int _region;
 };
 

@@ -406,8 +406,6 @@ float FEHWONKA::Heading()
 	return _WONKA_heading;
 }
 
-
-
 void WONKADataProcess( unsigned char *data, unsigned char length )
 {
 	if( _enabled )
@@ -415,13 +413,12 @@ void WONKADataProcess( unsigned char *data, unsigned char length )
 		// verify packet length
 		if( length == 9 )
 		{
-            _WONKA_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 72.0f;
-            _WONKA_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f;
+            _WONKA_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 1600.0f;
+            _WONKA_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f - 1600.0f;
             _WONKA_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f;
             _WONKA_objective = data[ 7 ];
             _WONKA_time = data[ 8 ];
             _WONKA_stop = ( _WONKA_time == STOPDATA );
-
             _WONKA_foundpacket = true;
 
 //			LCD.Clear();
