@@ -76,8 +76,8 @@ void FEHServo::On()
 {
     uart_putchar( UART5_BASE_PTR, 0x7F );
     uart_putchar( UART5_BASE_PTR, 0x05 ); // servo off type
-    uart_putchar( UART5_BASE_PTR, 0xFF );
-    uart_putchar( UART5_BASE_PTR, 0xFF );
+    uart_putchar( UART5_BASE_PTR, 0xFE );
+    uart_putchar( UART5_BASE_PTR, 0xFE );
     uart_putchar( UART5_BASE_PTR, 0xFF );
 }
 
