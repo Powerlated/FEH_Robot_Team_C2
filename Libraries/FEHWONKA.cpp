@@ -4,7 +4,7 @@
 #include "FEHUtility.h"
 #include "FEHServo.h"
 
-FEHWONKA WONKA;
+//FEHWONKA WONKA;
 
 #define OVENMASK 0x03 // first two bits
 #define OVENPRESSMASK 0x0C // second two bits
