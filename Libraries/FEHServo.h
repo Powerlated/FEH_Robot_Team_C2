@@ -20,6 +20,7 @@ public:
     void SetDegree( int );
     void Calibrate();
     void Off();
+    void On();
     void SetMax( int );
     void SetMin( int );
 private:

@@ -321,7 +321,7 @@ void FEHWONKA::Initialize( char region )
 void FEHWONKA::Enable()
 {
 	_enabled = true;
-	_irbeacon.SetDegree(180);
+	_irbeacon.On();
 }
 
 // Disable receiving of WONKA data

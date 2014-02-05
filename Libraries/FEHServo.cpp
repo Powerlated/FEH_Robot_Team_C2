@@ -54,7 +54,7 @@ void FEHServo::SetDegree( int _degree )
 	{
 		_position = _degree;
 
-		//set rate based on min ,max and degre provided
+		//set rate based on min ,max and degree provided
 		unsigned short rate;
 		rate = servo_min + (unsigned short)((servo_max - servo_min) / 180.0 * (unsigned short)_degree);
 
@@ -70,6 +70,15 @@ void FEHServo::SetDegree( int _degree )
 		uart_putchar( UART5_BASE_PTR, rate_low ); // on time low byte
 		uart_putchar( UART5_BASE_PTR, 0xFF );
 	}
+}
+
+void FEHServo::On()
+{
+    uart_putchar( UART5_BASE_PTR, 0x7F );
+    uart_putchar( UART5_BASE_PTR, 0x05 ); // servo off type
+    uart_putchar( UART5_BASE_PTR, 0xFF );
+    uart_putchar( UART5_BASE_PTR, 0xFF );
+    uart_putchar( UART5_BASE_PTR, 0xFF );
 }
 
 void FEHServo::Calibrate()
