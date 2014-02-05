@@ -75,9 +75,9 @@ void FEHServo::SetDegree( int _degree )
 void FEHServo::On()
 {
     uart_putchar( UART5_BASE_PTR, 0x7F );
-    uart_putchar( UART5_BASE_PTR, 0x05 ); // servo off type
-    uart_putchar( UART5_BASE_PTR, 0xFE );
-    uart_putchar( UART5_BASE_PTR, 0xFE );
+    uart_putchar( UART5_BASE_PTR, 0x05 ); // servo channel set time instruction
+    uart_putchar( UART5_BASE_PTR, 0x09 );
+    uart_putchar( UART5_BASE_PTR, 0xC4 );
     uart_putchar( UART5_BASE_PTR, 0xFF );
 }
 
