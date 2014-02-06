@@ -17,7 +17,7 @@ public:
     } FEHServoPort;
 
     FEHServo( FEHServoPort );
-    void SetDegree( int );
+    void SetDegree( float );
     void Calibrate();
     void Off();
     void DigitalOn();
@@ -28,7 +28,7 @@ private:
     FEHServoPort servo_port;
     unsigned short servo_min;
     unsigned short servo_max;
-	int _position;
+	float _position;
 };
 
 #endif // FEHSERVO_H
