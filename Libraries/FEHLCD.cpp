@@ -651,40 +651,40 @@ void FEHLCD::WriteRC(const char * str, int row, int col)
 {
     int x,y;
 
-    y = row * 12;
-    x = col * 17;
+    y = row * 17;
+    x = col * 12;
     WriteAt( str, x, y );
 }
 void FEHLCD::WriteRC(int i, int row, int col)
 {
     int x,y;
 
-    y = row * 12;
-    x = col * 17;
+    y = row * 17;
+    x = col * 12;
     WriteAt( i, x, y );
 }
 void FEHLCD::WriteRC(float f, int row, int col)
 {
     int x,y;
 
-    y = row * 12;
-    x = col * 17;
+    y = row * 17;
+    x = col * 12;
     WriteAt( f, x, y );
 }
 void FEHLCD::WriteRC(double d, int row, int col)
 {
     int x,y;
 
-    y = row * 12;
-    x = col * 17;
+    y = row * 17;
+    x = col * 12;
     WriteAt( d, x, y );
 }
 void FEHLCD::WriteRC(bool b, int row, int col)
 {
     int x,y;
 
-    y = row * 12;
-    x = col * 17;
+    y = row * 17;
+    x = col * 12;
     WriteAt( b, x, y );
 }
 
