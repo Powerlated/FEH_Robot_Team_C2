@@ -622,9 +622,9 @@ void FEHLCD::WriteAt(float f, int x, int y)
     char num[50];
     int d,r;
     d = (int) f;
-    if(f < 0.)
-    	f=f*-1.;
     r = (int) ((f-d)*1000);
+    if(f<0.)
+    	sprintf(num,"-%d.%03d",d,r);
     sprintf(num,"%d.%03d",d,r);
     WriteAt(num,x,y);
 }
