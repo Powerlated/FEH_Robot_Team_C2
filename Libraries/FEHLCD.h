@@ -62,6 +62,15 @@ public:
 	void WriteAt( bool b, int x, int y );
 	void WriteAt( char c, int x, int y );
 
+	// Write to Row, Column
+
+	void WriteRC( const char * str, int row, int col );
+	void WriteRC( int i, int row, int col );
+	void WriteRC( float f, int row, int col );
+	void WriteRC( double d, int row, int col );
+	void WriteRC( bool b, int row, int col );
+	void WriteRC( char c, int row, int col );
+
     // Write to the screen
     void Write( const char* str );
     void Write( int i );
