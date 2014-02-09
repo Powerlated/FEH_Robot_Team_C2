@@ -624,8 +624,11 @@ void FEHLCD::WriteAt(float f, int x, int y)
     d = (int) f;
     r = (int) ((f-d)*1000);
     if(f<0.)
+    	r=r*-1;
+    if(f<0. && f>-1.)
     	sprintf(num,"-%d.%03d",d,r);
-    sprintf(num,"%d.%03d",d,r);
+    else
+    	sprintf(num,"%d.%03d",d,r);
     WriteAt(num,x,y);
 }
 void FEHLCD::WriteAt(double d, int x, int y)
