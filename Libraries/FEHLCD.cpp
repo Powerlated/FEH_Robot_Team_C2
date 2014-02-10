@@ -331,7 +331,7 @@ void FEHLCD::_Initialize()
     WriteParameter(HPS>>8);
     WriteParameter(HPS&0xFF);
     WriteParameter(VPS>>8);
-    WriteParameter(VPS);  		  /////////
+    WriteParameter(VPS&0xFF);  		  /////////
     WriteParameter(Panel_Mode3);     //0
 
 
@@ -339,7 +339,7 @@ void FEHLCD::_Initialize()
     WriteParameter(LCD_HORI_CYCLE>>8);	     //0x02
     WriteParameter(LCD_HORI_CYCLE&0xFF);	  	 //0x0D
     WriteParameter(LCD_HORI_FRONT_PORCH>>8);
-    WriteParameter(LCD_HORI_FRONT_PORCH);	   //0x02
+    WriteParameter(LCD_HORI_FRONT_PORCH&0xFF);	   //0x02
     WriteParameter(LCD_HORI_PULSE_WIDTH);	//////////0x29
     WriteParameter(0x00);
     WriteParameter(0x00); 	//0xD1
@@ -350,7 +350,7 @@ void FEHLCD::_Initialize()
     WriteParameter(LCD_VERT_CYCLE>>8);      //0x01
     WriteParameter(LCD_VERT_CYCLE&0xFF);	   //0x1e
     WriteParameter(LCD_VERT_FRONT_PORCH>>8);
-    WriteParameter(LCD_VERT_FRONT_PORCH);  //0x02
+    WriteParameter(LCD_VERT_FRONT_PORCH&0xFF);  //0x02
     WriteParameter(LCD_VERT_PULSE_WIDTH);  //0x0A		///////
     WriteParameter(0x00);
     WriteParameter(0x00);
@@ -374,7 +374,7 @@ void FEHLCD::_Initialize()
     WriteParameter(0x00);
     WriteParameter(0x00);
     WriteParameter(VPS>>8);
-    WriteParameter(VPS);
+    WriteParameter(VPS&0xFF);
 
     WriteIndex(0x36);
     WriteParameter(0x00);
