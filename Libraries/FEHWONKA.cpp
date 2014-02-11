@@ -94,8 +94,7 @@ void FEHWONKA::InitializeMenu()
 	Initialize( region );
 
 	while( buttons.MiddlePressed() );
-	//Sleep( 100 );
-	while( WaitForPacket() == 0x00);
+	Sleep( 100 );
 }
 
 // Manually pick and configure a region
@@ -323,6 +322,7 @@ void FEHWONKA::Enable()
 {
 	_enabled = true;
 	_irbeacon.DigitalOn();
+	while( WaitForPacket() == 0x00);
 }
 
 // Disable receiving of WONKA data
