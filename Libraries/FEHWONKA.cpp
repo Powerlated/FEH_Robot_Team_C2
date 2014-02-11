@@ -95,7 +95,7 @@ void FEHWONKA::InitializeMenu()
 
 	while( buttons.MiddlePressed() );
 	//Sleep( 100 );
-	while( WaitForPacket() != 0x00);
+	while( WaitForPacket() == 0x00);
 }
 
 // Manually pick and configure a region
