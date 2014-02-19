@@ -481,18 +481,31 @@ void AnalogInputPin::InitADCs()
 #define NULL 0
 FEHEncoder::PinInfo * FEHEncoder::pinList = NULL;
 
+
+volatile long __interrupt_counter = 0;
+
 void pit0_isr(void) {
+	__interrupt_counter++;
     FEHEncoder::ProcessInt();
     PIT_TFLG0 = PIT_TFLG_TIF_MASK;
     return;
+}
+
+void FEHEncoder::SetRate(unsigned int rateHz)
+{
+	unsigned long countDown = 44000000UL / rateHz;
+	if(countDown < 0x100000000UL)
+	{
+		PIT_LDVAL0 = countDown;
+	}
 }
 
 void FEHEncoder::Init() {
     // Freeze on Debug
     PIT_MCR = PIT_MCR_FRZ_MASK;
 
-    // Load wait period
-    SetCounterInit(0x186A0u);
+    // Load wait period (100,000 clock divider = 440 Hz interrupts)
+    SetCounterInit(0x186A0);
 
     //#define PIT_CVAL0                                PIT_CVAL_REG(PIT_BASE_PTR,0)
 

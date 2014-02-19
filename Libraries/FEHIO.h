@@ -157,6 +157,7 @@ private:
 
 public:
     static void Init();
+    static void SetRate(unsigned int rateHz);
     FEHEncoder(FEHIO::FEHIOPin);
     ~FEHEncoder();
     int Counts();
