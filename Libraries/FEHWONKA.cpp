@@ -421,7 +421,7 @@ void WONKADataProcess( unsigned char *data, unsigned char length )
 		//LCD.WriteLine(length);
 		if( length == 9 )
 		{
-			LCD.WriteLine("HEY I GOT IN THIS FUNKY IF STATEMENT BRO");
+			//LCD.WriteLine("HEY I GOT IN THIS FUNKY IF STATEMENT BRO");
             _WONKA_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 1600.0f;
             _WONKA_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f - 1600.0f;
             _WONKA_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f;
