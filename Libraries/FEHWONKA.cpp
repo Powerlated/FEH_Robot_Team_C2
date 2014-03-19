@@ -417,7 +417,8 @@ void WONKADataProcess( unsigned char *data, unsigned char length )
 	if( _enabled )
 	{
 		// verify packet length
-		if( length == 10 )
+		LCD.WriteLine(length);
+		if( length == 9 )
 		{
             _WONKA_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 1600.0f;
             _WONKA_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f - 1600.0f;
