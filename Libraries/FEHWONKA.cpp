@@ -324,6 +324,7 @@ void FEHWONKA::Enable()
 	_enabled = true;
 	_irbeacon.DigitalOn();
 	while( WaitForPacket() == 0x00);
+	LCD.WriteLine("RPS Enabled Successfully");
 }
 
 // Disable receiving of WONKA data
@@ -417,9 +418,10 @@ void WONKADataProcess( unsigned char *data, unsigned char length )
 	if( _enabled )
 	{
 		// verify packet length
-		LCD.WriteLine(length);
+		//LCD.WriteLine(length);
 		if( length == 9 )
 		{
+			LCD.WriteLine("HEY I GOT IN THIS FUNKY IF STATEMENT BRO");
             _WONKA_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 1600.0f;
             _WONKA_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f - 1600.0f;
             _WONKA_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f;
