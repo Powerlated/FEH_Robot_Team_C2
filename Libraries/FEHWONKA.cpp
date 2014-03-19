@@ -6,9 +6,10 @@
 
 FEHWONKA WONKA;
 
-#define OVENMASK 0x03 // first two bits
-#define OVENPRESSMASK 0x0C // second two bits
-#define CHUTEMASK 0x10 // fifth bit
+#define OVENMASK 0x07 // first three bits
+#define OVENPRESSMASK 0x38 // second three bits
+#define CHUTEMASK 0x40 // seventh bit
+#define RUNNINGMASK 0x80 // eigth bit
 
 #define STOPDATA 0xAA
 
@@ -423,7 +424,7 @@ void WONKADataProcess( unsigned char *data, unsigned char length )
             _WONKA_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f;
             _WONKA_objective = data[ 7 ];
             _WONKA_time = data[ 8 ];
-            _WONKA_stop = ( _WONKA_time == STOPDATA );
+            _WONKA_stop = !(data[7] & RUNNINGMASK);
             _WONKA_foundpacket = true;
 
 //			LCD.Clear();
