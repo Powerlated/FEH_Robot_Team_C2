@@ -368,7 +368,7 @@ int FEHWONKA::Oven()
 // returns the number of times the oven button has been pressed
 int FEHWONKA::OvenPressed()
 {
-    return ( ( _WONKA_objective & OVENPRESSMASK ) >> 2 );
+    return ( ( _WONKA_objective & OVENPRESSMASK ) >> 3 );
 }
 
 // returns true if the chute switch has been activated
