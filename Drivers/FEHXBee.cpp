@@ -180,9 +180,6 @@ void UART0_ISR()
 	_xbeebyte = c;
 	_xbeebytereceived = true;
 
-//	LCD.Write( (int)c );
-//	LCD.Write( " " );
-
 	switch( _xbeestate )
 	{
 		case AwaitingStart:
@@ -198,6 +195,7 @@ void UART0_ISR()
 		case FoundStart:
 		{
 			_xbeebuffer[ _xbeebufferindex++ ] = c;
+            
 			if( _xbeebufferindex == XBEEPACKETSIZE )
 			{
 				// call data processor

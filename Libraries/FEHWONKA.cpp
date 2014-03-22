@@ -24,6 +24,7 @@ unsigned char _WONKA_objective;
 unsigned char _WONKA_time;
 bool _WONKA_stop;
 bool _WONKA_foundpacket;
+
 FEHServo _irbeacon ( FEHServo::Servo7 );
 
 
@@ -323,8 +324,9 @@ void FEHWONKA::Enable()
 {
 	_enabled = true;
 	_irbeacon.DigitalOn();
-	while( WaitForPacket() == 0x00);
+    while( WaitForPacket() == 0x00);
 	LCD.WriteLine("RPS Enabled Successfully");
+    LCD.Clear();
 }
 
 // Disable receiving of WONKA data
@@ -390,7 +392,7 @@ unsigned char FEHWONKA::WaitForPacket()
     if( _WONKA_foundpacket )
 	{
         _WONKA_foundpacket = false;
-        return _WONKA_time;
+        return 0xFF;
 	}
 	else
 	{
@@ -417,18 +419,13 @@ void WONKADataProcess( unsigned char *data, unsigned char length )
 {
 	if( _enabled )
 	{
-		// verify packet length
-		//LCD.WriteLine(length);
-		if( length == 9 )
-		{
-			//LCD.WriteLine("HEY I GOT IN THIS FUNKY IF STATEMENT BRO");
-            _WONKA_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 1600.0f;
-            _WONKA_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f - 1600.0f;
-            _WONKA_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f;
-            _WONKA_objective = data[ 7 ];
-            _WONKA_time = data[ 8 ];
-            _WONKA_stop = !(data[7] & RUNNINGMASK);
-            _WONKA_foundpacket = true;
+        _WONKA_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 1600.0f;
+        _WONKA_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f - 1600.0f;
+        _WONKA_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f;
+        _WONKA_objective = data[ 7 ];
+        _WONKA_time = data[ 8 ];
+        _WONKA_stop = !(data[7] & RUNNINGMASK);
+        _WONKA_foundpacket = true;
 
 //			LCD.Clear();
 //			LCD.Write( _WONKA_x );
@@ -444,6 +441,5 @@ void WONKADataProcess( unsigned char *data, unsigned char length )
 //			LCD.WriteLine( ( WONKA.Chute() ) ? ( "Chute Closed" ) : ( "Chute Open" ) );
 //			LCD.Write( "Time: " );
 //			LCD.WriteLine( _WONKA_time );
-		}
 	}
 }

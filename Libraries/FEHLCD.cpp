@@ -646,6 +646,11 @@ void FEHLCD::WriteAt(bool b, int x, int y)
         WriteAt("false",x,y);
     }
 }
+void FEHLCD::WriteAt(char c, int x, int y)
+{
+    char str[1] = { c };
+    WriteAt(str,x,y);
+}
 
 void FEHLCD::WriteRC(const char * str, int row, int col)
 {
@@ -686,6 +691,14 @@ void FEHLCD::WriteRC(bool b, int row, int col)
     y = row * 17;
     x = col * 12;
     WriteAt( b, x, y );
+}
+void FEHLCD::WriteRC(char c, int row, int col)
+{
+    int x,y;
+
+    y = row * 17;
+    x = col * 12;
+    WriteAt( c, x, y );
 }
 
 void FEHLCD::Write( const char *str )
