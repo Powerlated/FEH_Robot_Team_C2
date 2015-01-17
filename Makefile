@@ -22,8 +22,13 @@ INCLUDES = -I.. -I. -IDrivers/ -ILibraries/ -IStartup/  -I"$(FEHPROTEUSINSTALL)/
 LIBS = -L"$(FEHPROTEUSINSTALL)/EWL/lib/armv7e-m"
 
 #AUTOCPP := $(shell cat ../$(TARGET).files | grep cpp | gawk '{ printf "..\\\%%s ", $$1 } END { printf "\n" }' )
+ifeq ($(OS),Windows_NT)
 AUTOCPP := $(shell Tools/egrep cpp$$ ../$(TARGET).files)
 AUTOH := $(shell Tools/egrep h$$ ../$(TARGET).files)
+else
+AUTOCPP := $(shell egrep cpp$$ ../$(TARGET).files)
+AUTOH := $(shell egrep h$$ ../$(TARGET).files)
+endif
 
 ifeq ($(OS),Windows_NT)
 AUTOOBJECTS := $(patsubst %.cpp,..\\%.o,$(AUTOCPP))
