@@ -6,7 +6,7 @@ ifeq ($(FEHQTINSTALL),)
 FEHQTINSTALL = C:\apps\FEHQt
 endif
 
-FEHPROTEUSINSTALL = $(FEHQTINSTALL)\Proteus
+FEHPROTEUSINSTALL = $(FEHQTINSTALL)/Proteus
 
 
 CXX = arm-none-eabi-g++
