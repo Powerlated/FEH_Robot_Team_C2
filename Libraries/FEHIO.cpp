@@ -1,4 +1,5 @@
 #include "FEHIO.h"
+#include "FEHLCD.h"
 
 
 tADC_Config AnalogInputPin::Master_Adc_Config;
@@ -58,7 +59,6 @@ const int AnalogPinNumbers[ 33 ] =
     10, 18, 17, 16, 16, 4, 5, 7,
     6
 };
-
 
 // Begin Functions for Digital Input Pin Type
 DigitalInputPin::DigitalInputPin( FEHIO::FEHIOPin pin )
@@ -142,6 +142,156 @@ bool DigitalInputPin::Value()
         }
     }
     return ret;
+}
+// Begin Functions for Digital Encoder Pin Type
+DigitalEncoder::DigitalEncoder( FEHIO::FEHIOPin pin, FEHIO::FEHIOInterruptTrigger trigger )
+{
+    Initialize( pin,trigger );
+}
+DigitalEncoder::DigitalEncoder( FEHIO::FEHIOPin pin)
+{
+    FEHIO::FEHIOInterruptTrigger trigger(FEHIO::FallingEdge);
+    Initialize( pin,trigger );
+}
+
+DigitalEncoder::DigitalEncoder()
+{
+
+}
+
+// Function used to enable interrupt register
+void enable_irq(int irq)
+{
+    int div;
+    div = (irq-16)/32;
+
+    switch(div)
+    {
+        case 0x0:
+            NVICICPR0 |= 1 << ((irq-16)%32);
+            NVICISER0 |= 1 << ((irq-16)%32);
+            break;
+        case 0x1:
+            NVICICPR1 |= 1 << ((irq-16)%32);
+            NVICISER1 |= 1 << ((irq-16)%32);
+            break;
+        case 0x2:
+            NVICICPR2 |= 1 << ((irq-16)%32);
+            NVICISER2 |= 1 << ((irq-16)%32);
+            break;
+    }
+}
+
+void DigitalEncoder::Initialize( FEHIO::FEHIOPin pin, FEHIO::FEHIOInterruptTrigger trigger )
+{
+    // store selected pin number in class
+    _pin = pin;
+	unsigned char trig = (unsigned char)trigger;
+    switch( GPIOPorts[ (int)_pin ] )
+    {
+        case PortA:
+        {
+            PORT_PCR_REG( PORTA_BASE_PTR, GPIOPinNumbers[ (int)_pin ] ) = ( 0 | PORT_PCR_MUX( 1 ) | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK | PORT_PCR_IRQC(trig) | PORT_PCR_PFE_MASK );
+            GPIOA_PDDR &= ~GPIO_PDDR_PDD( GPIO_PIN( GPIOPinNumbers[ (int)_pin ] ) );
+            enable_irq(INT_PORTA);
+            break;
+        }
+        case PortB:
+        {
+            PORT_PCR_REG( PORTB_BASE_PTR, GPIOPinNumbers[ (int)_pin ] ) = ( 0 | PORT_PCR_MUX( 1 ) | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK | PORT_PCR_IRQC(trig) | PORT_PCR_PFE_MASK );
+            GPIOB_PDDR &= ~GPIO_PDDR_PDD( GPIO_PIN( GPIOPinNumbers[ (int)_pin ] ) );
+            enable_irq(INT_PORTB);
+            break;
+        }
+        case PortC:
+        {
+            PORT_PCR_REG( PORTC_BASE_PTR, GPIOPinNumbers[ (int)_pin ] ) = ( 0 | PORT_PCR_MUX( 1 ) | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK | PORT_PCR_IRQC(trig) | PORT_PCR_PFE_MASK );
+            GPIOC_PDDR &= ~GPIO_PDDR_PDD( GPIO_PIN( GPIOPinNumbers[ (int)_pin ] ) );
+            enable_irq(INT_PORTC);
+            break;
+        }
+        case PortD:
+        {
+            //Port D is already in use for power reset pin. Therefore Digital Encoders cannot be used on P3_6 and P3_7
+            //PORT_PCR_REG( PORTD_BASE_PTR, GPIOPinNumbers[ (int)_pin ] ) = ( 0 | PORT_PCR_MUX( 1 ) | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK | PORT_PCR_IRQC(0xA) | PORT_PCR_PFE_MASK );
+            //GPIOD_PDDR &= ~GPIO_PDDR_PDD( GPIO_PIN( GPIOPinNumbers[ (int)_pin ] ) );
+            //enable_irq(INT_PORTD);
+            break;
+        }
+        case PortE:
+        {
+            PORT_PCR_REG( PORTE_BASE_PTR, GPIOPinNumbers[ (int)_pin ] ) = ( 0 | PORT_PCR_MUX( 1 ) | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK | PORT_PCR_IRQC(trig) | PORT_PCR_PFE_MASK );
+            GPIOE_PDDR &= ~GPIO_PDDR_PDD( GPIO_PIN( GPIOPinNumbers[ (int)_pin ] ) );
+            enable_irq(INT_PORTE);
+            break;
+        }
+    }
+}
+
+//Interrupt port functions
+unsigned long interrupt_counts[32];
+void portB_isr()
+{
+    int pins[8] = { 11, 10, 7, 6, 5, 4, 1, 0 };
+
+    for( int i=0 ; i<8 ; i++)
+    {
+
+        if( (PORTB_ISFR & (1<<pins[i])) != 0)
+        {
+            interrupt_counts[i]++;
+            PORTB_ISFR &= (1<<pins[i]);
+        }
+    }
+}
+void portC_isr()
+{
+    int pins[6] = { 0, 1, 8, 9, 10, 11 };
+
+    for( int i=0 ; i<6 ; i++)
+    {
+        if( (PORTC_ISFR & (1<<pins[i])) != 0)
+        {
+            interrupt_counts[i+8]++;
+            PORTC_ISFR &= (1<<pins[i]);
+        }
+    }
+}
+void portA_isr()
+{
+    int pins[11] = { 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7 };
+
+    for( int i=0 ; i<10 ; i++)
+    {
+        if( (PORTA_ISFR & (1<<pins[i])) != 0)
+        {
+            interrupt_counts[i+14]++;
+            PORTA_ISFR &= (1<<pins[i]);
+        }
+    }
+}
+void portE_isr()
+{
+    int pins[5] = { 25, 24, 26, 27, 28 };
+
+    for( int i=0 ; i<5 ; i++)
+    {
+        if( (PORTE_ISFR & (1<<pins[i])) != 0)
+        {
+            interrupt_counts[i+24]++;
+            PORTE_ISFR &= (1<<pins[i]);
+        }
+    }
+}
+
+int DigitalEncoder::Counts()
+{
+    return interrupt_counts[_pin];
+}
+
+void DigitalEncoder::ResetCounts()
+{
+    interrupt_counts[_pin] = 0;
 }
 
 // Begin Functions for Analog Input Pin Type
@@ -751,3 +901,5 @@ bool ButtonBoard::RightReleased()
 {
     return ( _right.Value() == 1 );
 }
+
+

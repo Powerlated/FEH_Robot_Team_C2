@@ -1,49 +1,51 @@
-#include "FEHWONKA.h"
+#include "FEHRPS.h"
 #include "FEHIO.h"
 #include "FEHLCD.h"
 #include "FEHUtility.h"
 #include "FEHServo.h"
 
-FEHWONKA WONKA;
+FEHRPS RPS;
 
-#define OVENMASK 0x07 // first three bits
-#define OVENPRESSMASK 0x38 // second three bits
-#define CHUTEMASK 0x40 // seventh bit
-#define RUNNINGMASK 0x80 // eigth bit
+#define OILPRESSMASK         0x0003 // first two bits
+#define OILMASK              0x0004 // third bit
+#define REDBUTTONPRESSMASK   0x0018 // 4,5 bits
+#define WHITEBUTTONPRESSMASK 0x0060 // 6,7 bits
+#define BLUEBUTTONPRESSMASK  0x0180 // 8,9 bits
+#define REDBUTTONORDERMASK  0x0600 // 10,11 bits
+#define WHITEBUTTONORDERMASK 0x1800 // 12,13 bits
+#define BLUEBUTTONORDERMASK  0x6000 // 14,15 two bits
 
 #define STOPDATA 0xAA
 
-void WONKADataProcess( unsigned char *data, unsigned char length );
+void RPSDataProcess( unsigned char *data, unsigned char length );
 
 bool _enabled;
 int _region;
-float _WONKA_x;
-float _WONKA_y;
-float _WONKA_heading;
-unsigned char _WONKA_objective;
-unsigned char _WONKA_time;
-bool _WONKA_stop;
-bool _WONKA_foundpacket;
-
-FEHServo _irbeacon ( FEHServo::Servo7 );
+float _RPS_x;
+float _RPS_y;
+float _RPS_heading;
+long _RPS_objective;
+unsigned char _RPS_time;
+bool _RPS_stop;
+bool _RPS_foundpacket;
 
 
-FEHWONKA::FEHWONKA()
+FEHRPS::FEHRPS()
 {
-    _xbee.SetPacketCallBack( &WONKADataProcess );
+    _xbee.SetPacketCallBack( &RPSDataProcess );
 
 	//_enabled = true;
 	_region = -1;
 
-    _WONKA_x = 0.0f;
-    _WONKA_y = 0.0f;
-    _WONKA_heading = 0.0f;
-    _WONKA_objective = 0x0;
-    _WONKA_time = 0;
-    _WONKA_stop = false;
+    _RPS_x = 0.0f;
+    _RPS_y = 0.0f;
+    _RPS_heading = 0.0f;
+    _RPS_objective = 0x0;
+    _RPS_time = 0;
+    _RPS_stop = false;
 }
 
-void FEHWONKA::InitializeMenu()
+void FEHRPS::InitializeMenu()
 {
 	ButtonBoard buttons( FEHIO::Bank3 );
 
@@ -95,16 +97,21 @@ void FEHWONKA::InitializeMenu()
 
 	Initialize( region );
 
-	while( buttons.MiddlePressed() );
-	Sleep( 1000 );
+	//while( buttons.MiddlePressed() );
+	//Sleep( 1000 );
 }
 
 // Manually pick and configure a region
 // int region => { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }
 // char region => { a, b, c, d, e, f, g, h, i, j, k, l } || { A, B, C, D, E, F, G, H, I, J, K, L }
-void FEHWONKA::Initialize( int region )
+void FEHRPS::Initialize( int region )
 {
 	if( !_xbee.IsInitialized() )
+		_xbee.Initialize();
+
+	if( !_enabled )
+	{
+//		if( !_xbee.IsInitialized() )
 		_xbee.Initialize();
 
 	if( !_enabled )
@@ -126,7 +133,7 @@ void FEHWONKA::Initialize( int region )
 
 		// configure xbee
 
-//		_xbee.DisableInterrupt();
+		//_xbee.DisableInterrupt();
 
 		LCD.Clear();
 
@@ -137,18 +144,40 @@ void FEHWONKA::Initialize( int region )
 		unsigned int rxlength = 0;
 
 		// enter AT mode
-		LCD.Write( "Enter cmd mode..." );
-		txbuffer[ 0 ] = '+';
-		txbuffer[ 1 ] = '+';
-		txbuffer[ 2 ] = '+';
-		txlength = _xbee.SendData( txbuffer, 3 );
-		//Sleep( 2000 );
-		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
-		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+		bool entered_cmd_mode(false);
+		while(!entered_cmd_mode)
 		{
-            LCD.WriteLine( "Error with WONKA configuration. Data: " );
-			return;
+			LCD.Write( "Enter cmd mode..." );
+			txbuffer[ 0 ] = '+';
+			txbuffer[ 1 ] = '+';
+			txbuffer[ 2 ] = '+';
+			txlength = _xbee.SendData( txbuffer, 3 );
+			//Sleep( 1000 );
+			rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
+			if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+			{
+				LCD.WriteLine(" ");
+				LCD.WriteLine("Waiting for response...");
+				Sleep(2500);
+				rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, '0');
+				if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+				{
+					LCD.WriteLine( "Enter cmd mode FAILED" );
+					LCD.Write( "with Data: ");
+					for(int i=0 ; i<rxlength ; i++)
+					{
+						LCD.Write(rxbuffer[i]);
+					}
+					LCD.WriteLine( " " );
+					LCD.WriteLine("Trying again...");
+				}
+				else
+					entered_cmd_mode = true;
+			}
+			else
+				entered_cmd_mode = true;
 		}
+		LCD.Write("Data: ");
 		for( int i = 0; i < rxlength; i++ )
 		{
 			LCD.Write( rxbuffer[ i ] );
@@ -172,7 +201,7 @@ void FEHWONKA::Initialize( int region )
 		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
 		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
 		{
-            LCD.WriteLine( "Error with WONKA configuration" );
+            LCD.WriteLine( "Error with RPS configuration" );
 			return;
 		}
 		for( int i = 0; i < rxlength; i++ )
@@ -198,7 +227,7 @@ void FEHWONKA::Initialize( int region )
 		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
 		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
 		{
-            LCD.WriteLine( "Error with WONKA configuration" );
+            LCD.WriteLine( "Error with RPS configuration" );
 			return;
 		}
 		for( int i = 0; i < rxlength; i++ )
@@ -223,7 +252,7 @@ void FEHWONKA::Initialize( int region )
 		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
 		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
 		{
-            LCD.WriteLine( "Error with WONKA configuration" );
+            LCD.WriteLine( "Error with RPS configuration" );
 			return;
 		}
 		for( int i = 0; i < rxlength; i++ )
@@ -248,7 +277,7 @@ void FEHWONKA::Initialize( int region )
 		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
 		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
 		{
-            LCD.WriteLine( "Error with WONKA configuration" );
+            LCD.WriteLine( "Error with RPS configuration" );
 			return;
 		}
 		for( int i = 0; i < rxlength; i++ )
@@ -269,7 +298,7 @@ void FEHWONKA::Initialize( int region )
 		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
 		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
 		{
-            LCD.WriteLine( "Error with WONKA configuration" );
+            LCD.WriteLine( "Error with RPS configuration" );
 			return;
 		}
 		for( int i = 0; i < rxlength; i++ )
@@ -290,7 +319,7 @@ void FEHWONKA::Initialize( int region )
 		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
 		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
 		{
-            LCD.WriteLine( "Error with WONKA configuration" );
+            LCD.WriteLine( "Error with RPS configuration" );
 			return;
 		}
 		for( int i = 0; i < rxlength; i++ )
@@ -304,10 +333,17 @@ void FEHWONKA::Initialize( int region )
 		LCD.WriteLine( CurrentRegionLetter() );
 
 //		_xbee.EnableInterrupt();
+
+        //Wait to ensure that a connection is made
+        _enabled = true;
+        while( WaitForPacket() == 0x00);
+        LCD.WriteLine("RPS Enabled Successfully");
+        LCD.Clear();
 	}
+    }
 }
 
-void FEHWONKA::Initialize( char region )
+void FEHRPS::Initialize( char region )
 {
 	if( region >= 'A' && region <= 'L' )
 	{
@@ -319,25 +355,8 @@ void FEHWONKA::Initialize( char region )
 	}
 }
 
-// Enable receiving of WONKA data
-void FEHWONKA::Enable()
-{
-	_enabled = true;
-	_irbeacon.DigitalOn();
-    while( WaitForPacket() == 0x00);
-	LCD.WriteLine("RPS Enabled Successfully");
-    LCD.Clear();
-}
-
-// Disable receiving of WONKA data
-void FEHWONKA::Disable()
-{
-	_enabled = false;
-	_irbeacon.DigitalOff();
-}
-
 // return the current course number { 1, 2, 3 }
-unsigned char FEHWONKA::CurrentCourse()
+unsigned char FEHRPS::CurrentCourse()
 {
 	if( _region >= 0 )
 	{
@@ -348,50 +367,80 @@ unsigned char FEHWONKA::CurrentCourse()
 }
 
 // returns the letter of the current region { A, B, C, D, E, F, G, H, I, J, K, L }
-char FEHWONKA::CurrentRegionLetter()
+char FEHRPS::CurrentRegionLetter()
 {
 	return ( 'A' + (char)_region );
 }
 
 // returns the number of the current course { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }
-int FEHWONKA::CurrentRegion()
+int FEHRPS::CurrentRegion()
 {
 	return _region;
 }
 
 // Objective functions:
 
-// returns the number of oven button presses required
-int FEHWONKA::Oven()
+//returns Oil Press direction
+int FEHRPS::OilPress()
 {
-    return ( _WONKA_objective & OVENMASK );
+    return ( (_RPS_objective & OILPRESSMASK) );
 }
 
-// returns the number of times the oven button has been pressed
-int FEHWONKA::OvenPressed()
+// returns direction oil has been pressed
+int FEHRPS::OilDirec()
 {
-    return ( ( _WONKA_objective & OVENPRESSMASK ) >> 3 );
+    return ( ( _RPS_objective & OILMASK ) >> 2 );
 }
 
-// returns true if the chute switch has been activated
-bool FEHWONKA::Chute()
+// returns order of red button press
+int FEHRPS::RedButtonPressed()
 {
-    return ( ( _WONKA_objective & CHUTEMASK ) > 0 );
+    return ( ( _RPS_objective & REDBUTTONPRESSMASK ) >> 3 );
+}
+
+// returns order of white button press
+int FEHRPS::WhiteButtonPressed()
+{
+    return ( ( _RPS_objective & WHITEBUTTONPRESSMASK ) >> 5 );
+}
+
+// returns order of blue button press
+int FEHRPS::BlueButtonPressed()
+{
+    return ( ( _RPS_objective & BLUEBUTTONPRESSMASK ) >> 7 );
+}
+
+// returns first button to be pressed
+int FEHRPS::RedButtonOrder()
+{
+    return ( ( _RPS_objective & REDBUTTONORDERMASK ) >> 9 );
+}
+
+// returns second button to be pressed
+int FEHRPS::WhiteButtonOrder()
+{
+    return ( ( _RPS_objective & WHITEBUTTONORDERMASK ) >> 11 );
+}
+
+// returns third button to be pressed
+int FEHRPS::BlueButtonOrder()
+{
+    return ( ( _RPS_objective & BLUEBUTTONORDERMASK ) >> 13 );
 }
 
 // returns the match time in seconds
-unsigned char FEHWONKA::Time()
+int FEHRPS::Time()
 {
-    return _WONKA_time;
+    return (int)_RPS_time;
 }
 
-unsigned char FEHWONKA::WaitForPacket()
+unsigned char FEHRPS::WaitForPacket()
 {
 	unsigned long starttime = TimeNowMSec();
-    while( !_WONKA_foundpacket && ( TimeNowMSec() - starttime ) < 1000 );
-    if( _WONKA_foundpacket )
+    while( !_RPS_foundpacket && ( TimeNowMSec() - starttime ) < 1000 );
+    if( _RPS_foundpacket )
 	{
-        _WONKA_foundpacket = false;
+        _RPS_foundpacket = false;
         return 0xFF;
 	}
 	else
@@ -400,46 +449,39 @@ unsigned char FEHWONKA::WaitForPacket()
 	}
 }
 
-float FEHWONKA::X()
+float FEHRPS::X()
 {
-	return _WONKA_x;
+	return _RPS_x;
 }
 
-float FEHWONKA::Y()
+float FEHRPS::Y()
 {
-	return _WONKA_y;
+	return _RPS_y;
 }
 
-float FEHWONKA::Heading()
+float FEHRPS::Heading()
 {
-	return _WONKA_heading;
+	return _RPS_heading;
 }
 
-void WONKADataProcess( unsigned char *data, unsigned char length )
+void RPSDataProcess( unsigned char *data, unsigned char length )
 {
 	if( _enabled )
 	{
-        _WONKA_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 1600.0f;
-        _WONKA_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f - 1600.0f;
-        _WONKA_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f;
-        _WONKA_objective = data[ 7 ];
-        _WONKA_time = data[ 8 ];
-        _WONKA_stop = !(data[7] & RUNNINGMASK);
-        _WONKA_foundpacket = true;
-
-//			LCD.Clear();
-//			LCD.Write( _WONKA_x );
-//			LCD.Write( " " );
-//			LCD.Write( _WONKA_y );
-//			LCD.Write( " " );
-//			LCD.Write( _WONKA_heading );
-//			LCD.WriteLine( " " );
-//          LCD.Write("Oven Button: ");
-//			LCD.WriteLine( WONKA.Oven() );
-//          LCD.Write("Presses: ")
-//			LCD.WriteLine( WONKA.OvenPresses() );
-//			LCD.WriteLine( ( WONKA.Chute() ) ? ( "Chute Closed" ) : ( "Chute Open" ) );
-//			LCD.Write( "Time: " );
-//			LCD.WriteLine( _WONKA_time );
+        _RPS_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 1600.0f;
+        _RPS_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f - 1600.0f;
+        _RPS_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f;
+        _RPS_objective = ((data[ 7 ] << 8 ) + (data[ 8 ] ));
+        _RPS_time = data[ 9 ];
+        _RPS_stop = (data[10] == STOPDATA);
+        _RPS_foundpacket = true;
+		
+        if(_RPS_stop)
+		{
+			// set kill pin low for power shutdown
+			GPIOD_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( 13 ) );
+		}
 	}
+	
+	
 }

@@ -5,6 +5,7 @@
 #include "MK60DZ10.h"
 #include "adc16.h"
 
+
 class FEHIO
 {
 public:
@@ -52,6 +53,13 @@ public:
         Bank2,
         Bank3
     }FEHIOPort;
+	
+	typedef enum
+    {
+        RisingEdge = 0x09,
+        FallingEdge = 0x0A,
+        EitherEdge = 0x0B
+    }FEHIOInterruptTrigger;
 };
 
 // Begin Class Declarations for Pin Types
@@ -68,6 +76,21 @@ private:
 
     DigitalInputPin();
     void Initialize( FEHIO::FEHIOPin pin );
+};
+
+class DigitalEncoder
+{
+public:
+    DigitalEncoder( FEHIO::FEHIOPin pin, FEHIO::FEHIOInterruptTrigger trigger );
+    DigitalEncoder( FEHIO::FEHIOPin pin);
+    int Counts();
+    void ResetCounts();
+
+private:
+    FEHIO::FEHIOPin _pin;
+
+    DigitalEncoder();
+    void Initialize( FEHIO::FEHIOPin pin, FEHIO::FEHIOInterruptTrigger trigger );
 };
 
 class AnalogInputPin

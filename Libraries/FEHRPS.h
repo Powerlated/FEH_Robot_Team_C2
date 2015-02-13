@@ -1,13 +1,13 @@
-#ifndef FEHWONKA_H
-#define FEHWONKA_H
+#ifndef FEHRPS_H
+#define FEHRPS_H
 
 #include <FEHXBee.h>
 
-class FEHWONKA
+class FEHRPS
 {
 public:
 
-    FEHWONKA();
+    FEHRPS();
 
 	// Creates a menu to allow you to pick the correct region
 	// Assumes ButtonBoard is plugged into Bank3
@@ -22,12 +22,6 @@ public:
 	void Initialize( int region );
 	void Initialize( char region );
 
-    // Enable receiving of WONKA data
-	void Enable();
-
-    // Disable receiving of WONKA data
-	void Disable();
-
 	// return the current course number { 1, 2, 3 }
 	unsigned char CurrentCourse();
 
@@ -37,19 +31,35 @@ public:
 	// returns the number of the current course { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }
 	int CurrentRegion();
 
-
+	
 	// Objective functions:
-    // returns the number of oven button presses
-    int Oven();
 
-    // returns the number of times the oven button has been pressed
-    int OvenPressed();
+    // returns whether the oil switch has been pressed
+    int OilPress();
+	
+	// direction in which the oil switch must be hit
+	int OilDirec();
 
-    // returns true if the chute switch is activated
-    bool Chute();
+    // returns the order that the Red button was pressed
+    int RedButtonPressed();
+	
+	// returns the order that the white button was pressed
+    int WhiteButtonPressed();
+	
+	// returns the order that the blue button was pressed
+    int BlueButtonPressed();
+
+    // returns the order that the red button must be pressed
+    int RedButtonOrder();
+	
+	// returns the order that the white button must be pressed
+    int WhiteButtonOrder();
+	
+	// returns the order that the blue button must be pressed
+    int BlueButtonOrder();
 
 	// returns the match time in seconds
-	unsigned char Time();
+	int Time();
 
 	unsigned char WaitForPacket();
 
@@ -62,6 +72,6 @@ private:
 	int _region;
 };
 
-extern FEHWONKA WONKA;
+extern FEHRPS RPS;
 
-#endif // FEHWONKA_H
+#endif // FEHRPS_H

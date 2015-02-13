@@ -78,6 +78,12 @@ extern void UART0_ISR();
 
 extern void pit0_isr();
 
+extern void portA_isr();
+extern void portB_isr();
+extern void portC_isr();
+extern void portD_isr();
+extern void portE_isr();
+
 /* The Interrupt Vector Table */
 void (* const InterruptVector[])() __attribute__ ((section(".vectortable"))) = {
     /* Processor exceptions */
@@ -186,11 +192,11 @@ void (* const InterruptVector[])() __attribute__ ((section(".vectortable"))) = {
     Default_Handler, //100
     Default_Handler,
     Default_Handler,
-    Default_Handler,
-    Default_Handler,
-    Default_Handler,    //105
+    portA_isr,
+    portB_isr,
+    portC_isr,    //105
     PortDISR,    //106
-    Default_Handler,    //107
+    portE_isr,    //107
     Default_Handler,    //108
     Default_Handler,    //109
     Default_Handler,    //110
