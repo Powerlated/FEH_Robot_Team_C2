@@ -150,7 +150,7 @@ DigitalEncoder::DigitalEncoder( FEHIO::FEHIOPin pin, FEHIO::FEHIOInterruptTrigge
 }
 DigitalEncoder::DigitalEncoder( FEHIO::FEHIOPin pin)
 {
-    FEHIO::FEHIOInterruptTrigger trigger(FEHIO::FallingEdge);
+    FEHIO::FEHIOInterruptTrigger trigger(FEHIO::EitherEdge);
     Initialize( pin,trigger );
 }
 
