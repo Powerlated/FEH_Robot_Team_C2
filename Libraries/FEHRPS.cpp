@@ -470,7 +470,7 @@ void RPSDataProcess( unsigned char *data, unsigned char length )
 	{
         _RPS_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 1600.0f;
         _RPS_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f - 1600.0f;
-        _RPS_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f;
+        _RPS_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f - 1600.0f;
         _RPS_objective = ((data[ 7 ] << 8 ) + (data[ 8 ] ));
         _RPS_time = data[ 9 ];
         _RPS_stop = (data[10] == STOPDATA);
