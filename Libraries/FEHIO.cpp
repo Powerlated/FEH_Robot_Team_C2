@@ -337,9 +337,9 @@ float AnalogInputPin::Value()
         NVICICPR2 |= (1 << (4));
         NVICISER2 |= (1 << (4));
 
-        // Re-enable button Interrupt
-        NVICICPR2 |= (1 << ( 26 ));
-        NVICISER2 |= (1 << ( 26 ));
+        // // Re-enable button Interrupt
+        // NVICICPR2 |= (1 << ( 26 ));
+        // NVICISER2 |= (1 << ( 26 ));
 
 
         float v = (result & 0xFFFFu) *3.33 / (0xFFFFu);
