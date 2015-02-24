@@ -313,7 +313,7 @@ float AnalogInputPin::Value()
         unsigned int result;
 
         // Disable Encoder Interrupts Temporarily
-        NVICICER2 |= (1 << (4));
+        NVICICER2 = (1 << (4));
 
         if (adcNum == ADC0)
         {
