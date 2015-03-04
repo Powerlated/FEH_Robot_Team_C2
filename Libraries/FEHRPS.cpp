@@ -6,14 +6,15 @@
 
 FEHRPS RPS;
 
-#define OILPRESSMASK         0x0003 // first two bits
-#define OILMASK              0x0004 // third bit
-#define REDBUTTONPRESSMASK   0x0018 // 4,5 bits
-#define WHITEBUTTONPRESSMASK 0x0060 // 6,7 bits
-#define BLUEBUTTONPRESSMASK  0x0180 // 8,9 bits
-#define REDBUTTONORDERMASK  0x0600 // 10,11 bits
-#define WHITEBUTTONORDERMASK 0x1800 // 12,13 bits
-#define BLUEBUTTONORDERMASK  0x6000 // 14,15 two bits
+#define OILPRESSMASK         0x000003 // bits 0,1
+#define OILMASK              0x000004 // bit 2
+#define REDBUTTONPRESSMASK   0x000018 // 4,5 bits 3,4
+#define WHITEBUTTONPRESSMASK 0x000060 // 6,7 bits 5,6
+#define BLUEBUTTONPRESSMASK  0x000180 // 8,9 bits 7,8
+#define REDBUTTONORDERMASK   0x000600 // 10,11 bits 9,10
+#define WHITEBUTTONORDERMASK 0x001800 // 12,13 bits 11,12
+#define BLUEBUTTONORDERMASK  0x006000 // 14,15 two bits 13,14
+#define BUTTONSPRESSEDMASK	 0x018000 // bits 15,16
 
 #define STOPDATA 0xAA
 
@@ -383,7 +384,12 @@ int FEHRPS::CurrentRegion()
 //returns Oil Press direction
 int FEHRPS::OilPress()
 {
-    return ( (_RPS_objective & OILPRESSMASK) );
+	int x = (_RPS_objective & OILPRESSMASK);
+
+	if( x == 0 || x == 2)
+		return 1;
+	else
+		return 0;
 }
 
 // returns direction oil has been pressed
@@ -426,6 +432,12 @@ int FEHRPS::WhiteButtonOrder()
 int FEHRPS::BlueButtonOrder()
 {
     return ( ( _RPS_objective & BLUEBUTTONORDERMASK ) >> 13 );
+}
+
+// returns the number of buttons that have been pressed regardless of order (0-3)
+int FEHRPS::ButtonsPressed()
+{
+	return( ( _RPS_objective & BUTTONSPRESSEDMASK ) >> 15);
 }
 
 // returns the match time in seconds
@@ -471,9 +483,9 @@ void RPSDataProcess( unsigned char *data, unsigned char length )
         _RPS_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 1600.0f;
         _RPS_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f - 1600.0f;
         _RPS_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f - 1600.0f;
-        _RPS_objective = ((data[ 7 ] << 8 ) + (data[ 8 ] ));
-        _RPS_time = data[ 9 ];
-        _RPS_stop = (data[10] == STOPDATA);
+        _RPS_objective = ((data[ 7 ] << 24 ) + (data[ 8 ] << 16 ) + (data[ 9 ] << 8) + (data[ 10 ]));
+        _RPS_time = data[ 11 ];
+        _RPS_stop = (data[12] == STOPDATA);
         _RPS_foundpacket = true;
 		
         if(_RPS_stop)

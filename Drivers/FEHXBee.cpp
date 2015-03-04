@@ -15,7 +15,7 @@ typedef enum
 } XBeePacketState;
 
 #define XBEEBUFFERSIZE 16
-#define XBEEPACKETSIZE 11
+#define XBEEPACKETSIZE 13
 #define XBEESTARTBYTE 0xFF
 unsigned char _xbeebuffer[ XBEEBUFFERSIZE ];
 unsigned char _xbeebufferindex = 0;

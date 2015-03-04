@@ -58,6 +58,9 @@ public:
 	// returns the order that the blue button must be pressed
     int BlueButtonOrder();
 
+    // returns the number of buttons that have been pressed regardless of order
+    int ButtonsPressed();
+
 	// returns the match time in seconds
 	int Time();
 
