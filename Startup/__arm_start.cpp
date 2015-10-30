@@ -216,7 +216,7 @@ void InitFEHProteus()
 
 	// Initialize ADCs
 	AnalogInputPin::InitADCs();
-	FEHEncoder::Init();
+	AnalogEncoder::Init();
 
 	Propeller.Initialize();
 
