@@ -139,7 +139,7 @@ private:
     DigitalInputPin _right;
 };
 
-class FEHEncoder : public AnalogInputPin
+class AnalogEncoder : public AnalogInputPin
 {
 private:
     typedef enum
@@ -155,8 +155,8 @@ private:
     int highThreshold;
 
     // These hold the next and previous encoders tied to the same pin
-    FEHEncoder * pNext;
-    FEHEncoder * pPrev;
+    AnalogEncoder * pNext;
+    AnalogEncoder * pPrev;
 
     bool ProcessIntSelf();
     int EncoderValue();
@@ -169,7 +169,7 @@ private:
         FEHIO::FEHIOPin pin;
         EncoderState state;
         int numEncoders;
-        FEHEncoder * encoderList;
+        AnalogEncoder * encoderList;
         PinInfo * pNext;
         PinInfo * pPrev;
     };
@@ -181,8 +181,8 @@ private:
 public:
     static void Init();
     static void SetRate(unsigned int rateHz);
-    FEHEncoder(FEHIO::FEHIOPin);
-    ~FEHEncoder();
+    AnalogEncoder(FEHIO::FEHIOPin);
+    ~AnalogEncoder();
     int Counts();
     void ResetCounts();
     void SetThresholds(float low, float high);

@@ -347,7 +347,7 @@ float AnalogInputPin::Value()
 }
 
 
-int FEHEncoder::EncoderValue()
+int AnalogEncoder::EncoderValue()
 {
     int analogPin = AnalogPinNumbers[pin];
     ADCNumber adcNum = ADCNumbers[pin];
@@ -629,19 +629,19 @@ void AnalogInputPin::InitADCs()
 }
 
 #define NULL 0
-FEHEncoder::PinInfo * FEHEncoder::pinList = NULL;
+AnalogEncoder::PinInfo * AnalogEncoder::pinList = NULL;
 
 
 volatile long __interrupt_counter = 0;
 
 void pit0_isr(void) {
 	__interrupt_counter++;
-    FEHEncoder::ProcessInt();
+    AnalogEncoder::ProcessInt();
     PIT_TFLG0 = PIT_TFLG_TIF_MASK;
     return;
 }
 
-void FEHEncoder::SetRate(unsigned int rateHz)
+void AnalogEncoder::SetRate(unsigned int rateHz)
 {
 	unsigned long countDown = 44000000UL / rateHz;
 	if(countDown < 0x100000000UL)
@@ -650,7 +650,7 @@ void FEHEncoder::SetRate(unsigned int rateHz)
 	}
 }
 
-void FEHEncoder::Init() {
+void AnalogEncoder::Init() {
     // Freeze on Debug
     PIT_MCR = PIT_MCR_FRZ_MASK;
 
@@ -667,11 +667,11 @@ void FEHEncoder::Init() {
     NVICISER2 |= 1 << (4);
 }
 
-void FEHEncoder::SetCounterInit(unsigned int val) {
+void AnalogEncoder::SetCounterInit(unsigned int val) {
     PIT_LDVAL0  =  val;
 }
 
-FEHEncoder::FEHEncoder(FEHIO::FEHIOPin pin_) : AnalogInputPin(pin_)
+AnalogEncoder::AnalogEncoder(FEHIO::FEHIOPin pin_) : AnalogInputPin(pin_)
 {
     if(pinList == NULL) {
         // Initialize linked list of encoders within the pPinInfo Object
@@ -701,7 +701,7 @@ FEHEncoder::FEHEncoder(FEHIO::FEHIOPin pin_) : AnalogInputPin(pin_)
         // If the pin is in the list
         if(pCurPin->pin == pin_) {
             pPinInfo = pCurPin;
-            FEHEncoder * pCurEnc = pPinInfo->encoderList;
+            AnalogEncoder * pCurEnc = pPinInfo->encoderList;
             // Loop to end of encoder list
             while(pCurEnc->pNext != NULL) {
                 pCurEnc = pCurEnc->pNext;
@@ -735,16 +735,16 @@ FEHEncoder::FEHEncoder(FEHIO::FEHIOPin pin_) : AnalogInputPin(pin_)
     highThreshold = 210*256;
 }
 
-void FEHEncoder::SetThresholds(float low, float high) {
+void AnalogEncoder::SetThresholds(float low, float high) {
     lowThreshold = low/3.3*0x10000;
     highThreshold = high/3.3*0x10000;
 }
 
-FEHEncoder::~FEHEncoder()
+AnalogEncoder::~AnalogEncoder()
 {
     // Remove this encoder from the encoder list in the pin info
-    FEHEncoder * pPrevEnc = this->pPrev;
-    FEHEncoder * pNextEnc = this->pNext;
+    AnalogEncoder * pPrevEnc = this->pPrev;
+    AnalogEncoder * pNextEnc = this->pNext;
 
     if(pPrevEnc==NULL && pNextEnc==NULL) {
         //Then this was a lone encoder, must kill the pinInfo entry too
@@ -785,7 +785,7 @@ FEHEncoder::~FEHEncoder()
     }
 }
 
-void FEHEncoder::ProcessInt() {
+void AnalogEncoder::ProcessInt() {
 
     PinInfo * pCurPin = pinList;
     while(pCurPin != NULL)
@@ -797,7 +797,7 @@ void FEHEncoder::ProcessInt() {
         // If the state changed and there are more encoders tied to this pin
         if(countReceived && pCurPin->numEncoders > 1) {
             // Get the pointer to the next object
-            FEHEncoder * pCurEnc = pCurPin->encoderList->pNext;
+            AnalogEncoder * pCurEnc = pCurPin->encoderList->pNext;
             while(pCurEnc != NULL) {
                 // Update other encoders
                 pCurEnc->counts++;
@@ -810,7 +810,7 @@ void FEHEncoder::ProcessInt() {
     }
 }
 
-bool FEHEncoder::ProcessIntSelf() {
+bool AnalogEncoder::ProcessIntSelf() {
     int value = EncoderValue();
     EncoderState state = pPinInfo->state;
     if(state == LOW_STATE && value>highThreshold) {
@@ -826,12 +826,12 @@ bool FEHEncoder::ProcessIntSelf() {
     return false;
 }
 
-int FEHEncoder::Counts()
+int AnalogEncoder::Counts()
 {
     return (int) counts;
 }
 
-void FEHEncoder::ResetCounts()
+void AnalogEncoder::ResetCounts()
 {
     counts=0;
 }
