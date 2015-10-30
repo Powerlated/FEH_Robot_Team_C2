@@ -149,7 +149,6 @@ private:
     } EncoderState;
 
     static void SetCounterInit(unsigned int);
-    static void Init();
     static void SetRate(unsigned int rateHz);
     static void ProcessInt();
 
@@ -182,6 +181,7 @@ private:
     PinInfo * pPinInfo;
 
 public:
+    static void Init();
     AnalogEncoder(FEHIO::FEHIOPin);
     ~AnalogEncoder();
     int Counts();
