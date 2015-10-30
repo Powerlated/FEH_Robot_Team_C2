@@ -149,6 +149,9 @@ private:
     } EncoderState;
 
     static void SetCounterInit(unsigned int);
+    static void Init();
+    static void SetRate(unsigned int rateHz);
+    static void ProcessInt();
 
     int counts;
     int lowThreshold;
@@ -179,14 +182,12 @@ private:
     PinInfo * pPinInfo;
 
 public:
-    static void Init();
-    static void SetRate(unsigned int rateHz);
     AnalogEncoder(FEHIO::FEHIOPin);
     ~AnalogEncoder();
     int Counts();
     void ResetCounts();
     void SetThresholds(float low, float high);
-    static void ProcessInt();
+
 };
 
 #endif // FEHIO_H
