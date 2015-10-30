@@ -150,7 +150,6 @@ private:
 
     static void SetCounterInit(unsigned int);
     static void SetRate(unsigned int rateHz);
-    static void ProcessInt();
 
     int counts;
     int lowThreshold;
@@ -182,6 +181,7 @@ private:
 
 public:
     static void Init();
+    static void ProcessInt();
     AnalogEncoder(FEHIO::FEHIOPin);
     ~AnalogEncoder();
     int Counts();
