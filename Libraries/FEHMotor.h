@@ -17,10 +17,10 @@ public:
     FEHMotor( FEHMotorPort motorport );
 
     void Stop();
-    void SetPower( int power );
 	void SetPercent( float percent );
 
 private:
+    void SetPower( int power );
     FEHMotorPort _motorport;
 	char _power;
 };
