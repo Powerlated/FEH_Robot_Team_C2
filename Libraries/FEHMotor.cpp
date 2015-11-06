@@ -57,7 +57,7 @@ void FEHMotor::SetPercent( float percent )
     else if ( percent > 100 )
         percent = 100.;
 
-    percent *= _max_percent / 100.
+    percent *= _max_percent / 100.;
 
 
     // if percent is positive
