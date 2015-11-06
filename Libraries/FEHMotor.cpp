@@ -9,11 +9,11 @@ FEHMotor::FEHMotor( FEHMotorPort motorport, float max_voltage )
     //Votlage Range: 1.0 - 12.0 V
     if(max_voltage > 12)
     {
-        _max_voltage = 12.0;
+        max_voltage = 12.0;
     }
     else if(max_voltage <= 1)
     {
-        _max_voltage = 1.0;
+        max_voltage = 1.0;
     }
 
     // Set the upper limit of percent power for the motor based on the input max voltage
