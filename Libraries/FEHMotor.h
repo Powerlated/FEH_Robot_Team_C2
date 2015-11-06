@@ -14,13 +14,14 @@ public:
         Motor3
     } FEHMotorPort;
 
-    FEHMotor( FEHMotorPort motorport );
+    FEHMotor( FEHMotorPort motorport, float max_voltage );
 
     void Stop();
 	void SetPercent( float percent );
 
 private:
     void SetPower( int power );
+    float _max_percent;
     FEHMotorPort _motorport;
 	char _power;
 };
