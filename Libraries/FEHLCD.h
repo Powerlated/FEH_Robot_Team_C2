@@ -1,6 +1,7 @@
 #ifndef FEHLCD_H
 #define FEHLCD_H
 
+#include "spi.h"
 #include "derivative.h"
 //#include <string>
 
@@ -30,6 +31,8 @@ public:
     } FEHLCDOrientation;
 
     FEHLCD();
+	
+	bool Touch(float *x_pos,float *y_pos);
 
     void PrintImage(int x, int y);
     void Initialize();
@@ -93,8 +96,13 @@ private:
         uint32_t CVal;
         uint32_t DVal;
     } RegisterColorValues;
+	
+	
 
+	void TS_SPI_Init();
 
+	int abs(int);
+	
     void _Initialize();
     void _Clear();
     void _RepeatColor();
@@ -129,6 +137,9 @@ private:
     unsigned int _forecolor;
     unsigned int _backcolor;
     RegisterColorValues foreRegisterValues, backRegisterValues;
+	
+    int lastx;
+    int lasty;
 
     static unsigned char fontData[];
 };

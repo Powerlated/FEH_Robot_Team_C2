@@ -1,11 +1,11 @@
 #include "FEHLCD.h"
 #include "FEHUtility.h"
-
 #include "derivative.h"
 #include "mcg.h"
 #include "lptmr.h"
 #include "stdio.h"
 #include "image.h"
+#include "spi.h"
 #include <FEHBuzzer.h>
 
 #define CLR_CS GPIOC_PDOR &= ~GPIO_PDOR_PDO( ( 1 << 3 ) )
@@ -438,6 +438,8 @@ void FEHLCD::_Initialize()
     WriteParameter(0x00);
     WriteParameter(0x0F);
 
+    TS_SPI_Init();
+
 
     LCD.SetFontColor(FEHLCD::White);
     LCD.SetBackgroundColor(FEHLCD::Black);
@@ -650,6 +652,108 @@ void FEHLCD::WriteAt(char c, int x, int y)
 {
     char str[1] = { c };
     WriteAt(str,x,y);
+}
+
+void FEHLCD::TS_SPI_Init()
+{
+	SPI_Init();
+    SPI_WriteCommand(0x01,0x67);
+    //Sleep(.1);
+    SPI_WriteCommand(0x02,0x00);
+    //Sleep(.1);
+    SPI_WriteCommand(0x03,0xA0);
+    //Sleep(.1);
+    SPI_WriteCommand(0x04,0x50);
+    //Sleep(.1);
+    SPI_WriteCommand(0x05,0x20);
+    //Sleep(.1);
+    SPI_WriteCommand(0x06,0x20);
+    //Sleep(.1);
+    SPI_WriteCommand(0x07,0x77);
+    //Sleep(.1);
+    SPI_WriteCommand(0x08,0x00);
+    //Sleep(.1);
+    SPI_WriteCommand(0x09,0x00);
+    //Sleep(.1);
+    SPI_WriteCommand(0x0A,0x00);
+    //Sleep(.1);
+    SPI_WriteCommand(0x0B,0x04);
+    //Sleep(.1);
+    lastx = -1;
+    lasty = -1;
+}
+
+//New Read
+bool FEHLCD::Touch(float *x_pos, float *y_pos)
+{
+    uint8 dat;                                   //Temporary data holder
+    uint16 x, y;                                  //Read x and y values
+              //For noise rejection
+
+    dat = SPI_ReadCommand(0x00);                  //Read the status
+
+    if(dat & 0x02)                              //Touch present?
+    {
+        SPI_CS_Assert();  //Command a conversion (x,y)
+        SPI_SendChar(0xE0);
+        SPI_CS_Deassert();
+        Sleep(2);
+        SPI_CS_Assert();               //Read the positions
+        SPI_SendChar(0xA5);
+        x = SPI_GetChar()<<8;
+        x |= SPI_GetChar();
+        y = SPI_GetChar()<<8;
+        y |= SPI_GetChar();
+        x >>= 4;
+        y >>= 4;
+        SPI_CS_Deassert();
+
+        if(lastx==-1 && lasty==-1)
+        {
+            lastx=x;
+            lasty=y;
+            y=4095-y;
+            *x_pos=x*(320/4095.);
+            *y_pos=y*(240/4095.);
+        }
+        else if(abs(lastx-x)<100 && abs(lasty-y)<100)
+        {
+            lastx=x;
+            lasty=y;
+            y=4095-y;
+            *x_pos=x*(320/4095.);
+            *y_pos=y*(240/4095.);
+        }
+        else
+        {
+            *x_pos=-1;
+            *y_pos=-1;
+            lastx=-1;
+            lasty=-1;
+            return false;
+        }
+        return true;
+    }
+    else
+    {
+        *x_pos=-1;
+        *y_pos=-1;
+        lastx=-1;
+        lasty=-1;
+        return false;
+    }
+
+
+
+}
+
+int FEHLCD::abs(int no)
+{
+    if(no<0)
+    {
+        no*=-1;
+    }
+    return no;
 }
 
 void FEHLCD::WriteRC(const char * str, int row, int col)
