@@ -16,9 +16,9 @@ FEHMotor::FEHMotor( FEHMotorPort motorport, float max_voltage )
         max_voltage = 1.0;
     }
 
-    // Set the upper limit of percent power for the motor based on the input max voltage
-    // power = 0.6625 * voltage^2 + 0.2396 * voltage [determined experimentally]
-    _max_percent = 0.7391 * max_voltage * max_voltage + 0.0585 * max_voltage;
+    // Max percent calculated as linear relationship (trust us, it's linear)
+    // Attempted with exponential as well, did not produce adequate results
+    _max_percent = 25./3.*max_voltage;
 }
 
 void FEHMotor::Stop()
