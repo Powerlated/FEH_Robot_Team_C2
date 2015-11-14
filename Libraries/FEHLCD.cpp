@@ -424,8 +424,9 @@ void FEHLCD::_Initialize()
 
     LCD.Clear(FEHLCD::White);
     LCD.PrintImage(111,30);
+    LCD.PrintLogo(90,175);
     LCD.SetFontColor(FEHLCD::Black);
-    LCD.WriteAt("FEH Proteus",90,175);
+    //LCD.WriteAt("FEH Proteus",90,175);
 
     WriteIndex(0x29);  //display on
     Sleep(100);
@@ -497,6 +498,32 @@ void FEHLCD::PrintImage(int x, int y)
             else
             {
                 r=181; g= 186; b=176;
+            }
+            //_forecolor = ConvertRGBColorTo16Bit(image[k][0],image[k][1],image[k][2]);
+            _forecolor = ConvertRGBColorTo16Bit(r,g,b);
+
+            SetRegisterColorValues();
+            _ForePixel();
+            k++;
+        }
+    }
+}
+
+void FEHLCD::PrintLogo(int x, int y)
+{
+    SetDrawRegion(x,y,149,39);
+    int k=0;
+    for(int i=0;i<39;i++)
+    {
+        for(int j=0;j<149;j++)
+        {
+            unsigned char r, g, b;
+            if(image[k] ==0) {
+                r = 255; g=255; b=255;
+            }
+            else if(image[k]==1)
+            {
+                r = 0; g=0; b=0;
             }
             //_forecolor = ConvertRGBColorTo16Bit(image[k][0],image[k][1],image[k][2]);
             _forecolor = ConvertRGBColorTo16Bit(r,g,b);

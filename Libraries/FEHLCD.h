@@ -35,6 +35,7 @@ public:
 	bool Touch(float *x_pos,float *y_pos);
 
     void PrintImage(int x, int y);
+    void PrintLogo(int x, int y);
     void Initialize();
     void SetOrientation(FEHLCDOrientation orientation);
 
