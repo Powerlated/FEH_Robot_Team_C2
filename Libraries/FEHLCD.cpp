@@ -426,7 +426,7 @@ void FEHLCD::_Initialize()
     LCD.PrintImage(111,30);
     LCD.PrintLogo(90,175);
     LCD.SetFontColor(FEHLCD::Black);
-    //LCD.WriteAt("FEH Proteus",90,175);
+    LCD.WriteRC("11.14.15",26,0);
 
     WriteIndex(0x29);  //display on
     Sleep(100);
