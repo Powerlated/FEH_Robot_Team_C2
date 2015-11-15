@@ -424,7 +424,7 @@ void FEHLCD::_Initialize()
 
     LCD.Clear(FEHLCD::White);
     LCD.PrintImage(111,30);
-    LCD.PrintLogo(90,175);
+    LCD.PrintLogo(86,175);
     LCD.SetFontColor(FEHLCD::Black);
     LCD.WriteAt("v11.14.15",1,1);
 
