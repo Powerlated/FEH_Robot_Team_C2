@@ -518,10 +518,10 @@ void FEHLCD::PrintLogo(int x, int y)
         for(int j=0;j<149;j++)
         {
             unsigned char r, g, b;
-            if(image[k] ==0) {
+            if(logo[k] ==0) {
                 r = 255; g=255; b=255;
             }
-            else if(image[k]==1)
+            else if(logo[k]==1)
             {
                 r = 0; g=0; b=0;
             }
