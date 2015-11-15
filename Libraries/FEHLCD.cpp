@@ -525,6 +525,10 @@ void FEHLCD::PrintLogo(int x, int y)
             {
                 r = 0; g=0; b=0;
             }
+            else
+            {
+                r = 212; g=0; b=38;
+            }
             //_forecolor = ConvertRGBColorTo16Bit(image[k][0],image[k][1],image[k][2]);
             _forecolor = ConvertRGBColorTo16Bit(r,g,b);
 
