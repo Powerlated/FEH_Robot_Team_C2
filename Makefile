@@ -65,6 +65,10 @@ $(TARGET).s19: $(TARGET).elf
 	arm-none-eabi-objcopy  -O srec --srec-len=40 --srec-forceS3 ../$(TARGET).elf ../$(TARGET).s19
 
 deploy:
+ifeq ($(OS),Windows_NT)
 	@tools/AutoDownload BOOTLOADER ../$(TARGET).s19
+else
+	@tools/copyS19
+endif
 run:
 	@echo Download Successful. Please Reset the Proteus. >&2
