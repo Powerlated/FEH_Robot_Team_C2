@@ -6,3 +6,6 @@
 *.lst
 *.o
 *.d
+
+# Ignore Mac junk
+*.DS_Store
