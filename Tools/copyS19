@@ -1,3 +1,3 @@
-rm ~/../../Volumes/FEHSD/*.S19*
+rm ~/../../Volumes/FEHSD/*.S19
 cp ../*.s19 ~/../../Volumes/FEHSD
 mv ~/../../Volumes/FEHSD/*.s19 ~/../../Volumes/FEHSD/CODE.S19
