@@ -66,7 +66,7 @@ $(TARGET).s19: $(TARGET).elf
 
 deploy:
 ifeq ($(OS),Windows_NT)
-	@tools/AutoDownload BOOTLOADER ../$(TARGET).s19
+	@tools\copyS19.bat
 else
 	@tools/copyS19
 endif
