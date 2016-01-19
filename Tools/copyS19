@@ -1,3 +1,27 @@
-rm ~/../../Volumes/FEHSD/*.S19
-cp ../*.s19 ~/../../Volumes/FEHSD
-mv ~/../../Volumes/FEHSD/*.s19 ~/../../Volumes/FEHSD/CODE.S19
+if test ! -d ~/../../Volumes/FEHSD 
+then
+	echo "SD Card is not inserted" >&2
+	exit 1
+fi
+
+if rm ~/../../Volumes/FEHSD/*.S19; then
+	echo "S19 file on SD card deleted" >&2
+else
+	echo "S19 file didn't exist on SD card, therefore wasn't deleted" >&2
+fi
+
+if cp ../*.s19 ~/../../Volumes/FEHSD; then
+	echo "S19 file copied from project to SD card" >&2
+else
+	echo "S19 file did not successfully copy from project to SD card" >&2
+	exit 1
+fi
+
+if mv ~/../../Volumes/FEHSD/*.s19 ~/../../Volumes/FEHSD/CODE.S19; then
+	echo "S19 file successfully renamed from project name to CODE" >&2
+else
+	echo "S19 file failed to rename on FEHSD drive" >&2
+	exit 1
+fi
+
+
