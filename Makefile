@@ -71,4 +71,4 @@ else
 	@tools/copyS19
 endif
 run:
-	@echo Download Successful. Please Reset the Proteus. >&2
+	@echo Download Successful. Please eject the SD card. >&2
