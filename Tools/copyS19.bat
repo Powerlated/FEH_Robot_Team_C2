@@ -1,6 +1,6 @@
 for /f %%D in ('wmic volume get DriveLetter^, Label ^| find "FEHSD"') do set usb=%%D
 
-if not exist %usb%\*.S19 goto ERROR2
+if not exist %usb%\ goto ERROR2
 del %usb%\*.S19
 
 xcopy ..\*.s19 %usb%\
@@ -25,4 +25,4 @@ echo S19 file could not be renamed 1>&2
 exit 1
 
 :QUIT
-echo 
+echo
