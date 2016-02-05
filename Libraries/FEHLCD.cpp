@@ -7,6 +7,8 @@
 #include "image.h"
 #include "spi.h"
 #include <FEHBuzzer.h>
+#include <string.h>
+#include <LCDColors.h>
 
 #define CLR_CS GPIOC_PDOR &= ~GPIO_PDOR_PDO( ( 1 << 3 ) )
 #define SET_CS GPIOC_PDOR |= GPIO_PDOR_PDO( ( 1 << 3 ) )
@@ -1680,3 +1682,168 @@ void FEHLCD::SetRegisterColorValues()
     foreRegisterValues.DVal |= GPIO_PDOR_PDO( ( ( ( c3 & ( 1 << 1 ) ) ? ( 1 ) : ( 0 ) ) << 4 ) );
 }
 
+/* Icon constructor function */
+FEHIcon::Icon::Icon() {}
+
+/* Icon function to set position, size, label, and color */
+void FEHIcon::Icon::SetProperties(char name[20], int start_x, int start_y, int w, int h, unsigned int c, unsigned int tc)
+{
+    strcpy(label,name);
+    x_start = start_x;
+    y_start = start_y;
+    width = w;
+    height = h;
+    x_end = x_start+width;
+    y_end = y_start+height;
+    color = c;
+	textcolor = tc;
+    set = 0;
+}
+
+/* Icon function to draw it and write label */
+void FEHIcon::Icon::Draw()
+{
+    LCD.SetFontColor(color);
+    LCD.DrawRectangle(x_start, y_start, width, height);
+    LCD.SetFontColor(textcolor);
+    LCD.WriteAt(label,x_start+((width-(strlen(label)*12))/2),y_start+((height-17)/2)); // equation to center text inside the icon
+}
+
+/* Icon function to make the icon selected and set */
+void FEHIcon::Icon::Select()
+{
+    LCD.SetFontColor(color);
+    LCD.DrawRectangle(x_start+1,y_start+1,width-2,height-2);
+    LCD.DrawRectangle(x_start+2,y_start+2,width-4,height-4);
+    LCD.DrawRectangle(x_start+3,y_start+3,width-6,height-6);
+    set = 1;
+}
+
+/* Icon function to make the icon deselected and not set */
+void FEHIcon::Icon::Deselect()
+{
+    LCD.SetFontColor(BLACK);
+    LCD.DrawRectangle(x_start+3,y_start+3,width-6,height-6);
+    LCD.DrawRectangle(x_start+2,y_start+2,width-4,height-4);
+    LCD.DrawRectangle(x_start+1,y_start+1,width-2,height-2);
+    set = 0;
+}
+
+/* Icon function to see if it has been pressed */
+int FEHIcon::Icon::Pressed(float x, float y, int mode)
+{
+    if (x>=x_start && x<=x_end && y>=y_start && y<=y_end)
+    {
+        LCD.Touch(&x, &y);
+        if (x>=x_start && x<=x_end && y>=y_start && y<=y_end) // check twice to avoid buggy touch screen issues
+        {
+            if (!mode) // if mode is 0, then alternate selecting and deselecting as it is pressed again and again; otherwise, the icon does not select and deselect
+            {
+                if (!set)
+                {
+                    Select();
+                }
+                else if (set)
+                {
+                    Deselect();
+                }
+            }
+            return 1;
+        }
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+/* Icon function to wait while it is pressed */
+int FEHIcon::Icon::WhilePressed(float xi, float yi)
+{
+    float x = xi, y = yi;
+    while(Pressed(x, y, 1))
+    {
+        LCD.Touch(&x, &y);
+    }
+}
+
+/* Icon function to change the label of an icon with a string */
+void FEHIcon::Icon::ChangeLabelString(const char new_label[])
+{
+    if (strcmp(label, new_label))
+    {
+        strcpy(label, new_label);
+        LCD.SetFontColor(BLACK);
+        LCD.FillRectangle(x_start+1, y_start+1, width-2, height-2);
+        Draw();
+    }
+}
+
+/* Icon function to change the label of an icon with a float */
+void FEHIcon::Icon::ChangeLabelFloat(float val)
+{
+    int length_i = strlen(label);
+    int d, r;
+	/* Convert float to string so it can be auto-centered in icon */
+    if(val>=0)
+    {
+        d = (int) val;
+        r = (int) ((val-d)*1000);
+        std::sprintf(label,"%d.%03d",d,r);
+    }
+    else
+    {
+        val *= -1;
+        d = (int) val;
+        r = (int) ((val-d)*1000);
+        std::sprintf(label,"-%d.%03d",d,r);
+    }
+	/* If the new label is not the same length as the old one, then erase the old one so that it does not show up behind the new one */
+    if (strlen(label)!=length_i)
+    {
+        LCD.SetFontColor(BLACK);
+        LCD.FillRectangle(x_start+1, y_start+1, width-2, height-2);
+    }
+    Draw();
+}
+
+/* Icon function to change the label of an icon with a int */
+void FEHIcon::Icon::ChangeLabelInt(int val)
+{
+    int length_i = strlen(label);
+
+    /* Convert int to string so it can be auto-centered in icon */
+    std::sprintf(label,"%d",val);
+
+    /* If the new label is not the same length as the old one, then erase the old one so that it does not show up behind the new one */
+    if (strlen(label)!=length_i)
+    {
+        LCD.SetFontColor(BLACK);
+        LCD.FillRectangle(x_start+1, y_start+1, width-2, height-2);
+    }
+    Draw();
+}
+
+/* Function to draw an array of icons in a given space and size and label them */
+void FEHIcon::DrawIconArray(Icon icon[], int rows, int cols, int top, int bot, int left, int right, char labels[][20], unsigned int col, unsigned int txtcol)
+{
+    int xs = left;
+    int ys = top;
+    float total_w = (320.-left-right);
+    float total_h = (240.-top-bot);
+    int w = total_w/cols;
+    int h = total_h/rows;
+    int nx, ny, N=0;
+    for (ny=1; ny<=rows; ny++)
+    {
+        for (nx=1; nx<=cols; nx++)
+        {
+            icon[N].SetProperties(labels[N], xs, ys, w, h, col, txtcol);
+            icon[N].Draw();
+            N = N+1;
+            xs = xs+w;
+        }
+        ys = ys+h;
+        xs = left;
+    }
+}

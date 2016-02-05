@@ -15,6 +15,8 @@ public:
 	// Left button decrements region
 	// Middle button selects region
 	void InitializeMenu();
+	
+	void InitializeTouchMenu();
 
 	// Manually pick and configure a region
 	// int region => { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }

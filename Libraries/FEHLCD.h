@@ -3,6 +3,7 @@
 
 #include "spi.h"
 #include "derivative.h"
+#include <LCDColors.h>
 //#include <string>
 
 //using namespace std;
@@ -144,6 +145,37 @@ private:
 
     static unsigned char fontData[];
 };
+
+namespace FEHIcon
+{
+	/* Class definition for software icons */
+	class Icon
+	{
+		private:
+			int x_start, x_end;
+			int y_start, y_end;
+			int width;
+			int height;
+			unsigned int color;
+			unsigned int textcolor;
+			char label[200];
+			int set;
+		public:
+			Icon();
+			void SetProperties(char name[20], int start_x, int start_y, int w, int h, unsigned int c, unsigned int tc);
+			void Draw();
+			void Select();
+			void Deselect();
+			int Pressed(float x, float y, int mode);
+			int WhilePressed(float xi, float yi);
+            void ChangeLabelString(const char new_label[20]);
+            void ChangeLabelFloat(float val);
+            void ChangeLabelInt(int val);
+    };
+		
+	/* Function prototype for drawing an array of icons in a rows by cols array with top, bot, left, and right margins from edges of screen, labels for each icon from top left across each row to the bottom right, and color for the rectangle and the text color */
+    void DrawIconArray(Icon icon[], int rows, int cols, int top, int bot, int left, int right, char labels[][20], unsigned int col, unsigned int txtcol);
+}
 
 extern FEHLCD LCD;
 

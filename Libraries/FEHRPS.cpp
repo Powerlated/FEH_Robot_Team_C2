@@ -102,6 +102,65 @@ void FEHRPS::InitializeMenu()
 	//Sleep( 1000 );
 }
 
+void FEHRPS::InitializeTouchMenu()
+{
+    LCD.Clear(BLACK);
+	int c=0, n;
+	float x, y;
+    char region;
+
+    FEHIcon::Icon regions_title[1];
+    char regions_title_label[1][20] = {"Select RPS Region"};
+    FEHIcon::DrawIconArray(regions_title, 1, 1, 1, 201, 1, 1, regions_title_label, BLACK, WHITE);
+
+	FEHIcon::Icon regions[8];
+	char regions_labels[8][20] = {"A", "B", "C", "D", "E", "F", "G", "H"};
+    FEHIcon::DrawIconArray(regions, 2, 4, 40, 1, 1, 1, regions_labels, WHITE, WHITE);
+
+	while (!c)
+	{
+        if (LCD.Touch(&x, &y))
+        {
+            for (n=0; n<=7; n++)
+            {
+                if (regions[n].Pressed(x, y, 0))
+                {
+                    regions[n].WhilePressed(x, y);
+                    c = n+1;
+                }
+            }
+        }
+	}
+    switch (c)
+    {
+    case 1:
+        region = 'A';
+        break;
+    case 2:
+        region = 'B';
+        break;
+    case 3:
+        region = 'C';
+        break;
+    case 4:
+        region = 'D';
+        break;
+    case 5:
+        region = 'E';
+        break;
+    case 6:
+        region = 'F';
+        break;
+    case 7:
+        region = 'G';
+        break;
+    case 8:
+        region = 'H';
+        break;
+    }
+    Initialize(region);
+}
+
 // Manually pick and configure a region
 // int region => { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }
 // char region => { a, b, c, d, e, f, g, h, i, j, k, l } || { A, B, C, D, E, F, G, H, I, J, K, L }
