@@ -182,6 +182,159 @@ void FEHServo::Calibrate()
 
 }
 
+void FEHServo::TouchCalibrate()
+{
+	unsigned short temp_min;
+    float x=0, y=0;
+	
+    LCD.Clear(BLACK);
+    LCD.SetFontColor(WHITE);
+
+    FEHIcon::Icon VAL[2];
+    char val_labels[2][20] = {"Current Minimum", ""};
+    FEHIcon::DrawIconArray(VAL, 2, 1, 41, 160, 1, 1, val_labels, YELLOW, WHITE);
+
+    FEHIcon::Icon MOVE[2];
+    char move_labels[2][20] = {"Backward", "Forward"};
+    FEHIcon::DrawIconArray(MOVE, 1, 2, 80, 40, 1, 1, move_labels, RED, WHITE);
+
+    FEHIcon::Icon SET[1];
+    char set_label[1][20] = {"SET MIN"};
+    FEHIcon::DrawIconArray(SET, 1, 1, 201, 2, 1, 1, set_label, BLUE, WHITE);
+
+    LCD.WriteLine( "Use icons to select min." );
+    LCD.WriteLine( "Press ""SET MIN"" when ready.");
+
+    _position = -1;
+    this->SetDegree( 0 );
+
+    while (!SET[0].Pressed(x, y, 0))
+    {
+        VAL[1].ChangeLabelInt(servo_min);
+        if (LCD.Touch(&x, &y))
+        {
+            if (MOVE[0].Pressed(x, y, 0))
+            {
+                while (MOVE[0].Pressed(x, y, 1))
+                {
+                    servo_min = servo_min - 1;
+                    if( servo_min < 500 ) servo_min = 500;
+                    _position = -1;
+                    this->SetDegree(0);
+                    VAL[1].ChangeLabelInt(servo_min);
+                }
+                MOVE[0].Deselect();
+            }
+            if (MOVE[1].Pressed(x, y, 0))
+            {
+                while (MOVE[1].Pressed(x, y, 1))
+                {
+                    servo_min = servo_min + 1;
+                    if( servo_min > 2500 ) servo_min = 2500;
+                    _position = -1;
+                    this->SetDegree(0);
+                    VAL[1].ChangeLabelInt(servo_min);
+                }
+                MOVE[1].Deselect();
+            }
+        }
+    }
+    SET[0].WhilePressed(x, y);
+    SET[0].Deselect();
+
+	temp_min = servo_min;
+	
+	//detect if the user accidentally set a max instead of a min
+	if (servo_min < 1500)
+		servo_min = 2500;
+	else
+		servo_min = 500;
+
+    LCD.Clear(BLACK);
+
+    VAL[0].ChangeLabelString("Current Maximum");
+    VAL[0].Draw();
+    VAL[1].Draw();
+
+    FEHIcon::DrawIconArray(MOVE, 1, 2, 80, 40, 1, 1, move_labels, RED, WHITE);
+
+    SET[0].ChangeLabelString("SET MAX");
+    SET[0].Draw();
+
+    LCD.WriteLine( "Use icons to select max." );
+    LCD.WriteLine( "Press ""SET MAX"" when ready.");
+
+    _position = -1;
+    this->SetDegree( 0 );
+
+    while (!SET[0].Pressed(x, y, 0))
+    {
+        VAL[1].ChangeLabelInt(servo_min);
+        if (LCD.Touch(&x, &y))
+        {
+            if (MOVE[0].Pressed(x, y, 0))
+            {
+                while (MOVE[0].Pressed(x, y, 1))
+                {
+                    servo_min = servo_min - 1;
+                    if( servo_min < 500 ) servo_min = 500;
+                    _position = -1;
+                    this->SetDegree(0);
+                    VAL[1].ChangeLabelInt(servo_min);
+                }
+                MOVE[0].Deselect();
+            }
+            if (MOVE[1].Pressed(x, y, 0))
+            {
+                while (MOVE[1].Pressed(x, y, 1))
+                {
+                    servo_min = servo_min + 1;
+                    if( servo_min > 2500 ) servo_min = 2500;
+                    _position = -1;
+                    this->SetDegree(0);
+                    VAL[1].ChangeLabelInt(servo_min);
+                }
+                MOVE[1].Deselect();
+            }
+        }
+    }
+    SET[0].WhilePressed(x, y);
+    SET[0].Deselect();
+
+	//set the smaller value to min and larger value to max
+	if (servo_min < temp_min)
+	{
+		servo_max = temp_min;
+	}
+	else
+	{
+		servo_max = servo_min;
+		servo_min = temp_min;
+	}
+
+    LCD.Clear(BLACK);
+
+    FEHIcon::Icon OUT[4];
+    char out_labels[4][20] = {"SERVO MIN", "SERVO MAX", "", ""};
+    FEHIcon::DrawIconArray(OUT, 2, 2, 80, 120, 20, 20, out_labels, BLACK, WHITE);
+
+    FEHIcon::Icon EXIT[1];
+    char exit_label[1][20] = {"EXIT"};
+    FEHIcon::DrawIconArray(EXIT, 1, 1, 121, 40, 20, 20, exit_label, RED, WHITE);
+
+    OUT[2].ChangeLabelInt(servo_min);
+    OUT[2].Draw();
+    OUT[3].ChangeLabelInt(servo_max);
+    OUT[3].Draw();
+
+    while (!EXIT[0].Pressed(x, y, 0))
+    {
+        LCD.Touch(&x, &y);
+    }
+    EXIT[0].WhilePressed(x, y);
+    LCD.Clear(BLACK);
+}
+
 void FEHServo::Off()
 {
 	if( _position >= 0 )

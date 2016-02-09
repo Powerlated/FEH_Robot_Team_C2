@@ -19,6 +19,7 @@ public:
     FEHServo( FEHServoPort );
     void SetDegree( float );
     void Calibrate();
+    void TouchCalibrate();
     void Off();
     void DigitalOn();
     void DigitalOff();
