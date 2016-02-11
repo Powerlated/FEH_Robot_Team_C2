@@ -1,3 +1,6 @@
+#ifndef LCDCOLORS_H
+#define LCDCOLORS_H
+
 /* A world of color for the LCD! */
 
 #define BLACK					0x000000
@@ -141,3 +144,5 @@
 #define LIGHTYELLOW				0xFFFFE0
 #define IVORY					0xFFFFF0
 #define WHITE					0xFFFFFF
+
+#endif // LCDCOLORS_H
