@@ -3,14 +3,15 @@
 #include "FEHLCD.h"
 #include "FEHUtility.h"
 #include "FEHServo.h"
+#include "string.h"
 
 FEHRPS RPS;
 
 #define OILPRESSMASK         0x000003 // bits 0,1
 #define OILMASK              0x000004 // bit 2
-#define REDBUTTONPRESSMASK   0x000018 // 4,5 bits 3,4
-#define WHITEBUTTONPRESSMASK 0x000060 // 6,7 bits 5,6
-#define BLUEBUTTONPRESSMASK  0x000180 // 8,9 bits 7,8
+#define REDBUTTONPRESSMASK   0x000003 // 4,5 bits 3,4
+#define WHITEBUTTONPRESSMASK 0x00000C // 6,7 bits 5,6
+#define BLUEBUTTONPRESSMASK  0x000030 // 8,9 bits 7,8
 #define REDBUTTONORDERMASK   0x000600 // 10,11 bits 9,10
 #define WHITEBUTTONORDERMASK 0x001800 // 12,13 bits 11,12
 #define BLUEBUTTONORDERMASK  0x006000 // 14,15 two bits 13,14
@@ -44,6 +45,260 @@ FEHRPS::FEHRPS()
     _RPS_objective = 0x0;
     _RPS_time = 0;
     _RPS_stop = false;
+}
+
+// Manually pick and configure a region
+// int region => { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }
+// char region => { a, b, c, d, e, f, g, h, i, j, k, l } || { A, B, C, D, E, F, G, H, I, J, K, L }
+void FEHRPS::Initialize( int region )
+{
+    if( !_xbee.IsInitialized() )
+        _xbee.Initialize();
+
+    if( !_enabled )
+    {
+//		if( !_xbee.IsInitialized() )
+        _xbee.Initialize();
+
+    if( !_enabled )
+    {
+//		_enabled = true;
+//		return;
+
+        // check range of region
+        if( region < 0 )
+        {
+            region = 0;
+        }
+        else if( region > 11 )
+        {
+            region = 11;
+        }
+
+        _region = region;
+
+        // configure xbee
+
+        //_xbee.DisableInterrupt();
+
+        LCD.Clear();
+
+        char txbuffer[ 10 ];
+        unsigned int txlength = 0;
+
+        char rxbuffer[ 10 ];
+        unsigned int rxlength = 0;
+
+        // enter AT mode
+        bool entered_cmd_mode(false);
+        while(!entered_cmd_mode)
+        {
+            LCD.Write( "Enter cmd mode..." );
+            txbuffer[ 0 ] = '+';
+            txbuffer[ 1 ] = '+';
+            txbuffer[ 2 ] = '+';
+            txlength = _xbee.SendData( txbuffer, 3 );
+            //Sleep( 1000 );
+            rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
+            if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+            {
+                LCD.WriteLine(" ");
+                LCD.WriteLine("Waiting for response...");
+                Sleep(2500);
+                rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, '0');
+                if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+                {
+                    LCD.WriteLine( "Enter cmd mode FAILED" );
+                    LCD.Write( "with Data: ");
+                    for(int i=0 ; i<rxlength ; i++)
+                    {
+                        LCD.Write(rxbuffer[i]);
+                    }
+                    LCD.WriteLine( " " );
+                    LCD.WriteLine("Trying again...");
+                }
+                else
+                    entered_cmd_mode = true;
+            }
+            else
+                entered_cmd_mode = true;
+        }
+        LCD.Write("Data: ");
+        for( int i = 0; i < rxlength; i++ )
+        {
+            LCD.Write( rxbuffer[ i ] );
+//			LCD.Write( " " );
+        }
+        LCD.WriteLine( " " );
+
+        // set my address
+        LCD.Write( "Set wireless id..." );
+        txbuffer[ 0 ] = 'A';
+        txbuffer[ 1 ] = 'T';
+        txbuffer[ 2 ] = 'M';
+        txbuffer[ 3 ] = 'Y';
+        txbuffer[ 4 ] = '0' + ( _region / 4 + 1 );
+        txbuffer[ 5 ] = '1';
+        txbuffer[ 6 ] = '0';
+        txbuffer[ 7 ] = '0' + ( _region % 4 );
+        txbuffer[ 8 ] = '\r';
+        txlength = _xbee.SendData( txbuffer, 9 );
+    //	Sleep( 100 );
+        rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
+        if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+        {
+            LCD.WriteLine( "Error with RPS configuration" );
+            return;
+        }
+        for( int i = 0; i < rxlength; i++ )
+        {
+            LCD.Write( rxbuffer[ i ] );
+//			LCD.Write( " " );
+        }
+        LCD.WriteLine( " " );
+
+        // set my pan id
+        LCD.Write( "Set network id..." );
+        txbuffer[ 0 ] = 'A';
+        txbuffer[ 1 ] = 'T';
+        txbuffer[ 2 ] = 'I';
+        txbuffer[ 3 ] = 'D';
+        txbuffer[ 4 ] = '0' + ( _region / 4 + 1 );
+        txbuffer[ 5 ] = '0';
+        txbuffer[ 6 ] = '0';
+        txbuffer[ 7 ] = '0';
+        txbuffer[ 8 ] = '\r';
+        txlength = _xbee.SendData( txbuffer, 9 );
+    //	Sleep( 100 );
+        rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
+        if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+        {
+            LCD.WriteLine( "Error with RPS configuration" );
+            return;
+        }
+        for( int i = 0; i < rxlength; i++ )
+        {
+            LCD.Write( rxbuffer[ i ] );
+        }
+        LCD.WriteLine( " " );
+
+        // set my destination (low)
+        LCD.Write( "Set course id (low)..." );
+        txbuffer[ 0 ] = 'A';
+        txbuffer[ 1 ] = 'T';
+        txbuffer[ 2 ] = 'D';
+        txbuffer[ 3 ] = 'L';
+        txbuffer[ 4 ] = '0' + ( _region / 4 + 1 );
+        txbuffer[ 5 ] = '0';
+        txbuffer[ 6 ] = '0';
+        txbuffer[ 7 ] = '0' + ( _region % 4 );
+        txbuffer[ 8 ] = '\r';
+        txlength = _xbee.SendData( txbuffer, 9 );
+    //	Sleep( 100 );
+        rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
+        if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+        {
+            LCD.WriteLine( "Error with RPS configuration" );
+            return;
+        }
+        for( int i = 0; i < rxlength; i++ )
+        {
+            LCD.Write( rxbuffer[ i ] );
+        }
+        LCD.WriteLine( " " );
+
+        // set my destination (high)
+        LCD.Write( "Set course id (high)..." );
+        txbuffer[ 0 ] = 'A';
+        txbuffer[ 1 ] = 'T';
+        txbuffer[ 2 ] = 'D';
+        txbuffer[ 3 ] = 'H';
+        txbuffer[ 4 ] = '0';
+        txbuffer[ 5 ] = '0';
+        txbuffer[ 6 ] = '0';
+        txbuffer[ 7 ] = '0';
+        txbuffer[ 8 ] = '\r';
+        txlength = _xbee.SendData( txbuffer, 9 );
+    //	Sleep( 100 );
+        rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
+        if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+        {
+            LCD.WriteLine( "Error with RPS configuration" );
+            return;
+        }
+        for( int i = 0; i < rxlength; i++ )
+        {
+            LCD.Write( rxbuffer[ i ] );
+        }
+        LCD.WriteLine( " " );
+
+        // write to flash
+        LCD.Write( "Writing config..." );
+        txbuffer[ 0 ] = 'A';
+        txbuffer[ 1 ] = 'T';
+        txbuffer[ 2 ] = 'W';
+        txbuffer[ 3 ] = 'R';
+        txbuffer[ 4 ] = '\r';
+        txlength = _xbee.SendData( txbuffer, 5 );
+    //	Sleep( 100 );
+        rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
+        if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+        {
+            LCD.WriteLine( "Error with RPS configuration" );
+            return;
+        }
+        for( int i = 0; i < rxlength; i++ )
+        {
+            LCD.Write( rxbuffer[ i ] );
+        }
+        LCD.WriteLine( " " );
+
+        // exit command mode
+        LCD.Write( "Exit command mode..." );
+        txbuffer[ 0 ] = 'A';
+        txbuffer[ 1 ] = 'T';
+        txbuffer[ 2 ] = 'C';
+        txbuffer[ 3 ] = 'N';
+        txbuffer[ 4 ] = '\r';
+        txlength = _xbee.SendData( txbuffer, 5 );
+    //	Sleep( 100 );
+        rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
+        if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+        {
+            LCD.WriteLine( "Error with RPS configuration" );
+            return;
+        }
+        for( int i = 0; i < rxlength; i++ )
+        {
+            LCD.Write( rxbuffer[ i ] );
+        }
+        LCD.WriteLine( " " );
+
+        // show success
+        LCD.Write( "Successfully initialized  region: " );
+        LCD.WriteLine( CurrentRegionLetter() );
+
+//		_xbee.EnableInterrupt();
+
+        //Wait to ensure that a connection is made
+        _enabled = true;
+        while( WaitForPacket() == 0x00);
+        LCD.WriteLine("RPS Enabled Successfully");
+        LCD.Clear();
+    }
+    }
+}
+
+void FEHRPS::Initialize( char region )
+{
+    if( region >= 'A' && region <= 'L' )
+    {
+        Initialize( (int)( region - 'A' ) );
+    }
+    else if( region >= 'a' && region <= 'l' )
+    {
+        Initialize( (int)( region - 'a' ) );
+    }
 }
 
 void FEHRPS::InitializeMenu()
@@ -104,17 +359,29 @@ void FEHRPS::InitializeMenu()
 
 void FEHRPS::InitializeTouchMenu()
 {
-    LCD.Clear(BLACK);
-	int c=0, n;
-	float x, y;
+	int cancel = 1;
+    int c=0, d=0, n;
+    float x, y;
     char region;
 
     FEHIcon::Icon regions_title[1];
     char regions_title_label[1][20] = {"Select RPS Region"};
-    FEHIcon::DrawIconArray(regions_title, 1, 1, 1, 201, 1, 1, regions_title_label, BLACK, WHITE);
 
-	FEHIcon::Icon regions[8];
-	char regions_labels[8][20] = {"A", "B", "C", "D", "E", "F", "G", "H"};
+    FEHIcon::Icon regions[8];
+    char regions_labels[8][20] = {"A", "B", "C", "D", "E", "F", "G", "H"};
+
+    FEHIcon::Icon confirm_title[1];
+    char confirm_title_label[1][20] = {""};
+
+    FEHIcon::Icon confirm[2];
+    char confirm_labels[2][20] = {"Ok", "Cancel"};
+
+	while(cancel) {
+    c=0;
+    d=0;
+    LCD.Clear(BLACK);
+
+    FEHIcon::DrawIconArray(regions_title, 1, 1, 1, 201, 1, 1, regions_title_label, BLACK, WHITE);
     FEHIcon::DrawIconArray(regions, 2, 4, 40, 1, 1, 1, regions_labels, WHITE, WHITE);
 
 	while (!c)
@@ -135,285 +402,71 @@ void FEHRPS::InitializeTouchMenu()
     {
     case 1:
         region = 'A';
+        strcpy(confirm_title_label[0], "Choice: A");
         break;
     case 2:
         region = 'B';
+        strcpy(confirm_title_label[0], "Choice: B");
         break;
     case 3:
         region = 'C';
+        strcpy(confirm_title_label[0], "Choice: C");
         break;
     case 4:
         region = 'D';
+        strcpy(confirm_title_label[0], "Choice: D");
         break;
     case 5:
         region = 'E';
+        strcpy(confirm_title_label[0], "Choice: E");
         break;
     case 6:
         region = 'F';
+        strcpy(confirm_title_label[0], "Choice: F");
         break;
     case 7:
         region = 'G';
+        strcpy(confirm_title_label[0], "Choice: G");
         break;
     case 8:
         region = 'H';
+        strcpy(confirm_title_label[0], "Choice: H");
         break;
     }
-    Initialize(region);
-}
 
-// Manually pick and configure a region
-// int region => { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }
-// char region => { a, b, c, d, e, f, g, h, i, j, k, l } || { A, B, C, D, E, F, G, H, I, J, K, L }
-void FEHRPS::Initialize( int region )
-{
-	if( !_xbee.IsInitialized() )
-		_xbee.Initialize();
+    LCD.Clear(BLACK);
+    FEHIcon::DrawIconArray(confirm_title, 1, 1, 60, 201, 1, 1, confirm_title_label, BLACK, WHITE);
+    FEHIcon::DrawIconArray(confirm, 1, 2, 60, 60, 1, 1, confirm_labels, WHITE, WHITE);
 
-	if( !_enabled )
+	while (!d)
 	{
-//		if( !_xbee.IsInitialized() )
-		_xbee.Initialize();
-
-	if( !_enabled )
-	{
-//		_enabled = true;
-//		return;
-
-		// check range of region
-		if( region < 0 )
-		{
-			region = 0;
-		}
-		else if( region > 11 )
-		{
-			region = 11;
-		}
-
-		_region = region;
-
-		// configure xbee
-
-		//_xbee.DisableInterrupt();
-
-		LCD.Clear();
-
-		char txbuffer[ 10 ];
-		unsigned int txlength = 0;
-
-		char rxbuffer[ 10 ];
-		unsigned int rxlength = 0;
-
-		// enter AT mode
-		bool entered_cmd_mode(false);
-		while(!entered_cmd_mode)
-		{
-			LCD.Write( "Enter cmd mode..." );
-			txbuffer[ 0 ] = '+';
-			txbuffer[ 1 ] = '+';
-			txbuffer[ 2 ] = '+';
-			txlength = _xbee.SendData( txbuffer, 3 );
-			//Sleep( 1000 );
-			rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
-			if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
-			{
-				LCD.WriteLine(" ");
-				LCD.WriteLine("Waiting for response...");
-				Sleep(2500);
-				rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, '0');
-				if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
-				{
-					LCD.WriteLine( "Enter cmd mode FAILED" );
-					LCD.Write( "with Data: ");
-					for(int i=0 ; i<rxlength ; i++)
-					{
-						LCD.Write(rxbuffer[i]);
-					}
-					LCD.WriteLine( " " );
-					LCD.WriteLine("Trying again...");
-				}
-				else
-					entered_cmd_mode = true;
-			}
-			else
-				entered_cmd_mode = true;
-		}
-		LCD.Write("Data: ");
-		for( int i = 0; i < rxlength; i++ )
-		{
-			LCD.Write( rxbuffer[ i ] );
-//			LCD.Write( " " );
-		}
-		LCD.WriteLine( " " );
-
-		// set my address
-		LCD.Write( "Set wireless id..." );
-		txbuffer[ 0 ] = 'A';
-		txbuffer[ 1 ] = 'T';
-		txbuffer[ 2 ] = 'M';
-		txbuffer[ 3 ] = 'Y';
-		txbuffer[ 4 ] = '0' + ( _region / 4 + 1 );
-		txbuffer[ 5 ] = '1';
-		txbuffer[ 6 ] = '0';
-		txbuffer[ 7 ] = '0' + ( _region % 4 );
-		txbuffer[ 8 ] = '\r';
-		txlength = _xbee.SendData( txbuffer, 9 );
-	//	Sleep( 100 );
-		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
-		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
-		{
-            LCD.WriteLine( "Error with RPS configuration" );
-			return;
-		}
-		for( int i = 0; i < rxlength; i++ )
-		{
-			LCD.Write( rxbuffer[ i ] );
-//			LCD.Write( " " );
-		}
-		LCD.WriteLine( " " );
-
-		// set my pan id
-		LCD.Write( "Set network id..." );
-		txbuffer[ 0 ] = 'A';
-		txbuffer[ 1 ] = 'T';
-		txbuffer[ 2 ] = 'I';
-		txbuffer[ 3 ] = 'D';
-		txbuffer[ 4 ] = '0' + ( _region / 4 + 1 );
-		txbuffer[ 5 ] = '0';
-		txbuffer[ 6 ] = '0';
-		txbuffer[ 7 ] = '0';
-		txbuffer[ 8 ] = '\r';
-		txlength = _xbee.SendData( txbuffer, 9 );
-	//	Sleep( 100 );
-		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
-		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
-		{
-            LCD.WriteLine( "Error with RPS configuration" );
-			return;
-		}
-		for( int i = 0; i < rxlength; i++ )
-		{
-			LCD.Write( rxbuffer[ i ] );
-		}
-		LCD.WriteLine( " " );
-
-		// set my destination (low)
-		LCD.Write( "Set course id (low)..." );
-		txbuffer[ 0 ] = 'A';
-		txbuffer[ 1 ] = 'T';
-		txbuffer[ 2 ] = 'D';
-		txbuffer[ 3 ] = 'L';
-		txbuffer[ 4 ] = '0' + ( _region / 4 + 1 );
-		txbuffer[ 5 ] = '0';
-		txbuffer[ 6 ] = '0';
-		txbuffer[ 7 ] = '0' + ( _region % 4 );
-		txbuffer[ 8 ] = '\r';
-		txlength = _xbee.SendData( txbuffer, 9 );
-	//	Sleep( 100 );
-		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
-		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
-		{
-            LCD.WriteLine( "Error with RPS configuration" );
-			return;
-		}
-		for( int i = 0; i < rxlength; i++ )
-		{
-			LCD.Write( rxbuffer[ i ] );
-		}
-		LCD.WriteLine( " " );
-
-		// set my destination (high)
-		LCD.Write( "Set course id (high)..." );
-		txbuffer[ 0 ] = 'A';
-		txbuffer[ 1 ] = 'T';
-		txbuffer[ 2 ] = 'D';
-		txbuffer[ 3 ] = 'H';
-		txbuffer[ 4 ] = '0';
-		txbuffer[ 5 ] = '0';
-		txbuffer[ 6 ] = '0';
-		txbuffer[ 7 ] = '0';
-		txbuffer[ 8 ] = '\r';
-		txlength = _xbee.SendData( txbuffer, 9 );
-	//	Sleep( 100 );
-		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
-		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
-		{
-            LCD.WriteLine( "Error with RPS configuration" );
-			return;
-		}
-		for( int i = 0; i < rxlength; i++ )
-		{
-			LCD.Write( rxbuffer[ i ] );
-		}
-		LCD.WriteLine( " " );
-
-		// write to flash
-		LCD.Write( "Writing config..." );
-		txbuffer[ 0 ] = 'A';
-		txbuffer[ 1 ] = 'T';
-		txbuffer[ 2 ] = 'W';
-		txbuffer[ 3 ] = 'R';
-		txbuffer[ 4 ] = '\r';
-		txlength = _xbee.SendData( txbuffer, 5 );
-	//	Sleep( 100 );
-		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
-		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
-		{
-            LCD.WriteLine( "Error with RPS configuration" );
-			return;
-		}
-		for( int i = 0; i < rxlength; i++ )
-		{
-			LCD.Write( rxbuffer[ i ] );
-		}
-		LCD.WriteLine( " " );
-
-		// exit command mode
-		LCD.Write( "Exit command mode..." );
-		txbuffer[ 0 ] = 'A';
-		txbuffer[ 1 ] = 'T';
-		txbuffer[ 2 ] = 'C';
-		txbuffer[ 3 ] = 'N';
-		txbuffer[ 4 ] = '\r';
-		txlength = _xbee.SendData( txbuffer, 5 );
-	//	Sleep( 100 );
-		rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
-		if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
-		{
-            LCD.WriteLine( "Error with RPS configuration" );
-			return;
-		}
-		for( int i = 0; i < rxlength; i++ )
-		{
-			LCD.Write( rxbuffer[ i ] );
-		}
-		LCD.WriteLine( " " );
-
-		// show success
-		LCD.Write( "Successfully initialized  region: " );
-		LCD.WriteLine( CurrentRegionLetter() );
-
-//		_xbee.EnableInterrupt();
-
-        //Wait to ensure that a connection is made
-        _enabled = true;
-        while( WaitForPacket() == 0x00);
-        LCD.WriteLine("RPS Enabled Successfully");
-        LCD.Clear();
+        if (LCD.Touch(&x, &y))
+        {
+            for (n=0; n<=1; n++)
+            {
+                if (confirm[n].Pressed(x, y, 0))
+                {
+                    confirm[n].WhilePressed(x, y);
+                    d = n+1;
+                }
+            }
+        }
 	}
+    switch (d)
+    {
+    case 1:
+        cancel = 0;
+        break;
+    case 2:
+        cancel = 1;
+        break;
     }
+    }
+
+    Initialize( region );
+
 }
 
-void FEHRPS::Initialize( char region )
-{
-	if( region >= 'A' && region <= 'L' )
-	{
-		Initialize( (int)( region - 'A' ) );
-	}
-	else if( region >= 'a' && region <= 'l' )
-	{
-		Initialize( (int)( region - 'a' ) );
-	}
-}
 
 // return the current course number { 1, 2, 3 }
 unsigned char FEHRPS::CurrentCourse()
@@ -440,63 +493,22 @@ int FEHRPS::CurrentRegion()
 
 // Objective functions:
 
-//returns Oil Press direction
-int FEHRPS::OilPress()
-{
-	int x = (_RPS_objective & OILPRESSMASK);
-
-	if( x == 0 || x == 2)
-		return 1;
-	else
-		return 0;
-}
-
 // returns direction oil has been pressed
-int FEHRPS::OilDirec()
+int FEHRPS::RedSwitchDirection()
 {
-    return ( ( _RPS_objective & OILMASK ) >> 2 );
+    return (  _RPS_objective & REDBUTTONPRESSMASK  );
 }
 
 // returns order of red button press
-int FEHRPS::RedButtonPressed()
+int FEHRPS::WhiteSwitchDirection()
 {
-    return ( ( _RPS_objective & REDBUTTONPRESSMASK ) >> 3 );
+    return ( ( _RPS_objective & WHITEBUTTONPRESSMASK ) >> 2 );
 }
 
 // returns order of white button press
-int FEHRPS::WhiteButtonPressed()
+int FEHRPS::BlueSwitchDirection()
 {
-    return ( ( _RPS_objective & WHITEBUTTONPRESSMASK ) >> 5 );
-}
-
-// returns order of blue button press
-int FEHRPS::BlueButtonPressed()
-{
-    return ( ( _RPS_objective & BLUEBUTTONPRESSMASK ) >> 7 );
-}
-
-// returns first button to be pressed
-int FEHRPS::RedButtonOrder()
-{
-    return ( ( _RPS_objective & REDBUTTONORDERMASK ) >> 9 );
-}
-
-// returns second button to be pressed
-int FEHRPS::WhiteButtonOrder()
-{
-    return ( ( _RPS_objective & WHITEBUTTONORDERMASK ) >> 11 );
-}
-
-// returns third button to be pressed
-int FEHRPS::BlueButtonOrder()
-{
-    return ( ( _RPS_objective & BLUEBUTTONORDERMASK ) >> 13 );
-}
-
-// returns the number of buttons that have been pressed regardless of order (0-3)
-int FEHRPS::ButtonsPressed()
-{
-	return( ( _RPS_objective & BUTTONSPRESSEDMASK ) >> 15);
+    return ( ( _RPS_objective & BLUEBUTTONPRESSMASK ) >> 4 );
 }
 
 // returns the match time in seconds

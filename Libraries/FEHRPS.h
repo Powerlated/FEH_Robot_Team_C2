@@ -36,32 +36,14 @@ public:
 	
 	// Objective functions:
 
-    // returns whether the oil switch has been pressed
-    int OilPress();
+    // returns required direction for the red switch
+    int RedSwitchDirection();
 	
-	// direction in which the oil switch must be hit
-	int OilDirec();
-
-    // returns the order that the Red button was pressed
-    int RedButtonPressed();
+	// returns required direction for the white switch
+    int WhiteSwitchDirection();
 	
-	// returns the order that the white button was pressed
-    int WhiteButtonPressed();
-	
-	// returns the order that the blue button was pressed
-    int BlueButtonPressed();
-
-    // returns the order that the red button must be pressed
-    int RedButtonOrder();
-	
-	// returns the order that the white button must be pressed
-    int WhiteButtonOrder();
-	
-	// returns the order that the blue button must be pressed
-    int BlueButtonOrder();
-
-    // returns the number of buttons that have been pressed regardless of order
-    int ButtonsPressed();
+	// returns required direction for the blue switch
+    int BlueSwitchDirection();
 
 	// returns the match time in seconds
 	int Time();
