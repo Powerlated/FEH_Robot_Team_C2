@@ -28,7 +28,7 @@
 
 #if _FATFS != _FFCONF
 #error Wrong configuration file (ffconf.h).
-#endif*/
+#endif
 
 
 
