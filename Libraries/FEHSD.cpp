@@ -69,6 +69,48 @@ void FEHSD::Printf(
     f_printf(&logfil, str);
 }
 
+int FEHSD::power(int base, int exp){
+    int result = 1;
+    int i = 0;
+    for(i = 0; i < exp; i++){
+        result *= base;
+    }
+    return result;
+}
+
+// val is the value to convert; precision is the number of decimal places
+// to include, limit 10
+char* FEHSD::FloatToString(float val, int precision){
+    const int STR_SIZE = 20;
+    char* str = new char[STR_SIZE];
+    float val_copy = val;
+    int digit = 0, len = 0, i = 0, j = 0;
+    val_copy = val;
+    // get length of argr
+    // loop until int part of arg is 0
+    while(int(val_copy) != 0){
+        val_copy /= 10;
+        len++;
+    }
+    // put the integer part of the num
+    for(i = len - 1; i != -1; i--){
+        digit = (int) (val / power(10, i));
+        digit %= 10;
+        digit += '0';
+        str[j++] = digit;
+    }
+    str[j++] = '.';
+    // put the floating part of the num
+    for(i = 1; i <= precision && i <= 10; i++){
+        digit = (int) (val * power(10, i));
+        digit %= 10;
+        digit += '0';
+        str[j++] = digit;
+    }
+    str[j++] = '\0';
+    return str;
+}
+
 int FEHSD::Initialize(){
 
     PORTE_PCR6 = PORT_PCR_MUX(1);

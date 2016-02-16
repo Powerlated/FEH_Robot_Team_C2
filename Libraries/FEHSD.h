@@ -14,10 +14,13 @@ public:
     void CloseLog();
     void Printf(const TCHAR* str,	/* Pointer to the format string */
     ...	);
+    char* FloatToString(float val, int precision);
+
 
 private:
 	int isOpen;
     int Initialize();
+    int power(int base, int exponent);
 };
 
 extern FEHSD SD;
