@@ -261,7 +261,7 @@ void portA_isr()
 {
     int pins[11] = { 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7 };
 
-    for( int i=0 ; i<10 ; i++)
+    for( int i=0 ; i<11 ; i++)
     {
         if( (PORTA_ISFR & (1<<pins[i])) != 0)
         {
@@ -278,7 +278,7 @@ void portE_isr()
     {
         if( (PORTE_ISFR & (1<<pins[i])) != 0)
         {
-            interrupt_counts[i+24]++;
+            interrupt_counts[i+25]++;
             PORTE_ISFR &= (1<<pins[i]);
         }
     }
