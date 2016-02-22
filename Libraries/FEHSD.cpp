@@ -86,13 +86,20 @@ char* FEHSD::FloatToString(float val, int precision){
     float val_copy = val;
     int digit = 0, len = 0, i = 0, j = 0;
     val_copy = val;
+
+    //  if the value is negative, print a '-' char then make the float positive
+    if(val < 0){
+      str[j++] = '-';
+        val = -val;
+        val_copy = -val_copy;
+    }
     // get length of argr
     // loop until int part of arg is 0
     while(int(val_copy) != 0){
         val_copy /= 10;
         len++;
     }
-    // put the integer part of the num
+    //  put the integer part of the num
     for(i = len - 1; i != -1; i--){
         digit = (int) (val / power(10, i));
         digit %= 10;
