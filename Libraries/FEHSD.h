@@ -5,6 +5,7 @@
 #include "ffconf.h"
 #include "diskio.h"
 
+#define STR_SIZE = 20
 
 class FEHSD
 {
@@ -21,6 +22,7 @@ private:
 	int isOpen;
     int Initialize();
     int power(int base, int exponent);
+    char str[STRING SIZE];
 };
 
 extern FEHSD SD;

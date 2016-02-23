@@ -81,9 +81,6 @@ int FEHSD::power(int base, int exp){
 // val is the value to convert; precision is the number of decimal places
 // to include, limit 10
 char* FEHSD::FloatToString(float val, int precision){
-    const int STR_SIZE = 20;
-    char str[STR_SIZE];
-    //char* str = new char[STR_SIZE];
     float val_copy = val;
     int digit = 0, len = 0, i = 0, j = 0;
     val_copy = val;
