@@ -82,7 +82,8 @@ int FEHSD::power(int base, int exp){
 // to include, limit 10
 char* FEHSD::FloatToString(float val, int precision){
     const int STR_SIZE = 20;
-    char* str = new char[STR_SIZE];
+    char str[STR_SIZE];
+    //char* str = new char[STR_SIZE];
     float val_copy = val;
     int digit = 0, len = 0, i = 0, j = 0;
     val_copy = val;
