@@ -5,7 +5,7 @@
 #include "ffconf.h"
 #include "diskio.h"
 
-#define STR_SIZE = 20
+#define STR_SIZE 20
 
 class FEHSD
 {
