@@ -22,7 +22,7 @@ private:
 	int isOpen;
     int Initialize();
     int power(int base, int exponent);
-    char str[STRING SIZE];
+    char str[STR SIZE];
 };
 
 extern FEHSD SD;
