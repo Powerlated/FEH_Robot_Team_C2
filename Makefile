@@ -71,4 +71,14 @@ else
 	@tools/copyS19
 endif
 run:
+
+	@arm-none-eabi-size  ../$(TARGET).elf > ../size.txt
+	@echo ----------------------------------------------
+ifeq ($(OS),Windows_NT)
+	@tools\sizeGet.bat
+else
+	@tools/sizeGet
+endif
+	@echo ----------------------------------------------
 	@echo Download Successful. Please eject the SD card. >&2
+	@echo ----------------------------------------------
