@@ -1,0 +1,17 @@
+IFS=$' ' read -d '' -r -a lines < ../size.txt
+
+
+let text="${lines[5]}"
+let data="${lines[6]}"
+let bss="${lines[7]}"
+
+
+let flash=text+data
+let ram=data+text
+let flash_total=474096
+let ram_total=125952
+let flash_perc=(flash*100/flash_total)
+let ram_perc=(ram*100/ram_total)
+
+echo "Flash Usage: $flash / $flash_total ($flash_perc%)"
+echo "RAM Usage: $ram / $ram_total ($ram_perc%)"
