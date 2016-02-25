@@ -5,8 +5,6 @@
 #include "ffconf.h"
 #include "diskio.h"
 
-#define STR_SIZE 20
-
 class FEHSD
 {
 public:
@@ -15,14 +13,11 @@ public:
     void CloseLog();
     void Printf(const TCHAR* str,	/* Pointer to the format string */
     ...	);
-    char* FloatToString(float val, int precision);
 
 
 private:
 	int isOpen;
     int Initialize();
-    int power(int base, int exponent);
-    char str[STR_SIZE];
 };
 
 extern FEHSD SD;

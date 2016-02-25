@@ -3880,7 +3880,14 @@ int f_puts (
 }
 
 
-
+int power(int base, int exp){
+    int result = 1;
+    int i = 0;
+    for(i = 0; i < exp; i++){
+        result *= base;
+    }
+    return result;
+}
 
 /*-----------------------------------------------------------------------*/
 /* Put a formatted string to the file                                    */
@@ -3888,18 +3895,16 @@ int f_puts (
 int f_printf (
 	FIL* fil,			/* Pointer to the file object */
 	const TCHAR* str,	/* Pointer to the format string */
-	...					/* Optional arguments... */
+	va_list arp					/* Optional arguments... */
 )
 {
-	va_list arp;
-	BYTE f, r;
-	UINT i, j, w;
+    BYTE f, r;
+    UINT i, j, w, len;
 	ULONG v;
-	TCHAR c, d, s[16], *p;
-	int res, cc;
+    TCHAR c, d, s[16], *p;
+    int res, cc, digit;
+    double val, val_copy;
 
-
-	va_start(arp, str);
 
 	for (cc = res = 0; cc != EOF; res += cc) {
 		c = *str++;
@@ -3918,6 +3923,9 @@ int f_printf (
 				f = 2; c = *str++;
 			}
 		}
+        if (c == '.'){
+            c = *str++;
+        }
 		while (IsDigit(c)) {		/* Precision */
 			w = w * 10 + c - '0';
 			c = *str++;
@@ -3938,6 +3946,44 @@ int f_printf (
 			while (j++ < w) res += (cc = f_putc(' ', fil));
 			if (cc != EOF) cc = res;
 			continue;
+        case 'F':
+            val = va_arg(arp, double);
+            val_copy = val;
+            len = 0;
+
+            //  if the value is negative, print a '-' char then make the float positive
+            if(val < 0){
+                res += (cc = f_putc('-', fil));
+                val = -val;
+                val_copy = -val_copy;
+            }
+            // get length of argr
+            // loop until int part of arg is 0
+            while(((int) val_copy) != 0){
+                val_copy /= 10;
+                len++;
+            }
+            //  put the integer part of the num
+            for(j = len - 1; j != -1; j--){
+                digit = (int) (val / power(10, j));
+                digit %= 10;
+                digit += '0';
+                res += (cc = f_putc(digit, fil));
+            }
+            res += (cc = f_putc('.', fil));
+            // default precision to 3
+            if(w == 0){
+                w = 3;
+            }
+            // put the floating part of the num
+            for(i = 1; i <= w; i++){
+                digit = (int) (val * power(10, i));
+                digit %= 10;
+                digit += '0';
+                res += (cc = f_putc(digit, fil));
+            }
+            if(cc != EOF) cc = res;
+            continue;
 		case 'C' :					/* Character */
 			cc = f_putc((TCHAR)va_arg(arp, int), fil); continue;
 		case 'B' :					/* Binary */

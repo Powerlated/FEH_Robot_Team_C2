@@ -245,7 +245,7 @@ FRESULT f_chdir (const TCHAR*);						/* Change current directory */
 FRESULT f_getcwd (TCHAR*, UINT);					/* Get current directory */
 int f_putc (TCHAR, FIL*);							/* Put a character to the file */
 int f_puts (const TCHAR*, FIL*);					/* Put a string to the file */
-int f_printf (FIL*, const TCHAR*, ...);				/* Put a formatted string to the file */
+int f_printf (FIL*, const TCHAR*, va_list args);				/* Put a formatted string to the file */
 TCHAR* f_gets (TCHAR*, int, FIL*);					/* Get a string from the file */
 
 #ifndef EOF
