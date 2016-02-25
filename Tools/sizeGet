@@ -7,7 +7,7 @@ let bss="${lines[7]}"
 
 
 let flash=text+data
-let ram=data+text
+let ram=data+bss
 let flash_total=474096
 let ram_total=125952
 let flash_perc=(flash*100/flash_total)
