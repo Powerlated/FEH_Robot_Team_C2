@@ -133,13 +133,13 @@ FEHLCD LCD;
 bool initialized = false;
 
 
-#define LCD_WIDTH			320
-#define LCD_HEIGHT			240
+#define LCD_WIDTH           320
+#define LCD_HEIGHT          240
 
 //Set DotClk Frequency
 #define DotClk_H        0x01//01
-#define DotClk_M		0xa0//50
-#define DotClk_L		0xff
+#define DotClk_M        0xa0//50
+#define DotClk_L        0xff
 
 //Set the LCD panel mode
 #define Panel_Data_Width_Bit   0 //0:18bit; 1:24bit;
@@ -206,23 +206,23 @@ bool initialized = false;
 
 //Horizontal Cycle = Horizontal Pulse Width + Horizontal Back Porch + Horizontal Display Period + Horizontal Front Porch
 //Horizontal Start Position = Horizontal Pulse Width + Horizontal Back Porch
-#define LCD_HORI_FRONT_PORCH		0x45//0x40//0x90//0x30//2
-#define LCD_HORI_BACK_PORCH			0x12//0x10//0x05//0x0F//2
-#define LCD_HORI_PULSE_WIDTH		0x02//1e //0x50//0x1e//0x60//41
+#define LCD_HORI_FRONT_PORCH        0x45//0x40//0x90//0x30//2
+#define LCD_HORI_BACK_PORCH         0x12//0x10//0x05//0x0F//2
+#define LCD_HORI_PULSE_WIDTH        0x02//1e //0x50//0x1e//0x60//41
 
 //Vertical Cycle = Vertical Pulse Width + Vertical Back Porch + Vertical Display Period + Vertical Front Porch
 //Vertical Start Position = Vertical Pulse Width + Vertical Back Porch
-#define LCD_VERT_FRONT_PORCH		14//3//2
-#define LCD_VERT_BACK_PORCH			9//2//0//2
-#define LCD_VERT_PULSE_WIDTH		2//2//10
+#define LCD_VERT_FRONT_PORCH        14//3//2
+#define LCD_VERT_BACK_PORCH         9//2//0//2
+#define LCD_VERT_PULSE_WIDTH        2//2//10
 
-#define REFRESH_RATE				70	//Hz
+#define REFRESH_RATE                70  //Hz
 
-#define LCD_HORI_CYCLE				(LCD_HORI_PULSE_WIDTH + LCD_HORI_BACK_PORCH + LCD_WIDTH + LCD_HORI_FRONT_PORCH)
-#define LCD_VERT_CYCLE				(LCD_VERT_PULSE_WIDTH + LCD_VERT_BACK_PORCH + LCD_HEIGHT + LCD_VERT_FRONT_PORCH)
+#define LCD_HORI_CYCLE              (LCD_HORI_PULSE_WIDTH + LCD_HORI_BACK_PORCH + LCD_WIDTH + LCD_HORI_FRONT_PORCH)
+#define LCD_VERT_CYCLE              (LCD_VERT_PULSE_WIDTH + LCD_VERT_BACK_PORCH + LCD_HEIGHT + LCD_VERT_FRONT_PORCH)
 
-#define LCD_HORI_START				(LCD_HORI_PULSE_WIDTH + LCD_HORI_BACK_PORCH)
-#define LCD_VERT_START				(LCD_VERT_PULSE_WIDTH + LCD_VERT_BACK_PORCH)
+#define LCD_HORI_START              (LCD_HORI_PULSE_WIDTH + LCD_HORI_BACK_PORCH)
+#define LCD_VERT_START              (LCD_VERT_PULSE_WIDTH + LCD_VERT_BACK_PORCH)
 
 
 void FEHLCD::_Initialize()
@@ -293,7 +293,7 @@ void FEHLCD::_Initialize()
 
     //PLL frequency=((0x2A+1)*8(crystal clock))/(0x02+1)
     WriteIndex(0xE2);
-    WriteParameter(0x1D);	 //0x2A
+    WriteParameter(0x1D);    //0x2A
     WriteParameter(0x02);
     WriteParameter(0x04);
 
@@ -313,7 +313,7 @@ void FEHLCD::_Initialize()
 
     //Set DotClk Frequency
     WriteIndex(0xE6);
-    WriteParameter(DotClk_H);	//0x01
+    WriteParameter(DotClk_H);   //0x01
     WriteParameter(DotClk_M);
     WriteParameter(DotClk_L);
 
@@ -328,32 +328,32 @@ void FEHLCD::_Initialize()
 
     //Set the LCD panel mode
     WriteIndex(0xB0);
-    WriteParameter(Panel_Mode1);	     //0x3C
-    WriteParameter(Panel_Mode2);	       //0x0F
+    WriteParameter(Panel_Mode1);         //0x3C
+    WriteParameter(Panel_Mode2);           //0x0F
     WriteParameter(HPS>>8);
     WriteParameter(HPS&0xFF);
     WriteParameter(VPS>>8);
-    WriteParameter(VPS&0xFF);  		  /////////
+    WriteParameter(VPS&0xFF);         /////////
     WriteParameter(Panel_Mode3);     //0
 
 
     WriteIndex(0xB4);
-    WriteParameter(LCD_HORI_CYCLE>>8);	     //0x02
-    WriteParameter(LCD_HORI_CYCLE&0xFF);	  	 //0x0D
+    WriteParameter(LCD_HORI_CYCLE>>8);       //0x02
+    WriteParameter(LCD_HORI_CYCLE&0xFF);         //0x0D
     WriteParameter(LCD_HORI_FRONT_PORCH>>8);
-    WriteParameter(LCD_HORI_FRONT_PORCH&0xFF);	   //0x02
-    WriteParameter(LCD_HORI_PULSE_WIDTH);	//////////0x29
+    WriteParameter(LCD_HORI_FRONT_PORCH&0xFF);     //0x02
+    WriteParameter(LCD_HORI_PULSE_WIDTH);   //////////0x29
     WriteParameter(0x00);
-    WriteParameter(0x00); 	//0xD1
+    WriteParameter(0x00);   //0xD1
     WriteParameter(0x00);
 
 
     WriteIndex(0xB6);
     WriteParameter(LCD_VERT_CYCLE>>8);      //0x01
-    WriteParameter(LCD_VERT_CYCLE&0xFF);	   //0x1e
+    WriteParameter(LCD_VERT_CYCLE&0xFF);       //0x1e
     WriteParameter(LCD_VERT_FRONT_PORCH>>8);
     WriteParameter(LCD_VERT_FRONT_PORCH&0xFF);  //0x02
-    WriteParameter(LCD_VERT_PULSE_WIDTH);  //0x0A		///////
+    WriteParameter(LCD_VERT_PULSE_WIDTH);  //0x0A       ///////
     WriteParameter(0x00);
     WriteParameter(0x00);
 
@@ -366,7 +366,7 @@ void FEHLCD::_Initialize()
     WriteParameter(Display_Pixel_Format<<4);
 
 
-    WriteIndex(0x2A);	 //set coloum address and page address
+    WriteIndex(0x2A);    //set coloum address and page address
     WriteParameter(0x00);
     WriteParameter(0x00);
     WriteParameter(HPS>>8);
@@ -381,8 +381,8 @@ void FEHLCD::_Initialize()
     WriteIndex(0x36);
     WriteParameter(0x00);
 
-    WriteIndex(0xF0);	   //Set Pixel Data Interface
-    WriteParameter(Pixel_Data_Interface_Format);	   //0x04:18bit,0x03:16bit,0x05:24bit
+    WriteIndex(0xF0);      //Set Pixel Data Interface
+    WriteParameter(Pixel_Data_Interface_Format);       //0x04:18bit,0x03:16bit,0x05:24bit
 
 
     WriteIndex(0xB8);
@@ -434,9 +434,9 @@ void FEHLCD::_Initialize()
     Sleep(100);
 
     WriteIndex(0xBE);
-    WriteParameter(0x0E);	 //(set PWM frequency) PWM signal frequency = PLL clock / (256 * PWMF[7:0]) / 256
-    WriteParameter(0xF0);	 // (dummy value if DBC is used)
-    WriteParameter(0x01);	// (enable PWM controlled by DBC)
+    WriteParameter(0x0E);    //(set PWM frequency) PWM signal frequency = PLL clock / (256 * PWMF[7:0]) / 256
+    WriteParameter(0xF0);    // (dummy value if DBC is used)
+    WriteParameter(0x01);   // (enable PWM controlled by DBC)
     WriteParameter(0x00);
     WriteParameter(0x00);
     WriteParameter(0x0F);
@@ -458,7 +458,7 @@ FEHLCD::FEHLCD()
 
     _maxlines = 14;
     _maxcols = 26;
-	
+    
     _currentline = 0;
     _currentchar = 0;
 
@@ -484,21 +484,17 @@ void FEHLCD::Initialize()
 void FEHLCD::PrintImage(int x, int y)
 {
     SetDrawRegion(x,y,98,126);
-    int k=0;
-    for(int i=0;i<126;i++)
-    {
-        for(int j=0;j<98;j++)
-        {
+    int image_length = sizeof(image) / sizeof(image[0]);
+    for(int i = 0; i < image_length; i += 2){
+        for(int j = 0; j < image[i]; j++){
             unsigned char r, g, b;
-            if(image[k] ==0) {
+            if(image[i + 1] ==0) {
                 r = 255; g=255; b=255;
             }
-            else if(image[k]==1)
-            {
+            else if(image[i + 1]==1) {
                 r = 212; g=0; b=38;
             }
-            else
-            {
+            else {
                 r=181; g= 186; b=176;
             }
             //_forecolor = ConvertRGBColorTo16Bit(image[k][0],image[k][1],image[k][2]);
@@ -506,7 +502,6 @@ void FEHLCD::PrintImage(int x, int y)
 
             SetRegisterColorValues();
             _ForePixel();
-            k++;
         }
     }
 }
@@ -514,21 +509,17 @@ void FEHLCD::PrintImage(int x, int y)
 void FEHLCD::PrintLogo(int x, int y)
 {
     SetDrawRegion(x,y,149,39);
-    int k=0;
-    for(int i=0;i<39;i++)
-    {
-        for(int j=0;j<149;j++)
-        {
+    int logo_length = sizeof(logo) / sizeof(logo[0]);
+    for(int i = 0; i < logo_length; i += 2){
+        for(int j = 0; j < logo[i]; j++){
             unsigned char r, g, b;
-            if(logo[k] ==0) {
+            if(logo[i + 1] ==0) {
                 r = 255; g=255; b=255;
             }
-            else if(logo[k]==1)
-            {
+            else if(logo[i + 1]==1){
                 r = 0; g=0; b=0;
             }
-            else
-            {
+            else{
                 r = 212; g=0; b=38;
             }
             //_forecolor = ConvertRGBColorTo16Bit(image[k][0],image[k][1],image[k][2]);
@@ -536,9 +527,9 @@ void FEHLCD::PrintLogo(int x, int y)
 
             SetRegisterColorValues();
             _ForePixel();
-            k++;
         }
     }
+
 }
 
 void FEHLCD::SetOrientation(FEHLCDOrientation orientation)
@@ -581,13 +572,13 @@ unsigned int FEHLCD::ConvertFEHColorTo24Bit(FEHLCDColor color) {
     unsigned int htmlColor;
     switch(color)
     {
-    case White: 	htmlColor=0xFFFFFFu; break;
-    case Black: 	htmlColor=0x000000u; break;
-    case Red:   	htmlColor=0xFF0000u; break;
-    case Green: 	htmlColor=0x00FF00u; break;
-    case Blue:		htmlColor=0x0000FFu; break;
-	case Scarlet:	htmlColor=0x990000u; break;
-	case Gray:  	htmlColor=0x999999u; break;
+    case White:     htmlColor=0xFFFFFFu; break;
+    case Black:     htmlColor=0x000000u; break;
+    case Red:       htmlColor=0xFF0000u; break;
+    case Green:     htmlColor=0x00FF00u; break;
+    case Blue:      htmlColor=0x0000FFu; break;
+    case Scarlet:   htmlColor=0x990000u; break;
+    case Gray:      htmlColor=0x999999u; break;
     }
     return htmlColor;
 }
@@ -659,11 +650,11 @@ void FEHLCD::WriteAt(float f, int x, int y)
     d = (int) f;
     r = (int) ((f-d)*1000);
     if(f<0.)
-    	r=r*-1;
+        r=r*-1;
     if(f<0. && f>-1.)
-    	sprintf(num,"-%d.%03d",d,r);
+        sprintf(num,"-%d.%03d",d,r);
     else
-    	sprintf(num,"%d.%03d",d,r);
+        sprintf(num,"%d.%03d",d,r);
     WriteAt(num,x,y);
 }
 void FEHLCD::WriteAt(double d, int x, int y)
@@ -689,7 +680,7 @@ void FEHLCD::WriteAt(char c, int x, int y)
 
 void FEHLCD::TS_SPI_Init()
 {
-	SPI_Init();
+    SPI_Init();
     SPI_WriteCommand(0x01,0x67);
     //Sleep(.1);
     SPI_WriteCommand(0x02,0x00);
@@ -858,19 +849,19 @@ void FEHLCD::Write( float f )
 {
     char num[50];
     int d,r;
-	if( f >= 0 )
-	{
-		d = (int) f;
-		r = (int) ((f-d)*1000);
-		sprintf(num,"%d.%03d",d,r);
-	}
-	else
-	{
-		f *= -1;
-		d = (int) f;
-		r = (int) ((f-d)*1000);
-		sprintf(num,"-%d.%03d",d,r);
-	}
+    if( f >= 0 )
+    {
+        d = (int) f;
+        r = (int) ((f-d)*1000);
+        sprintf(num,"%d.%03d",d,r);
+    }
+    else
+    {
+        f *= -1;
+        d = (int) f;
+        r = (int) ((f-d)*1000);
+        sprintf(num,"-%d.%03d",d,r);
+    }
     Write(num);
 }
 void FEHLCD::Write( double d )
@@ -890,9 +881,9 @@ void FEHLCD::Write( bool b )
 }
 void FEHLCD::Write( char c )
 {
-	CheckLine();
-	WriteChar( _currentline, _currentchar, c );
-	NextChar();
+    CheckLine();
+    WriteChar( _currentline, _currentchar, c );
+    NextChar();
 }
 void FEHLCD::WriteLine( const char* str )
 {
@@ -926,9 +917,9 @@ void FEHLCD::WriteLine( bool b )
 }
 void FEHLCD::WriteLine( char c )
 {
-	CheckLine();
-	Write( c );
-	NextLine();
+    CheckLine();
+    Write( c );
+    NextLine();
 }
 
 void FEHLCD::WriteIndex( unsigned char index )
@@ -1386,12 +1377,12 @@ void FEHLCD::WriteChar(int charRow, int charCol, char charNum) {
 
 void FEHLCD::WriteCharAt(int x, int y, char charNum)
 {
-	if( charNum == '\n' )
-	{
-		CheckLine();
-		NextLine();
-		return;
-	}
+    if( charNum == '\n' )
+    {
+        CheckLine();
+        NextLine();
+        return;
+    }
 
     if(charNum > 125 || charNum <32)
     {
@@ -1696,7 +1687,7 @@ void FEHIcon::Icon::SetProperties(char name[20], int start_x, int start_y, int w
     x_end = x_start+width;
     y_end = y_start+height;
     color = c;
-	textcolor = tc;
+    textcolor = tc;
     set = 0;
 }
 
@@ -1784,7 +1775,7 @@ void FEHIcon::Icon::ChangeLabelFloat(float val)
 {
     int length_i = strlen(label);
     int d, r;
-	/* Convert float to string so it can be auto-centered in icon */
+    /* Convert float to string so it can be auto-centered in icon */
     if(val>=0)
     {
         d = (int) val;
@@ -1798,7 +1789,7 @@ void FEHIcon::Icon::ChangeLabelFloat(float val)
         r = (int) ((val-d)*1000);
         std::sprintf(label,"-%d.%03d",d,r);
     }
-	/* If the new label is not the same length as the old one, then erase the old one so that it does not show up behind the new one */
+    /* If the new label is not the same length as the old one, then erase the old one so that it does not show up behind the new one */
     if (strlen(label)!=length_i)
     {
         LCD.SetFontColor(BLACK);
