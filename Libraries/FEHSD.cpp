@@ -33,7 +33,10 @@ void FEHSD::OpenLog(){
                 uint16 log_no_100;
                 do
                 {
-                    //if (log_no[log_no_index] > 999) error(); //overflow
+                    if (log_no[log_no_index] > 999){
+                        LCD.WriteLine("Too many logfiles created!");
+                        return;
+                    } //overflow
 
                     log_no_100 = log_no[log_no_index] / 100; //eliminate 1 and 10's place
                     log_no_10 = (log_no[log_no_index] - (log_no_100 * 100)) / 10; //subtract out 100's place, then eliminate 1's
