@@ -48,7 +48,7 @@ void FEHSD::OpenLog(){
                     log_no[log_no_index]++;
                 } while (f_open(&logfil, log_str, FA_CREATE_NEW | FA_WRITE) == FR_EXIST); //test to see if file exists, if it does, make a new one
             } else if (status==-1){
-                LCD.WriteLine("SD Card not detetcted!");
+                LCD.WriteLine("SD Card not detected!");
             } else {
                 LCD.Write(status);
                 LCD.WriteLine("SD Card Initialize failed!");
