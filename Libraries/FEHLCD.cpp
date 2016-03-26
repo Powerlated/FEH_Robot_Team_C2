@@ -681,40 +681,28 @@ void FEHLCD::WriteAt(char c, int x, int y)
 void FEHLCD::TS_SPI_Init()
 {
     SPI_Init();
-    //General configuration
-    SPI_WriteCommand(0x01,0x67); //DOUT bus holder enabled, IRQ pullup,
-                                //edge interrupt, 128us edge time
-    //Sleep(.1);
-    //Measurement resolution
-    SPI_WriteCommand(0x02,0x00); //Defaults
-    //Sleep(.1);
-    //Measurement averaging
-    SPI_WriteCommand(0x03,0xA0); //8 samples X and Y
-    //Sleep(.1);
-    //ADC Samplint Time
-    SPI_WriteCommand(0x04,0x50); //32us X, 8us Y
-    //Sleep(.1);
-    //Panel timing configuration
-    SPI_WriteCommand(0x05,0x20); //X,Y 50us
-    //Sleep(.1);
-    //Delayed conversion
-    SPI_WriteCommand(0x06,0x20); //X,Y 50us
-    //Sleep(.1);
-    //Touch detect pullup timing
-    SPI_WriteCommand(0x07,0x77); //Rough 500us, fine 800us
-    //Sleep(.1);
-    //Autonomous mode timing
-    SPI_WriteCommand(0x08,0x00); //Defaults
-    //Sleep(.1);
-    //Aperture configuration
-    SPI_WriteCommand(0x09,0x00); //Defaults (unused)
-    //Sleep(.1);
-    //AUX measurement configuration
-    SPI_WriteCommand(0x0A,0x00); //Defaults (unused)
-    //Sleep(.1);
-    //Operating mode configuration
-    SPI_WriteCommand(0x0B,0x04); //X,Y position averaging
-    //Sleep(.1);
+    SPI_WriteCommand(0x01,0x67);
+    //Sleep(50);
+    SPI_WriteCommand(0x02,0x00);
+    //Sleep(50);
+    SPI_WriteCommand(0x03,0xA0);
+    //Sleep(50);
+    SPI_WriteCommand(0x04,0x50);
+    //Sleep(50);
+    SPI_WriteCommand(0x05,0x20);
+    //Sleep(50);
+    SPI_WriteCommand(0x06,0x20);
+    //Sleep(50);
+    SPI_WriteCommand(0x07,0x77);
+    //Sleep(50);
+    SPI_WriteCommand(0x08,0x00);
+    //Sleep(50);
+    SPI_WriteCommand(0x09,0x00);
+    //Sleep(50);
+    SPI_WriteCommand(0x0A,0x00);
+    //Sleep(50);
+    SPI_WriteCommand(0x0B,0x04);
+    //Sleep(50);
     lastx = -1;
     lasty = -1;
 }
@@ -732,10 +720,12 @@ bool FEHLCD::Touch(float *x_pos, float *y_pos)
     {
         SPI_CS_Assert();  //Command a conversion (x,y)
         SPI_SendChar(0xE0);
+        Sleep(1);
         SPI_CS_Deassert();
-        Sleep(2);
+        Sleep(1);
         SPI_CS_Assert();               //Read the positions
         SPI_SendChar(0xA5);
+        Sleep(1);
         x = SPI_GetChar()<<8;
         x |= SPI_GetChar();
         y = SPI_GetChar()<<8;
