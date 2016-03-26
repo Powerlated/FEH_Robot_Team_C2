@@ -681,27 +681,39 @@ void FEHLCD::WriteAt(char c, int x, int y)
 void FEHLCD::TS_SPI_Init()
 {
     SPI_Init();
-    SPI_WriteCommand(0x01,0x67);
+    //General configuration
+    SPI_WriteCommand(0x01,0x67); //DOUT bus holder enabled, IRQ pullup,
+                                //edge interrupt, 128us edge time
     //Sleep(.1);
-    SPI_WriteCommand(0x02,0x00);
+    //Measurement resolution
+    SPI_WriteCommand(0x02,0x00); //Defaults
     //Sleep(.1);
-    SPI_WriteCommand(0x03,0xA0);
+    //Measurement averaging
+    SPI_WriteCommand(0x03,0xA0); //8 samples X and Y
     //Sleep(.1);
-    SPI_WriteCommand(0x04,0x50);
+    //ADC Samplint Time
+    SPI_WriteCommand(0x04,0x50); //32us X, 8us Y
     //Sleep(.1);
-    SPI_WriteCommand(0x05,0x20);
+    //Panel timing configuration
+    SPI_WriteCommand(0x05,0x20); //X,Y 50us
     //Sleep(.1);
-    SPI_WriteCommand(0x06,0x20);
+    //Delayed conversion
+    SPI_WriteCommand(0x06,0x20); //X,Y 50us
     //Sleep(.1);
-    SPI_WriteCommand(0x07,0x77);
+    //Touch detect pullup timing
+    SPI_WriteCommand(0x07,0x77); //Rough 500us, fine 800us
     //Sleep(.1);
-    SPI_WriteCommand(0x08,0x00);
+    //Autonomous mode timing
+    SPI_WriteCommand(0x08,0x00); //Defaults
     //Sleep(.1);
-    SPI_WriteCommand(0x09,0x00);
+    //Aperture configuration
+    SPI_WriteCommand(0x09,0x00); //Defaults (unused)
     //Sleep(.1);
-    SPI_WriteCommand(0x0A,0x00);
+    //AUX measurement configuration
+    SPI_WriteCommand(0x0A,0x00); //Defaults (unused)
     //Sleep(.1);
-    SPI_WriteCommand(0x0B,0x04);
+    //Operating mode configuration
+    SPI_WriteCommand(0x0B,0x04); //X,Y position averaging
     //Sleep(.1);
     lastx = -1;
     lasty = -1;
