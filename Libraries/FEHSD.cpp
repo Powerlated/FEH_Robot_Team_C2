@@ -60,8 +60,10 @@ void FEHSD::OpenLog(){
 }
 
 void FEHSD::CloseLog(){
-    f_close(&logfil);
-    SD.isOpen = 0;
+	if(SD.isOpen){
+    	f_close(&logfil);
+    	SD.isOpen = 0;
+	}
 }
 
 void FEHSD::Printf(

@@ -1,6 +1,7 @@
 #include "FEHRPS.h"
 #include "FEHIO.h"
 #include "FEHLCD.h"
+#include "FEHSD.h"
 #include "FEHUtility.h"
 #include "FEHServo.h"
 #include "string.h"
@@ -562,6 +563,7 @@ void RPSDataProcess( unsigned char *data, unsigned char length )
         if(_RPS_stop)
 		{
 			// set kill pin low for power shutdown
+            SD.CloseLog();
 			GPIOD_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( 13 ) );
 		}
 	}
