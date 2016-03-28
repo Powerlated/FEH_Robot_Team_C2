@@ -720,7 +720,7 @@ bool FEHLCD::Touch(float *x_pos, float *y_pos)
     {
         SPI_CS_Assert();  //Command a conversion (x,y)
         SPI_SendChar(0xE0);
-        Sleep(1);
+        Sleep(2);
         SPI_CS_Deassert();
         Sleep(1);
         SPI_CS_Assert();               //Read the positions
