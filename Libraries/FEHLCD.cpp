@@ -428,7 +428,7 @@ void FEHLCD::_Initialize()
     LCD.PrintImage(111,30);
     LCD.PrintLogo(86,175);
     LCD.SetFontColor(FEHLCD::Black);
-    LCD.WriteAt("v02.08.16",1,1);
+    LCD.WriteAt("v02.08.17",1,1);
 
     WriteIndex(0x29);  //display on
     Sleep(100);

@@ -26,26 +26,26 @@ void FEHSD::OpenLog(){
             status = FEHSD::Initialize();
             if(status==0){
                 char log_str[11] = "LOG000.TXT";
-                uint16 log_no[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-                uint8 log_no_index;
+                uint16 log_no = 0;
                 uint16 log_no_1;
                 uint16 log_no_10;
                 uint16 log_no_100;
                 do
                 {
-                    if (log_no[log_no_index] > 999){
+                    if (log_no > 999){
                         LCD.WriteLine("Too many logfiles created!");
                         return;
                     } //overflow
 
-                    log_no_100 = log_no[log_no_index] / 100; //eliminate 1 and 10's place
-                    log_no_10 = (log_no[log_no_index] - (log_no_100 * 100)) / 10; //subtract out 100's place, then eliminate 1's
-                    log_no_1 = log_no[log_no_index] - (log_no_100 * 100) - (log_no_10 * 10);
+                    log_no_100 = log_no / 100; //eliminate 1 and 10's place
+                    log_no_10 = (log_no - (log_no_100 * 100)) / 10; //subtract out 100's place, then eliminate 1's
+                    log_no_1 = log_no - (log_no_100 * 100) - (log_no_10 * 10);
                     log_str[5] = log_no_1 + '0';//1's
                     log_str[4] = log_no_10 + '0';//10's
                     log_str[3] = log_no_100 + '0';//100's
 
-                    log_no[log_no_index]++;
+                    log_no++;
+
                 } while (f_open(&logfil, log_str, FA_CREATE_NEW | FA_WRITE) == FR_EXIST); //test to see if file exists, if it does, make a new one
             } else if (status==-1){
                 LCD.WriteLine("SD Card not detected!");
