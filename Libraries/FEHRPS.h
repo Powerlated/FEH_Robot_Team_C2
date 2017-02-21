@@ -36,15 +36,9 @@ public:
 	
 	// Objective functions:
 
-    // returns required direction for the red switch
-    int RedSwitchDirection();
+	// returns the percentage (of 90 degrees) that satellite has been turned
+	int SatellitePercent();
 	
-	// returns required direction for the white switch
-    int WhiteSwitchDirection();
-	
-	// returns required direction for the blue switch
-    int BlueSwitchDirection();
-
 	// returns the match time in seconds
 	int Time();
 

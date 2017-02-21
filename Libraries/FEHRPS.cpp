@@ -8,15 +8,7 @@
 
 FEHRPS RPS;
 
-#define OILPRESSMASK         0x000003 // bits 0,1
-#define OILMASK              0x000004 // bit 2
-#define REDBUTTONPRESSMASK   0x000003 // 4,5 bits 3,4
-#define WHITEBUTTONPRESSMASK 0x00000C // 6,7 bits 5,6
-#define BLUEBUTTONPRESSMASK  0x000030 // 8,9 bits 7,8
-#define REDBUTTONORDERMASK   0x000600 // 10,11 bits 9,10
-#define WHITEBUTTONORDERMASK 0x001800 // 12,13 bits 11,12
-#define BLUEBUTTONORDERMASK  0x006000 // 14,15 two bits 13,14
-#define BUTTONSPRESSEDMASK	 0x018000 // bits 15,16
+#define SATELLITEMASK    0x0000FF // bits 0,1,2,3,4,5,6,7 (1 byte)
 
 #define STOPDATA 0xAA
 
@@ -494,22 +486,10 @@ int FEHRPS::CurrentRegion()
 
 // Objective functions:
 
-// returns direction oil has been pressed
-int FEHRPS::RedSwitchDirection()
+// returns the percentage (of 90 degrees) that satellite has been turned
+int FEHRPS::SatellitePercent()
 {
-    return (  _RPS_objective & REDBUTTONPRESSMASK  );
-}
-
-// returns order of red button press
-int FEHRPS::WhiteSwitchDirection()
-{
-    return ( ( _RPS_objective & WHITEBUTTONPRESSMASK ) >> 2 );
-}
-
-// returns order of white button press
-int FEHRPS::BlueSwitchDirection()
-{
-    return ( ( _RPS_objective & BLUEBUTTONPRESSMASK ) >> 4 );
+    return (  _RPS_objective & SATELLITEMASK  );
 }
 
 // returns the match time in seconds
