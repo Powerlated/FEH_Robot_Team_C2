@@ -29,9 +29,8 @@ ifeq ($(OS),Windows_NT)
 AUTOCPP := $(shell Tools/egrep cpp$$ ../$(TARGET).files)
 AUTOH := $(shell Tools/egrep h$$ ../$(TARGET).files)
 else
-$(shell cp ../$(TARGET).files ../$(TARGET).txt)
-AUTOCPP := $(shell egrep cpp$$ ../$(TARGET).txt)
-AUTOH := $(shell egrep h$$ ../$(TARGET).txt)
+AUTOCPP := $(shell egrep cpp ../$(TARGET).files)
+AUTOH := $(shell egrep h ../$(TARGET).files)
 endif
 
 ifeq ($(OS),Windows_NT)
