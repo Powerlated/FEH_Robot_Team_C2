@@ -1,3 +1,5 @@
+setlocal
+set PATH=C:\Windows\system32;%PATH%
 for /f %%D in ('wmic volume get DriveLetter^, Label ^| find "FEHSD"') do set usb=%%D
 
 if not exist %usb%\ goto ERROR2
