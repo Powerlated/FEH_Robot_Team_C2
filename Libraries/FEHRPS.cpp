@@ -486,10 +486,10 @@ int FEHRPS::CurrentRegion()
 
 // Objective functions:
 
-// returns the percentage (of 90 degrees) that satellite has been turned
+// returns 0 always due to visual scoring
 int FEHRPS::SatellitePercent()
 {
-    return (  _RPS_objective & SATELLITEMASK  );
+    return 0;
 }
 
 // returns the match time in seconds
