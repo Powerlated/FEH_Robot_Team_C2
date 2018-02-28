@@ -36,8 +36,11 @@ public:
 	
 	// Objective functions:
 
-	// returns the percentage (of 90 degrees) that satellite has been turned
-	int SatellitePercent();
+	// returns the type of fuel needed
+	int FuelType();
+	
+	//returns state of RPS button task
+	int IsDeadzoneActive();
 	
 	// returns the match time in seconds
 	int Time();
