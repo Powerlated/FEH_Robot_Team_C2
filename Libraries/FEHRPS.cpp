@@ -8,7 +8,8 @@
 
 FEHRPS RPS;
 
-#define SATELLITEMASK    0x0000FF // bits 0,1,2,3,4,5,6,7 (1 byte)
+#define FUELMASK     0xffffffff // bits 0,1
+#define DEADZONEMASK 0x00000003 // bits 0,1
 
 #define STOPDATA 0xAA
 
@@ -486,10 +487,16 @@ int FEHRPS::CurrentRegion()
 
 // Objective functions:
 
-// returns 0 always due to visual scoring
-int FEHRPS::SatellitePercent()
+// returns the type of fuel needed
+int FEHRPS::FuelType()
 {
-    return 0;
+    return ((_RPS_objective & FUELMASK) >> 2 );
+}
+
+// returns the status of the dead zone
+int FEHRPS::IsDeadzoneActive()
+{
+	return(_RPS_objective & DEADZONEMASK);
 }
 
 // returns the match time in seconds
@@ -535,7 +542,7 @@ void RPSDataProcess( unsigned char *data, unsigned char length )
         _RPS_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 1600.0f;
         _RPS_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f - 1600.0f;
         _RPS_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f - 1600.0f;
-        _RPS_objective = ((data[ 7 ] << 24 ) + (data[ 8 ] << 16 ) + (data[ 9 ] << 8) + (data[ 10 ]));
+		_RPS_objective = ((data[ 7 ] << 24),(data[ 8 ] << 16),(data[ 9 ] << 8),(data[10] ));
         _RPS_time = data[ 11 ];
         _RPS_stop = (data[12] == STOPDATA);
         _RPS_foundpacket = true;
