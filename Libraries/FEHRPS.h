@@ -46,6 +46,7 @@ public:
 	int Time();
 
 	unsigned char WaitForPacket();
+	unsigned int WaitForPacketDebug(int *packetsFound, int *packetsLost);
 
 	float X();
 	float Y();
