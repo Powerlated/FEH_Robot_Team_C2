@@ -520,6 +520,40 @@ unsigned char FEHRPS::WaitForPacket()
 	}
 }
 
+unsigned int FEHRPS::WaitForPacketDebug(int *packetsFound,int *packetsLost)
+{
+  //Begin timing time since last packet recieved
+  unsigned int starttime = TimeNowMSec();
+
+  //If packets are found, increment the number of packets
+  if(_RPS_foundpacket){
+    *packetsFound++;
+  }
+
+  //If packets aren't lost, we don't want to report that they're lost
+  unsigned int packetLossStartTime = TimeNowMSec();
+  unsigned int packetLossEndTime = packetLossStartTime;
+
+  while(!_RPS_foundpacket){
+    //However if packets are being lost, we want to figure out how long we're losing them for
+    packetLossEndTime = TimeNowMSec();
+  }
+  //Always assume RPS is broken (this will quickly be set to true by RPSDataProcess)
+  _RPS_foundpacket = false;
+
+  //A packet has now been found, so stop the clock 
+  unsigned int endtime = TimeNowMSec();
+
+  //This is based on a baud rate of 9600 #theyDidTheMath
+  *packetsLost = (packetLossEndTime-packetLossStartTime)/10;
+
+  unsigned int elapsedtime = endtime-starttime;
+
+  return elapsedtime;
+
+
+}
+
 float FEHRPS::X()
 {
 	return _RPS_x;
