@@ -520,19 +520,28 @@ unsigned char FEHRPS::WaitForPacket()
 	}
 }
 
-unsigned int FEHRPS::WaitForPacketDebug(int *packetsFound,int *packetsLost)
+int FEHRPS::WaitForPacketDebug(int *packetsFound, int *packetsLost, int *lastFoundPacketTime)
 {
-  //Begin timing time since last packet recieved
-  unsigned int starttime = TimeNowMSec();
-
+  Sleep(100);
   //If packets are found, increment the number of packets
   if(_RPS_foundpacket){
-    *packetsFound++;
+    int packetFoundEndTime = TimeNowMSec() - *lastFoundPacketTime;
+    if(*lastFoundPacketTime != 0){
+      *packetsFound = packetFoundEndTime/10;
+    }
+
+    //LCD.WriteLine((*packetsFound));
+    *lastFoundPacketTime = TimeNowMSec();
+    //LCD.WriteLine("Booger");
+
+
   }
 
+
+
   //If packets aren't lost, we don't want to report that they're lost
-  unsigned int packetLossStartTime = TimeNowMSec();
-  unsigned int packetLossEndTime = packetLossStartTime;
+  int packetLossStartTime = TimeNowMSec();
+  int packetLossEndTime = packetLossStartTime;
 
   while(!_RPS_foundpacket){
     //However if packets are being lost, we want to figure out how long we're losing them for
@@ -541,13 +550,13 @@ unsigned int FEHRPS::WaitForPacketDebug(int *packetsFound,int *packetsLost)
   //Always assume RPS is broken (this will quickly be set to true by RPSDataProcess)
   _RPS_foundpacket = false;
 
-  //A packet has now been found, so stop the clock 
-  unsigned int endtime = TimeNowMSec();
+  //A packet has now been found, so stop the clock
+  int endtime = TimeNowMSec();
 
   //This is based on a baud rate of 9600 #theyDidTheMath
   *packetsLost = (packetLossEndTime-packetLossStartTime)/10;
+   int elapsedtime = packetLossEndTime-packetLossStartTime;
 
-  unsigned int elapsedtime = endtime-starttime;
 
   return elapsedtime;
 
@@ -580,7 +589,7 @@ void RPSDataProcess( unsigned char *data, unsigned char length )
         _RPS_time = data[ 11 ];
         _RPS_stop = (data[12] == STOPDATA);
         _RPS_foundpacket = true;
-		
+
         if(_RPS_stop)
 		{
 			// set kill pin low for power shutdown
@@ -588,6 +597,6 @@ void RPSDataProcess( unsigned char *data, unsigned char length )
 			GPIOD_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( 13 ) );
 		}
 	}
-	
-	
+
+
 }
