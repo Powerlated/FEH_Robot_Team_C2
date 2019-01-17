@@ -102,7 +102,7 @@ void FEHSD::fscanf(const TCHAR* file_name, int line, const TCHAR* format, va_lis
 	// Line size over 2048 will crash it :(
 	int bufferSize = 2048;
 
-	char buffer[bufferSize]; // Right now max 1024 line length, need to change?
+	char buffer[bufferSize];
 
 	// line is 0 based
 	int current_line = 0;
