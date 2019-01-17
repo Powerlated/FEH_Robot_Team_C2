@@ -99,17 +99,20 @@ void FEHSD::fscanf(const TCHAR* file_name, int line, const TCHAR* format, va_lis
 		return;
 	}
 
-	char buffer[1024]; // Right now max 1024 line length, need to change?
+	// Line size over 2048 will crash it :(
+	int bufferSize = 2048;
+
+	char buffer[bufferSize]; // Right now max 1024 line length, need to change?
 
 	// line is 0 based
 	int current_line = 0;
 
 	while (current_line < line) { // skip the lines that the student doesn't want
-		f_gets(buffer, 1024, &file);
+		f_gets(buffer, bufferSize, &file);
 		current_line++;
 	}
 
-	f_gets(buffer, 1024, &file); // get the correct line
+	f_gets(buffer, bufferSize, &file); // get the correct line
 	vsscanf(buffer, format, args); // scan and write to arguments
 
 	f_close(&file); // memoryleaks be gone
