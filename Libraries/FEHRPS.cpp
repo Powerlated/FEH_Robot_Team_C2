@@ -225,6 +225,31 @@ void FEHRPS::Initialize( int region )
             LCD.Write( rxbuffer[ i ] );
         }
         LCD.WriteLine( " " );
+        
+         // set my destination (high)
+        LCD.Write( "Set course id (high)..." );
+        txbuffer[ 0 ] = 'A';
+        txbuffer[ 1 ] = 'T';
+        txbuffer[ 2 ] = 'C';
+        txbuffer[ 3 ] = 'H';
+        txbuffer[ 4 ] = '0';
+        txbuffer[ 5 ] = '0';
+        txbuffer[ 6 ] = '1';
+        txbuffer[ 7 ] = 'A';
+        txbuffer[ 8 ] = '\r';
+        txlength = _xbee.SendData( txbuffer, 9 );
+    //	Sleep( 100 );
+        rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
+        if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
+        {
+            LCD.WriteLine( "Error with RPS configuration" );
+            return;
+        }
+        for( int i = 0; i < rxlength; i++ )
+        {
+            LCD.Write( rxbuffer[ i ] );
+        }
+        LCD.WriteLine( " " );
 
         // write to flash
         LCD.Write( "Writing config..." );
