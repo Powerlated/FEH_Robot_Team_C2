@@ -227,7 +227,7 @@ void FEHRPS::Initialize( int region )
         LCD.WriteLine( " " );
         
          // set my destination (high)
-        LCD.Write( "Set course id (high)..." );
+        LCD.Write( "Set channel 26 2480MHz" );
         txbuffer[ 0 ] = 'A';
         txbuffer[ 1 ] = 'T';
         txbuffer[ 2 ] = 'C';
