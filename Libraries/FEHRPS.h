@@ -33,14 +33,8 @@ public:
 	// returns the number of the current course { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }
 	int CurrentRegion();
 
-
 	// Objective functions:
-
-	// returns the type of fuel needed
-	int FuelType();
-
-	//returns state of RPS button task
-	int IsDeadzoneActive();
+        int DeadzoneTimeLeft();
 
 	// returns the match time in seconds
 	int Time();

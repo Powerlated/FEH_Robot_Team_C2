@@ -8,8 +8,7 @@
 
 FEHRPS RPS;
 
-#define FUELMASK     0xffffffff // bits 0,1
-#define DEADZONEMASK 0x00000003 // bits 0,1
+#define DEADZONE_MASK 0x000000ff // bits 0,1
 
 #define STOPDATA 0xAA
 
@@ -511,17 +510,9 @@ int FEHRPS::CurrentRegion()
 }
 
 // Objective functions:
-
-// returns the type of fuel needed
-int FEHRPS::FuelType()
+int FEHRPS::DeadzoneTimeLeft()
 {
-    return ((_RPS_objective & FUELMASK) >> 2 );
-}
-
-// returns the status of the dead zone
-int FEHRPS::IsDeadzoneActive()
-{
-	return(_RPS_objective & DEADZONEMASK);
+    return (int)(_RPS_objective & DEADZONE_MASK);
 }
 
 // returns the match time in seconds
