@@ -1,6 +1,7 @@
 #include "FEHSD.h"
 #include <FEHLCD.h>
 #include <stdarg.h>
+#include <stdio.h>
 
 #define SD_CD_LOC (1<<6)
 
@@ -74,6 +75,47 @@ void FEHSD::Printf(
     va_list args;
     va_start(args, str);
     f_printf(&logfil, str, args);
+}
+
+void FEHSD::fscanf(const TCHAR* file_name, const TCHAR* format, ...) {
+	va_list args;
+	va_start(args, format); // turn ... into va_list
+	// line is 0 based
+	fscanf(file_name, 0, format, args);
+}
+
+void FEHSD::fscanf(const TCHAR* file_name, int line, const TCHAR* format, ...) {
+	va_list args;
+	va_start(args, format); // turn ... into va_list
+	fscanf(file_name, line, format, args);
+}
+
+void FEHSD::fscanf(const TCHAR* file_name, int line, const TCHAR* format, va_list args) {
+	FIL file;
+
+	int result = f_open(&file, file_name, FA_READ); // open file
+
+	if (result) { // if there was an error opening the file, return
+		return;
+	}
+
+	// Line size over 2048 will crash it :(
+	int bufferSize = 2048;
+
+	char buffer[bufferSize];
+
+	// line is 0 based
+	int current_line = 0;
+
+	while (current_line < line) { // skip the lines that the student doesn't want
+		f_gets(buffer, bufferSize, &file);
+		current_line++;
+	}
+
+	f_gets(buffer, bufferSize, &file); // get the correct line
+	vsscanf(buffer, format, args); // scan and write to arguments
+
+	f_close(&file); // memoryleaks be gone
 }
 
 int FEHSD::Initialize(){
