@@ -510,7 +510,7 @@ int FEHRPS::CurrentRegion()
 }
 
 // Objective functions:
-int FEHRPS::DeadzoneTimeLeft()
+int FEHRPS::WifiTimeLeft()
 {
     return (int)(_RPS_objective & DEADZONE_MASK);
 }
