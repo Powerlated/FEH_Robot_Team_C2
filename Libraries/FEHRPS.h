@@ -34,7 +34,7 @@ public:
 	int CurrentRegion();
 
 	// Objective functions:
-        int DeadzoneTimeLeft();
+    int WifiTimeLeft();
 
 	// returns the match time in seconds
 	int Time();
