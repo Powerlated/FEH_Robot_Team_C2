@@ -141,3 +141,37 @@ void MMA8451QWriteRegister(unsigned char u8RegisterAddress, unsigned char u8Data
 
   Pause();
 }
+
+bool timeout = false;
+
+bool didTimeout() {
+	return timeout;
+}
+
+#include "FEHLCD.h"
+
+void i2c_Wait() {
+	if (timeout) {
+		return;
+	}
+	long i = 0;
+	while((I2C0_S & I2C_S_IICIF_MASK)==0){
+		if (i > 10000) {
+			timeout = true;
+			break;
+		} else {
+			i++;
+			asm("nop");
+		}
+	} /*&& (I2C0_SMB & I2C_SMB_SHTF2_MASK)==0 && (I2C0_SMB & I2C_SMB_SHTF1_MASK)==0 && (I2C0_SMB & I2C_SMB_SLTF_MASK)==0) {}
+	
+	if (I2C0_SMB & I2C_SMB_SHTF2_MASK==0) {
+		I2C0_SMB &= ~I2C_SMB_SHTF2_MASK;
+	}
+	
+	if (I2C0_SMB & I2C_SMB_SLTF_MASK==0) {
+		I2C0_SMB &= ~I2C_SMB_SLTF_MASK;
+	}*/
+    
+	I2C0_S |= I2C_S_IICIF_MASK;
+}

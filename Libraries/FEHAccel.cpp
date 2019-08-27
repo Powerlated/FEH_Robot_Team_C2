@@ -12,6 +12,7 @@ FEHAccel::FEHAccel(){
     PORTD_PCR8 = PORT_PCR_MUX(2);
 
     I2C0_F  = 0x14;       /* set MULT and ICR */
+	I2C0_SMB |= I2C_SMB_SHTF2IE_MASK;
 
     I2C0_C1 = I2C_C1_IICEN_MASK;       /* enable IIC */
     MMA8451QWriteRegister(0x2B,0x02);
@@ -19,6 +20,9 @@ FEHAccel::FEHAccel(){
 }
 
 double FEHAccel::X(){
+	if (didTimeout()) {
+		return 0;
+	}
     unsigned char x1;
     unsigned char x2;
     short _x;
@@ -33,6 +37,9 @@ double FEHAccel::X(){
 }
 
 double FEHAccel::Y(){
+	if (didTimeout()) {
+		return 0;
+	}
     unsigned char y1;
     unsigned char y2;
     short _y;
@@ -47,6 +54,9 @@ double FEHAccel::Y(){
 }
 
 double FEHAccel::Z(){
+	if (didTimeout()) {
+		return 0;
+	}
     unsigned char z1;
     unsigned char z2;
     short _z;
@@ -58,6 +68,10 @@ double FEHAccel::Z(){
     _z = ((short) (z1<<8 | z2 ))>>2;
 
     return(_z/(8.*518.5)*(-1));
+}
+
+bool FEHAccel::isEnabled() {
+	return !didTimeout();
 }
 
 

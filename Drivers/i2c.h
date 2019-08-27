@@ -24,8 +24,8 @@
 #define i2c_EnterRxMode()      I2C0_C1   &= ~I2C_C1_TX_MASK;\
                                I2C0_C1   &= ~I2C_C1_TXAK_MASK
 
-#define i2c_Wait()               while((I2C0_S & I2C_S_IICIF_MASK)==0) {} \
-                                  I2C0_S |= I2C_S_IICIF_MASK;
+void i2c_Wait();
+bool didTimeout();
 
 #define i2c_write_byte(data)   I2C0_D = data
 
