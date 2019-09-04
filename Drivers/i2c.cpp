@@ -148,8 +148,6 @@ bool didTimeout() {
 	return timeout;
 }
 
-#include "FEHLCD.h"
-
 void i2c_Wait() {
 	if (timeout) {
 		return;
@@ -163,15 +161,7 @@ void i2c_Wait() {
 			i++;
 			asm("nop");
 		}
-	} /*&& (I2C0_SMB & I2C_SMB_SHTF2_MASK)==0 && (I2C0_SMB & I2C_SMB_SHTF1_MASK)==0 && (I2C0_SMB & I2C_SMB_SLTF_MASK)==0) {}
-	
-	if (I2C0_SMB & I2C_SMB_SHTF2_MASK==0) {
-		I2C0_SMB &= ~I2C_SMB_SHTF2_MASK;
 	}
-	
-	if (I2C0_SMB & I2C_SMB_SLTF_MASK==0) {
-		I2C0_SMB &= ~I2C_SMB_SLTF_MASK;
-	}*/
     
 	I2C0_S |= I2C_S_IICIF_MASK;
 }
