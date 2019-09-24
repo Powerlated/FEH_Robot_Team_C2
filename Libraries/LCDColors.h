@@ -114,7 +114,7 @@
 #define LIGHTGOLDENRODYELLOW	0xFAFAD2
 #define OLDLACE					0xFDF5E6
 #define RED						0xFF0000
-#define FUCHSIA					0xFF00FF
+#define FUCHSIA					0xFF0080
 #define MAGENTA					0xFF00FF
 #define DEEPPINK				0xFF1493
 #define ORANGERED				0xFF4500
