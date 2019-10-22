@@ -7,47 +7,35 @@
 
 
 FEHSD SD;
-
-FIL logfil;
 static FATFS FATFS_Obj;
 FRESULT f_res;
-
-float x,y;
-
-int counter = 0;
 
 FEHSD::FEHSD(){
 	SD.isOpen = 0;
 }
 
-void FEHSD::OpenLog(){
+FEHFile FEHSD::FOpen(const TCHAR* str, const TCHAR* mode){
     int status;
+    FEHFile File();
+    BYTE FatFsMode;
     if(!SD.isOpen){
             SD.isOpen = 1;
             status = FEHSD::Initialize();
             if(status==0){
-                char log_str[11] = "LOG000.TXT";
-                uint16 log_no = 0;
-                uint16 log_no_1;
-                uint16 log_no_10;
-                uint16 log_no_100;
-                do
-                {
-                    if (log_no > 999){
-                        LCD.WriteLine("Too many logfiles created!");
-                        return;
-                    } //overflow
-
-                    log_no_100 = log_no / 100; //eliminate 1 and 10's place
-                    log_no_10 = (log_no - (log_no_100 * 100)) / 10; //subtract out 100's place, then eliminate 1's
-                    log_no_1 = log_no - (log_no_100 * 100) - (log_no_10 * 10);
-                    log_str[5] = log_no_1 + '0';//1's
-                    log_str[4] = log_no_10 + '0';//10's
-                    log_str[3] = log_no_100 + '0';//100's
-
-                    log_no++;
-
-                } while (f_open(&logfil, log_str, FA_CREATE_NEW | FA_WRITE) == FR_EXIST); //test to see if file exists, if it does, make a new one
+            	
+                if(mode == "r") FatFsMode = FA_READ;
+                if(mode == "r+") FatFsMode = FA_READ | FA_WRITE;
+                if(mode == "w") FatFsMode = FA_CREATE_ALWAYS | FA_WRITE;
+                if(mode == "w+") FatFsMode = FA_CREATE_ALWAYS | FA_WRITE | FA_READ;
+                if(mode == "a") FatFsMode = FA_OPEN_APPEND | FA_WRITE;
+                if(mode == "a+") FatFsMode = FA_OPEN_APPEND | FA_WRITE | FA_READ;
+                if(mode == "wx") FatFsMode = FA_CREATE_NEW | FA_WRITE;
+                if(mode == "w+x") FatFsMode = FA_CREATE_NEW | FA_WRITE | FA_READ
+				
+				f_res = f_open(File.wrapper, str, FatFsMode); //I welcome thou's attempt to use files
+				if(f_res != 0 || f_error(File.Wrapper) != 0){
+					LCD.WriteLine("File failed to open");
+				}
             } else if (status==-1){
                 LCD.WriteLine("SD Card not detected!");
             } else {
@@ -56,41 +44,43 @@ void FEHSD::OpenLog(){
             }
     }
     else{
-        LCD.WriteLine("Logfile already open");
+        LCD.WriteLine("File is already open already open");
     }
+    
+    return File;
 }
 
-void FEHSD::CloseLog(){
+void FEHSD::FClose(FEHFile fptr){
 	if(SD.isOpen){
-    	f_close(&logfil);
+    	f_close(fptr.wrapper); //I banish thy memoryleaks
     	SD.isOpen = 0;
 	}
 }
 
-void FEHSD::Printf(
+void FEHSD::FPrintf(FEHFile file,
     const TCHAR* str,	/* Pointer to the format string */
     ...
 )
 {
     va_list args;
     va_start(args, str);
-    f_printf(&logfil, str, args);
+    f_printf(file.wrapper, str, args);
 }
 
-void FEHSD::fscanf(const TCHAR* file_name, const TCHAR* format, ...) {
+void FEHSD::FScanf(const TCHAR* file_name, const TCHAR* format, ...) {
 	va_list args;
 	va_start(args, format); // turn ... into va_list
 	// line is 0 based
 	fscanf(file_name, 0, format, args);
 }
 
-void FEHSD::fscanf(const TCHAR* file_name, int line, const TCHAR* format, ...) {
+void FEHSD::FScanf(const TCHAR* file_name, int line, const TCHAR* format, ...) {
 	va_list args;
 	va_start(args, format); // turn ... into va_list
 	fscanf(file_name, line, format, args);
 }
 
-void FEHSD::fscanf(const TCHAR* file_name, int line, const TCHAR* format, va_list args) {
+void FEHSD::FScanf(const TCHAR* file_name, int line, const TCHAR* format, va_list args) {
 	FIL file;
 
 	int result = f_open(&file, file_name, FA_READ); // open file
