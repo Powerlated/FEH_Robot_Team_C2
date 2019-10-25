@@ -1,4 +1,4 @@
 #include "FEHFile.h"
 
 
-FEHFile::FEHFile() : wrapper(NULL) , lineNumber(0){}
+FEHFile::FEHFile() : wrapper(NULL){}

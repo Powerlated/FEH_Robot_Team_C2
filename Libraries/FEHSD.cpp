@@ -30,12 +30,13 @@ FEHFile FEHSD::FOpen(const TCHAR* str, const TCHAR* mode){
                 if(mode == "a") FatFsMode = FA_OPEN_APPEND | FA_WRITE;
                 if(mode == "a+") FatFsMode = FA_OPEN_APPEND | FA_WRITE | FA_READ;
                 if(mode == "wx") FatFsMode = FA_CREATE_NEW | FA_WRITE;
-                if(mode == "w+x") FatFsMode = FA_CREATE_NEW | FA_WRITE | FA_READ
+                if(mode == "w+x") FatFsMode = FA_CREATE_NEW | FA_WRITE | FA_READ;
 				
-				f_res = f_open(File.wrapper, str, FatFsMode); //I welcome thou's attempt to use files
-				if(f_res != 0 || f_error(File.Wrapper) != 0){
-					LCD.WriteLine("File failed to open");
-				}
+		f_res = f_open(File.wrapper, str, FatFsMode); //I welcome thou's attempt to use files
+		if(f_res != 0 || f_error(File.Wrapper) != 0){
+			LCD.WriteLine("File failed to open");
+		}
+
             } else if (status==-1){
                 LCD.WriteLine("SD Card not detected!");
             } else {
@@ -57,55 +58,42 @@ void FEHSD::FClose(FEHFile fptr){
 	}
 }
 
-void FEHSD::FPrintf(FEHFile file,
+int FEHSD::FPrintf(const FEHFile fptr,
     const TCHAR* str,	/* Pointer to the format string */
     ...
 )
 {
-    va_list args;
-    va_start(args, str);
-    f_printf(file.wrapper, str, args);
-}
-
-void FEHSD::FScanf(const TCHAR* file_name, const TCHAR* format, ...) {
 	va_list args;
-	va_start(args, format); // turn ... into va_list
-	// line is 0 based
-	fscanf(file_name, 0, format, args);
+	va_start(args, str);
+	f_printf(fptr.wrapper, str, args);
+
+	// Check file for errors and return
+	return = f_error(fptr.wrapper);
 }
 
-void FEHSD::FScanf(const TCHAR* file_name, int line, const TCHAR* format, ...) {
-	va_list args;
-	va_start(args, format); // turn ... into va_list
-	fscanf(file_name, line, format, args);
-}
-
-void FEHSD::FScanf(const TCHAR* file_name, int line, const TCHAR* format, va_list args) {
+int FEHSD::FScanf(const FEHFile fptr, const TCHAR* format, va_list args) {
 	FIL file;
 
-	int result = f_open(&file, file_name, FA_READ); // open file
-
-	if (result) { // if there was an error opening the file, return
-		return;
+	// Check for end of file, return -1 if eof
+	if(f_eof(fptr)){
+		return -1;
 	}
 
-	// Line size over 2048 will crash it :(
+	// Create char buffer (buffer > 2048 will crash)
 	int bufferSize = 2048;
-
 	char buffer[bufferSize];
 
-	// line is 0 based
-	int current_line = 0;
+	// Get correct line and store in buffer
+	f_gets(buffer, bufferSize, fptr.wrapper);
 
-	while (current_line < line) { // skip the lines that the student doesn't want
-		f_gets(buffer, bufferSize, &file);
-		current_line++;
-	}
+	// Scan line and store in args; also get number of args read
+	int numRead = vsscanf(buffer, format, args);
 
-	f_gets(buffer, bufferSize, &file); // get the correct line
-	vsscanf(buffer, format, args); // scan and write to arguments
+	// Check file for errors
+	//f_error(fptr.wrapper);
 
-	f_close(&file); // memoryleaks be gone
+	// Return number of successful reads
+	return numRead;
 }
 
 int FEHSD::Initialize(){

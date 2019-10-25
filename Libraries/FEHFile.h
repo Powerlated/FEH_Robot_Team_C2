@@ -4,10 +4,9 @@
 class FEHFile
 {
 public:
-    FEHFile();
+	FEHFile();
 private:
 	FIL* wrapper;
-    int lineNumber;
 };
 
 #endif
