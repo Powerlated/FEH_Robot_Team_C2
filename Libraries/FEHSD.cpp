@@ -65,10 +65,10 @@ int FEHSD::FPrintf(const FEHFile fptr,
 {
 	va_list args;
 	va_start(args, str);
-	f_printf(fptr.wrapper, str, args);
+	int numChars = f_printf(fptr.wrapper, str, args);
 
-	// Check file for errors and return
-	return = f_error(fptr.wrapper);
+	// Return number of characters printed
+	return numChars;
 }
 
 int FEHSD::FScanf(const FEHFile fptr, const TCHAR* format, va_list args) {
@@ -107,12 +107,11 @@ int FEHSD::Initialize(){
         opens = disk_initialize(0);
         if (SDHC_Info.CARD == ESDHC_CARD_SD)
         {
-
             LCD.WriteLine("SD card initiallized");
         }
+
         if (SDHC_Info.CARD == ESDHC_CARD_SDHC)
         {
-
             LCD.WriteLine("SDHC card initialized !");
         }
 
@@ -120,16 +119,15 @@ int FEHSD::Initialize(){
         f_res = f_mount((uint8)0, &FATFS_Obj);
         if (f_res == 0)
         {
-
             LCD.WriteLine("FAT filesystem mounted !");
             return opens;
         }else
         {
-
             LCD.WriteLine("Failed to mount SD card !");
             return opens;
         }
-            return opens;
+        
+	return opens;
         opens = 1;
 
     } else{
