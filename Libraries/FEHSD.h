@@ -11,10 +11,10 @@ public:
     FEHSD();
     FEHFile FOpen(const TCHAR* str, const TCHAR* mode);
     int FClose(FEHFile fptr);
-    int FPrintf(const FEHFile fptr,	/* Pointer to the format string */ ...);
-    int FScanf(const FEHFile fptr, const TCHAR* format, ...);
-
-
+    int FPrintf(FEHFile fptr,	/* Pointer to the format string */ ...);
+    int FScanf(FEHFile fptr, const TCHAR* format, ...);
+	int FEof(FEHFile fptr);
+	int FSeek(FEHFile fptr, long int offset, int position);
 private:
 	int isOpen;
     int Initialize();

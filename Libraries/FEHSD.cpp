@@ -58,7 +58,7 @@ void FEHSD::FClose(FEHFile fptr){
 	}
 }
 
-int FEHSD::FPrintf(const FEHFile fptr,
+int FEHSD::FPrintf(FEHFile fptr,
     const TCHAR* str,	/* Pointer to the format string */
     ...
 )
@@ -71,11 +71,11 @@ int FEHSD::FPrintf(const FEHFile fptr,
 	return numChars;
 }
 
-int FEHSD::FScanf(const FEHFile fptr, const TCHAR* format, va_list args) {
+int FEHSD::FScanf(FEHFile fptr, const TCHAR* format, va_list args) {
 	FIL file;
 
 	// Check for end of file, return -1 if eof
-	if(f_eof(fptr)){
+	if(f_eof(fptr.wrapper)){
 		return -1;
 	}
 
@@ -94,6 +94,22 @@ int FEHSD::FScanf(const FEHFile fptr, const TCHAR* format, va_list args) {
 
 	// Return number of successful reads
 	return numRead;
+}
+
+int FEof(FEHFile fptr){
+	return f_eof(fptr.wrapper);
+}
+
+int FSeek(FEHFile fptr, long int offset, int position){
+	if(position == SEEK_SET){
+		return f_lseeek(fptr.wrapper, offset);
+	}else if(position == SEEK_CUR){
+		return f_lseeek(fptr.wrapper, f_tell(fptr.wrapper) + offset);
+	}else if(position == SEEK_END){
+		return f_lseeek(fptr.wrapper, f_size(fptr.wrapper) + offset);
+	}else{
+		return f_lseeek(fptr.wrapper, 0);
+	}
 }
 
 int FEHSD::Initialize(){
