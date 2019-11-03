@@ -10,6 +10,7 @@ public:
     double Y();
     double Z();
 
+	bool isEnabled();
 };
 
 extern FEHAccel Accel;
