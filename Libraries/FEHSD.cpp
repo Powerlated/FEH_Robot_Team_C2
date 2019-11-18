@@ -1,116 +1,164 @@
 #include "FEHSD.h"
 #include <FEHLCD.h>
-#include <stdarg.h>
 #include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
 
 #define SD_CD_LOC (1<<6)
-
+using namespace std;
 
 FEHSD SD;
 static FATFS FATFS_Obj;
 FRESULT f_res;
+FEHFile *filePtrs[25];
+int FEHFile::fileIdNum = 0;
 
 FEHSD::FEHSD(){
-	SD.isOpen = 0;
+	SD.isInitialized = 0;
+	SD.numberOfFiles = 0;
 }
 
-FEHFile FEHSD::FOpen(const TCHAR* str, const TCHAR* mode){
-    int status;
-    FEHFile File();
+FEHFile *FEHSD::FOpen(const TCHAR* str, const TCHAR* mode){
     BYTE FatFsMode;
-    if(!SD.isOpen){
-            SD.isOpen = 1;
-            status = FEHSD::Initialize();
-            if(status==0){
-            	
-                if(mode == "r") FatFsMode = FA_READ;
-                if(mode == "r+") FatFsMode = FA_READ | FA_WRITE;
-                if(mode == "w") FatFsMode = FA_CREATE_ALWAYS | FA_WRITE;
-                if(mode == "w+") FatFsMode = FA_CREATE_ALWAYS | FA_WRITE | FA_READ;
-                if(mode == "a") FatFsMode = FA_OPEN_APPEND | FA_WRITE;
-                if(mode == "a+") FatFsMode = FA_OPEN_APPEND | FA_WRITE | FA_READ;
-                if(mode == "wx") FatFsMode = FA_CREATE_NEW | FA_WRITE;
-                if(mode == "w+x") FatFsMode = FA_CREATE_NEW | FA_WRITE | FA_READ;
-				
-		f_res = f_open(File.wrapper, str, FatFsMode); //I welcome thou's attempt to use files
-		if(f_res != 0 || f_error(File.Wrapper) != 0){
+    FEHFile *File = new FEHFile();
+    int status;
+    if(!SD.isInitialized){
+    	status = FEHSD::Initialize();
+    }
+    if(SD.isInitialized == 1){
+		//Choosing the appropriate access mode
+        if(strcmp(mode,"r") == 0){
+        	FatFsMode = FA_READ;
+        }else if(strcmp(mode,"r+") == 0){
+        	FatFsMode = FA_READ | FA_WRITE;
+        }else if(strcmp(mode,"w") == 0){
+        	FatFsMode = FA_CREATE_ALWAYS | FA_WRITE;
+        }else if(strcmp(mode,"w+") == 0){
+        	FatFsMode = FA_CREATE_ALWAYS | FA_WRITE | FA_READ;
+        }else if(strcmp(mode,"a") == 0){
+        	FatFsMode = FA_OPEN_ALWAYS | FA_WRITE;
+        }else if(strcmp(mode,"a+") == 0){
+        	FatFsMode = FA_OPEN_ALWAYS | FA_WRITE | FA_READ;
+        }else if(strcmp(mode,"wx") == 0){	
+        	FatFsMode = FA_CREATE_NEW | FA_WRITE;
+        }else if(strcmp(mode,"w+x") == 0){
+        	FatFsMode = FA_CREATE_NEW | FA_WRITE | FA_READ;
+        }else{
+        	FatFsMode = FA_CREATE_ALWAYS | FA_WRITE;
+        }
+
+        f_res = f_open(&(File->wrapper), str, FatFsMode); //I welcome thou's attempt to use files
+
+        filePtrs[SD.numberOfFiles++] = File;
+
+		if(f_res != 0 || f_error(&(File->wrapper)) != 0){
 			LCD.WriteLine("File failed to open");
 		}
 
-            } else if (status==-1){
-                LCD.WriteLine("SD Card not detected!");
-            } else {
-                LCD.Write(status);
-                LCD.WriteLine("SD Card Initialize failed!");
-            }
+    } else if (status == -1){
+        LCD.WriteLine("SD Card not detected!");
+    } else {
+        LCD.Write(status);
+        LCD.WriteLine("SD Card Initialize failed!");
     }
-    else{
-        LCD.WriteLine("File is already open already open");
-    }
-    
-    return File;
+    return filePtrs[SD.numberOfFiles - 1] ;
 }
 
-void FEHSD::FClose(FEHFile fptr){
-	if(SD.isOpen){
-    	f_close(fptr.wrapper); //I banish thy memoryleaks
-    	SD.isOpen = 0;
+int FEHSD::FClose(FEHFile *fptr){
+	int i, j;
+	if(SD.isInitialized && fptr != NULL){
+        for (i = 0; i < SD.numberOfFiles; i++){
+        	if(fptr->fileIdNum == (filePtrs[i])->fileIdNum){
+				f_res = f_close(&(filePtrs[i]->wrapper));  //I banish thy memoryleaks
+				//Shift all elements in array one over to the left
+				SD.numberOfFiles--;
+				for(j = i; j < SD.numberOfFiles; j++){
+					filePtrs[j] = filePtrs[j+1];
+				}
+				filePtrs[SD.numberOfFiles] = NULL;
+				break;
+			}
+		}
+    }
+    return f_res;
+}
+
+int FEHSD::FCloseAll(){
+	int i;
+	if(SD.isInitialized){
+		for (i = 0; i < SD.numberOfFiles; i++){
+        	if(filePtrs[i] != NULL){
+				f_res = f_close(&(filePtrs[i]->wrapper));  //I banish thy memoryleaks
+			}
+		}
+		SD.numberOfFiles = 0;
+		SD.isInitialized = 0;
 	}
+	return f_res;
 }
 
-int FEHSD::FPrintf(FEHFile fptr,
+int FEHSD::FEof(FEHFile *fptr){
+	return f_eof(&(fptr->wrapper));
+}
+
+int FEHSD::FPrintf(FEHFile *fptr,
     const TCHAR* str,	/* Pointer to the format string */
     ...
 )
 {
 	va_list args;
 	va_start(args, str);
-	int numChars = f_printf(fptr.wrapper, str, args);
-
+	int numChars = f_printf(&(fptr->wrapper), str, args);
+	if(f_error(&(fptr->wrapper)) != 0){
+		LCD.WriteLine("Error printing to file");
+	}
+	va_end(args);
 	// Return number of characters printed
 	return numChars;
 }
 
-int FEHSD::FScanf(FEHFile fptr, const TCHAR* format, va_list args) {
-	FIL file;
+int FEHSD::FScanf(FEHFile *fptr, const TCHAR* format, ...) {
+	
+	va_list args;
+	va_start(args, format);
 
 	// Check for end of file, return -1 if eof
-	if(f_eof(fptr.wrapper)){
+	if(f_eof(&(fptr->wrapper))){
 		return -1;
 	}
 
-	// Create char buffer (buffer > 2048 will crash)
+	// Create string buffer (buffer > 2048 will crash)
 	int bufferSize = 2048;
 	char buffer[bufferSize];
 
 	// Get correct line and store in buffer
-	f_gets(buffer, bufferSize, fptr.wrapper);
+	f_gets(buffer, bufferSize, &(fptr->wrapper));
+
+	if(f_error(&(fptr->wrapper)) != 0){
+		LCD.WriteLine("Error reading from file");
+	}
 
 	// Scan line and store in args; also get number of args read
 	int numRead = vsscanf(buffer, format, args);
-
-	// Check file for errors
-	//f_error(fptr.wrapper);
+	
+	va_end(args);
 
 	// Return number of successful reads
 	return numRead;
 }
 
-int FEof(FEHFile fptr){
-	return f_eof(fptr.wrapper);
-}
-
-int FSeek(FEHFile fptr, long int offset, int position){
-	if(position == SEEK_SET){
-		return f_lseeek(fptr.wrapper, offset);
-	}else if(position == SEEK_CUR){
-		return f_lseeek(fptr.wrapper, f_tell(fptr.wrapper) + offset);
-	}else if(position == SEEK_END){
-		return f_lseeek(fptr.wrapper, f_size(fptr.wrapper) + offset);
-	}else{
-		return f_lseeek(fptr.wrapper, 0);
-	}
-}
+//First draft of FSeek
+// int FEHSD::FSeek(FEHFile *fptr, long int offset, int position){
+// 	if(position == SEEK_SET){
+// 		return f_lseek(&(fptr->wrapper), offset);
+// 	}else if(position == SEEK_CUR){
+// 		return f_lseek(&(fptr->wrapper), f_tell(&(fptr->wrapper)) + offset);
+// 	}else if(position == SEEK_END){
+// 		return f_lseek(&(fptr->wrapper), f_size(&(fptr->wrapper)) + offset);
+// 	}else{
+// 		return f_lseek(&(fptr->wrapper), 0);
+// 	}
+// }
 
 int FEHSD::Initialize(){
 
@@ -123,11 +171,13 @@ int FEHSD::Initialize(){
         opens = disk_initialize(0);
         if (SDHC_Info.CARD == ESDHC_CARD_SD)
         {
-            LCD.WriteLine("SD card initiallized");
-        }
 
+            LCD.WriteLine("SD card initialized");
+            SD.isInitialized = 1;
+        }
         if (SDHC_Info.CARD == ESDHC_CARD_SDHC)
         {
+
             LCD.WriteLine("SDHC card initialized !");
         }
 
@@ -135,17 +185,16 @@ int FEHSD::Initialize(){
         f_res = f_mount((uint8)0, &FATFS_Obj);
         if (f_res == 0)
         {
+
             LCD.WriteLine("FAT filesystem mounted !");
             return opens;
         }else
         {
+
             LCD.WriteLine("Failed to mount SD card !");
             return opens;
         }
-        
-	return opens;
-        opens = 1;
-
+            return opens;
     } else{
         opens = -1;
         return opens;
@@ -153,3 +202,4 @@ int FEHSD::Initialize(){
     Sleep(300);
     return opens;
 }
+

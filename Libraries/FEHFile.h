@@ -3,10 +3,11 @@
 
 class FEHFile
 {
-public:
-	FEHFile();
-private:
-	FIL* wrapper;
-};
-
+	public:
+		FIL wrapper;
+		static int fileIdNum;
+		FEHFile() {
+			fileIdNum++;
+		}
+}; 
 #endif
