@@ -4,6 +4,9 @@
 #include <stdarg.h>
 #include <string.h>
 #include <FEHUtility.h>
+#include "stdlib.h"
+#include "ctype.h"
+#include "string.h"
 
 #define SD_CD_LOC (1<<6)
 using namespace std;
@@ -13,11 +16,6 @@ static FATFS FATFS_Obj;
 FRESULT f_res;
 FEHFile *filePtrs[25];
 int FEHFile::fileIdNum = 0;
-
-#include "stdlib.h"
-#include "ctype.h"
-#include "string.h"
-#include "limits.h"
 
 // https://raw.githubusercontent.com/ShivanKaul/libslack/master/vsscanf.c
 int our_vsscanf(const char *str, const char *format, va_list args)
@@ -141,7 +139,9 @@ int our_vsscanf(const char *str, const char *format, va_list args)
                 case 's':
                 {
                     char *arg = va_arg(args, char *);
-                    if (width <= 0) width = 425000;//INT_MAX
+                    // Changed from INT_MAX to 425000 b/c we limit the
+                    // Max size of writing to be 2048 (see Fprintf)
+                    if (width <= 0) width = 425000; // INT_MAX
                     while (width-- && *s && !isspace((int)(unsigned int)*s)){
                         if (do_cnv) *arg++ = *s++;
 					}
@@ -155,7 +155,7 @@ int our_vsscanf(const char *str, const char *format, va_list args)
                     int setcomp = 0;
                     size_t setsize;
                     const char *end;
-                    if (width <= 0) width = INT_MAX;
+                    if (width <= 0) width = 425000; // INT_MAX
                     if (*++f == '^') setcomp = 1, ++f;
                     end = strchr((*f == ']') ? f + 1 : f, ']');
                     if (!end) return FAIL; /* Could be cnv to match glibc-2.2 */
