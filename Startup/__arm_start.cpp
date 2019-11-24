@@ -15,6 +15,7 @@
 #include <runtime_configuration.h>
 #include "derivative.h"
 #include "FEHProteus.h"
+#include "FEHRandom.h"
 #include "FEHLCD.h"
 #include "FEHUtility.h"
 #include "FEHIO.h"
@@ -219,6 +220,8 @@ void InitFEHProteus()
 	AnalogEncoder::Init();
 
 	Propeller.Initialize();
+	
+	Random.Initialize();
 
 	// Initialize LCD
 	LCD.Initialize();
