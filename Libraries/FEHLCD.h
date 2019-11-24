@@ -4,9 +4,6 @@
 #include "spi.h"
 #include "derivative.h"
 #include <LCDColors.h>
-//#include <string>
-
-//using namespace std;
 
 class FEHLCD
 {
@@ -34,6 +31,8 @@ public:
     FEHLCD();
 	
 	bool Touch(float *x_pos,float *y_pos);
+
+    void ClearBuffer();
 
     void PrintImage(int x, int y);
     void PrintLogo(int x, int y);
