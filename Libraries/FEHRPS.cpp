@@ -609,7 +609,7 @@ void RPSDataProcess( unsigned char *data, unsigned char length )
         if(_RPS_stop)
 		{
 			// set kill pin low for power shutdown
-            SD.CloseLog();
+            SD.FCloseAll();
 			GPIOD_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( 13 ) );
 		}
 	}

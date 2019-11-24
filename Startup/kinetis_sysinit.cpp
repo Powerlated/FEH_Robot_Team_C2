@@ -6,7 +6,7 @@
  
 #include "kinetis_sysinit.h"
 #include "derivative.h"
- #include "FEHSD.h"
+#include "FEHSD.h"
 
 /**
  **===========================================================================
@@ -71,7 +71,7 @@ void PortDISR()
         PORTD_ISFR &= ~( 1 << 12 );
 
         // set kill pin low for power shutdown
-        SD.CloseLog();
+        SD.FCloseAll();
         GPIOD_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( 13 ) );
     }
 }

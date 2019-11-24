@@ -4,23 +4,25 @@
 #include "ff.h"
 #include "ffconf.h"
 #include "diskio.h"
+#include "FEHFile.h"
 
 class FEHSD
 {
 public:
     FEHSD();
-    void OpenLog();
-    void CloseLog();
-    void Printf(const TCHAR* str,	/* Pointer to the format string */
-    ...	);
-    void fscanf(const TCHAR* file_name, const TCHAR* format, ...);
-    void fscanf(const TCHAR* file_name, int line, const TCHAR* format, ...);
-
+    FEHFile *FOpen(const TCHAR* str, const TCHAR* mode);
+    int FClose(FEHFile *fptr);
+    int FCloseAll();
+    int FPrintf(FEHFile *fptr,const TCHAR* format,
+    		/* Pointer to the format string */ ...);
+    int FScanf(FEHFile *fptr, const TCHAR* format, ...);
+    int FEof(FEHFile *fptr);
+    //int FSeek(FEHFile *fptr, long int offset, int position);
 
 private:
-	  int isOpen;
     int Initialize();
-    void fscanf(const TCHAR* file_name, int line, const TCHAR* format, va_list list);
+    int isInitialized;
+	int numberOfFiles;
 };
 
 extern FEHSD SD;
