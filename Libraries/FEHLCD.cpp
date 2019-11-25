@@ -1016,6 +1016,16 @@ void FEHLCD::WriteParameter( unsigned char param )
     // delay2( 1 );
 }
 
+void FEHLCD::ClearBuffer()
+{
+    float dummy_x, dummy_y;
+    int timeout = 0;
+    while(Touch(&dummy_x, &dummy_y) && timeout < 1000)
+    {
+        timeout++;
+    }
+}
+
 void FEHLCD::_Clear()
 {
     _currentline = 0;
