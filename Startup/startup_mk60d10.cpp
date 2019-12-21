@@ -808,14 +808,7 @@ WEAK_AV void SysTick_Handler(void)
 // handler is not present in the application code.
 //*****************************************************************************
 WEAK_AV void IntDefaultHandler(void)
-{
-//while(1) {}
-LCD.WriteLine("Test");
-int i = 1;
-while (i > 0) {
-	i++;
-}
-
+{ while(1) {}
 }
 
 //*****************************************************************************
