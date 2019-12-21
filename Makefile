@@ -9,8 +9,13 @@ INCLUDES = -I.. -I. -ILibraries/ -IDrivers/ -IStartup/ -I"$(FEHPROTEUSINSTALL)/G
 ARGS = -O0 -ffunction-sections -fdata-sections -fno-exceptions -c -fmessage-length=0 -Wno-psabi -specs=$(SPECS)
 CFLAGS =  -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -mcpu=cortex-m4 -mfloat-abi=soft -mthumb -g3 -gdwarf-2 -gstrict-dwarf
 
+ifeq ($(OS),Windows_NT)
 AUTOCPP := $(shell Tools/egrep cpp$$ ../$(TARGET).files)
 AUTOH := $(shell Tools/egrep h$$ ../$(TARGET).files)
+else
+AUTOCPP := $(shell egrep cpp ../$(TARGET).files)
+AUTOH := $(shell egrep h ../$(TARGET).files)
+endif
 
 AUTOOBJECTS := $(patsubst %.cpp,../%.o,$(AUTOCPP))
 AUTOH := $(patsubst %.h,../%.h,$(AUTOH))
@@ -34,6 +39,22 @@ $(TARGET).elf: $(OBJECTS)
 
 $(TARGET).s19: $(TARGET).elf
 	arm-none-eabi-objcopy  -O srec --srec-len=40 --srec-forceS3 ../$(TARGET).elf ../$(TARGET).s19
-	
+
 deploy:
+ifeq ($(OS),Windows_NT)
 	@tools\copyS19.bat
+else
+	@tools/copyS19
+endif
+
+run:
+	@arm-none-eabi-size  ../$(TARGET).elf > ../size.txt
+	@echo ----------------------------------------------
+ifeq ($(OS),Windows_NT)
+	@tools\sizeGet.bat
+else
+	@tools/sizeGet
+endif
+	@echo ----------------------------------------------
+	@echo Download Successful. Please eject the SD card. >&2
+	@echo ----------------------------------------------
