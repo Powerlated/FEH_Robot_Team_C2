@@ -26,7 +26,11 @@ OBJECTS := $(AUTOOBJECTS) Startup/startup_mk60d10.o Libraries/FEHMotor.o Drivers
 all: $(TARGET).elf $(TARGET).s19
 
 clean:
-	del $(OBJECTS) ..\$(TARGET).elf ..\$(TARGET).s19 ..\$(TARGET).map $(OBJECTS:%.o=%.d)
+	ifeq ($(OS),Windows_NT)
+		del $(OBJECTS) ..\$(TARGET).elf ..\$(TARGET).s19 ..\$(TARGET).map $(OBJECTS:%.o=%.d)
+	else
+		rm -f $(OBJECTS) ..\$(TARGET).elf ..\$(TARGET).s19 ..\$(TARGET).map $(OBJECTS:%.o=%.d)
+	endif
 
 %.o : %.c $(AUTOH)
 	$(CC) $(INCLUDES) $(ARGS) $(CFLAGS) -c $< -o $@
