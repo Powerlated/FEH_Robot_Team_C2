@@ -442,8 +442,8 @@ void FEHLCD::_Initialize()
     WriteParameter(0x0F);
 
     TS_SPI_Init();
-	
-	SetFontColor(FEHLCD::White);
+
+	  SetFontColor(FEHLCD::White);
     SetBackgroundColor(FEHLCD::Black);
 
 }
@@ -457,7 +457,7 @@ FEHLCD::FEHLCD()
 
     _maxlines = 14;
     _maxcols = 26;
-    
+
     _currentline = 0;
     _currentchar = 0;
 

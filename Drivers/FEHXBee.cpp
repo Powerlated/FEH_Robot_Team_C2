@@ -168,12 +168,6 @@ void FEHXBee::SetPacketCallBack( void (*packetcallbackfunction)( unsigned char* 
 //	NVICISER1 &= ~( 1 << ( 13 ) );
 //}
 
-void UART0_ERR_IRQHandler() {
-}
-
-void UART0_LON_IRQHandler() {
-}
-
 void UART0_RX_TX_IRQHandler()
 {
 //  Echo test code
@@ -200,7 +194,7 @@ void UART0_RX_TX_IRQHandler()
 		case FoundStart:
 		{
 			_xbeebuffer[ _xbeebufferindex++ ] = c;
-            
+
 			if( _xbeebufferindex == XBEEPACKETSIZE )
 			{
 				// call data processor

@@ -1,6 +1,4 @@
 #include "FEHIO.h"
-#include "FEHLCD.h"
-
 
 tADC_Config AnalogInputPin::Master_Adc_Config;
 tADC_Config AnalogInputPin::Encoder_Adc_Config;
@@ -631,9 +629,6 @@ void AnalogInputPin::InitADCs()
 #define NULL 0
 AnalogEncoder::PinInfo * AnalogEncoder::pinList = NULL;
 
-
-#include "FEHLCD.h"
-
 volatile long __interrupt_counter = 0;
 
 void PIT0_IRQHandler() {
@@ -655,7 +650,7 @@ void AnalogEncoder::SetRate(unsigned int rateHz)
 void AnalogEncoder::Init() {
     // Freeze on Debug
     //PIT_MCR = PIT_MCR_FRZ_MASK;
-	
+
 
     // Load wait period (100,000 clock divider = 440 Hz interrupts)
     SetCounterInit(0x186A0);
@@ -904,5 +899,3 @@ bool ButtonBoard::RightReleased()
 {
     return ( _right.Value() == 1 );
 }
-
-
