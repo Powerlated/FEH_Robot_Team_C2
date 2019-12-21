@@ -4,7 +4,6 @@
 #include "uart.h"
 #include "FEHLCD.h"
 
-void UART0_ISR();
 void (*XBeeDataProcess)( unsigned char* data, unsigned char length );
 
 typedef enum
@@ -169,7 +168,13 @@ void FEHXBee::SetPacketCallBack( void (*packetcallbackfunction)( unsigned char* 
 //	NVICISER1 &= ~( 1 << ( 13 ) );
 //}
 
-void UART0_ISR()
+void UART0_ERR_IRQHandler() {
+}
+
+void UART0_LON_IRQHandler() {
+}
+
+void UART0_RX_TX_IRQHandler()
 {
 //  Echo test code
 //	char c = uart_getchar( UART0_BASE_PTR );

@@ -1792,14 +1792,14 @@ void FEHIcon::Icon::ChangeLabelFloat(float val)
     {
         d = (int) val;
         r = (int) ((val-d)*1000);
-        std::sprintf(label,"%d.%03d",d,r);
+        sprintf(label,"%d.%03d",d,r);
     }
     else
     {
         val *= -1;
         d = (int) val;
         r = (int) ((val-d)*1000);
-        std::sprintf(label,"-%d.%03d",d,r);
+        sprintf(label,"-%d.%03d",d,r);
     }
     /* If the new label is not the same length as the old one, then erase the old one so that it does not show up behind the new one */
     if (strlen(label)!=length_i)
@@ -1816,7 +1816,7 @@ void FEHIcon::Icon::ChangeLabelInt(int val)
     int length_i = strlen(label);
 
     /* Convert int to string so it can be auto-centered in icon */
-    std::sprintf(label,"%d",val);
+    sprintf(label,"%d",val);
 
     /* If the new label is not the same length as the old one, then erase the old one so that it does not show up behind the new one */
     if (strlen(label)!=length_i)

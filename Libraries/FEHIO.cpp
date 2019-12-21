@@ -230,7 +230,7 @@ void DigitalEncoder::Initialize( FEHIO::FEHIOPin pin, FEHIO::FEHIOInterruptTrigg
 
 //Interrupt port functions
 unsigned long interrupt_counts[32];
-void portB_isr()
+void PORTB_IRQHandler()
 {
     int pins[8] = { 11, 10, 7, 6, 5, 4, 1, 0 };
 
@@ -244,7 +244,7 @@ void portB_isr()
         }
     }
 }
-void portC_isr()
+void PORTC_IRQHandler()
 {
     int pins[6] = { 0, 1, 8, 9, 10, 11 };
 
@@ -257,7 +257,7 @@ void portC_isr()
         }
     }
 }
-void portA_isr()
+void PORTA_IRQHandler()
 {
     int pins[11] = { 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7 };
 
@@ -270,7 +270,7 @@ void portA_isr()
         }
     }
 }
-void portE_isr()
+void PORTE_IRQHandler()
 {
     int pins[5] = { 25, 24, 26, 27, 28 };
 
@@ -632,9 +632,11 @@ void AnalogInputPin::InitADCs()
 AnalogEncoder::PinInfo * AnalogEncoder::pinList = NULL;
 
 
+#include "FEHLCD.h"
+
 volatile long __interrupt_counter = 0;
 
-void pit0_isr(void) {
+void PIT0_IRQHandler() {
 	__interrupt_counter++;
     AnalogEncoder::ProcessInt();
     PIT_TFLG0 = PIT_TFLG_TIF_MASK;
@@ -652,7 +654,8 @@ void AnalogEncoder::SetRate(unsigned int rateHz)
 
 void AnalogEncoder::Init() {
     // Freeze on Debug
-    PIT_MCR = PIT_MCR_FRZ_MASK;
+    //PIT_MCR = PIT_MCR_FRZ_MASK;
+	
 
     // Load wait period (100,000 clock divider = 440 Hz interrupts)
     SetCounterInit(0x186A0);
