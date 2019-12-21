@@ -492,8 +492,7 @@ void InitFEHProteus()
 	
 	Random.Initialize();
 	
-
-    Sleep(1000);
+    Sleep(2000);
 }
 
 //*****************************************************************************
@@ -738,8 +737,6 @@ void ResetISR(void) {
     }
 #endif // (__USE_CMSIS)
 
-InitFEHProteus();
-
 #if defined (__cplusplus)
     //
     // Call C++ library initialisation
@@ -754,6 +751,7 @@ InitFEHProteus();
 	// Call the Redlib library, which in turn calls main()
 	__main();
 #else
+	InitFEHProteus();
 	main();
 #endif
 
