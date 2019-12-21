@@ -1,4 +1,4 @@
-if test ! -d ~/../../Volumes/FEHSD 
+if test ! -d ~/../../Volumes/FEHSD
 then
 	echo "SD Card is not inserted" >&2
 	exit 1
@@ -23,5 +23,3 @@ else
 	echo "S19 file failed to rename on FEHSD drive" >&2
 	exit 1
 fi
-
-
