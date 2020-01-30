@@ -424,11 +424,11 @@ void FEHLCD::_Initialize()
     // widx( 0x29 );  //display on
     //WriteIndex( 0x29 );
 
-    LCD.Clear(FEHLCD::White);
-    LCD.PrintImage(111,30);
-    LCD.PrintLogo(86,175);
-    LCD.SetFontColor(FEHLCD::Black);
-    LCD.WriteAt("v02.08.17",1,1);
+    Clear(FEHLCD::White);
+    PrintImage(111,30);
+    PrintLogo(86,175);
+    SetFontColor(FEHLCD::Black);
+    WriteAt("v02.09.00",1,1);
 
     WriteIndex(0x29);  //display on
     Sleep(100);
@@ -443,9 +443,8 @@ void FEHLCD::_Initialize()
 
     TS_SPI_Init();
 
-
-    LCD.SetFontColor(FEHLCD::White);
-    LCD.SetBackgroundColor(FEHLCD::Black);
+	  SetFontColor(FEHLCD::White);
+    SetBackgroundColor(FEHLCD::Black);
 
 }
 
@@ -458,7 +457,7 @@ FEHLCD::FEHLCD()
 
     _maxlines = 14;
     _maxcols = 26;
-    
+
     _currentline = 0;
     _currentchar = 0;
 
@@ -1792,14 +1791,14 @@ void FEHIcon::Icon::ChangeLabelFloat(float val)
     {
         d = (int) val;
         r = (int) ((val-d)*1000);
-        std::sprintf(label,"%d.%03d",d,r);
+        sprintf(label,"%d.%03d",d,r);
     }
     else
     {
         val *= -1;
         d = (int) val;
         r = (int) ((val-d)*1000);
-        std::sprintf(label,"-%d.%03d",d,r);
+        sprintf(label,"-%d.%03d",d,r);
     }
     /* If the new label is not the same length as the old one, then erase the old one so that it does not show up behind the new one */
     if (strlen(label)!=length_i)
@@ -1816,7 +1815,7 @@ void FEHIcon::Icon::ChangeLabelInt(int val)
     int length_i = strlen(label);
 
     /* Convert int to string so it can be auto-centered in icon */
-    std::sprintf(label,"%d",val);
+    sprintf(label,"%d",val);
 
     /* If the new label is not the same length as the old one, then erase the old one so that it does not show up behind the new one */
     if (strlen(label)!=length_i)
