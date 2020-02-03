@@ -1,6 +1,9 @@
-
 CC = arm-none-eabi-g++
 LD = $(CC)
+
+ifeq ($(OS),Windows_NT)	
+	SHELL := CMD
+endif
 
 SPECS = nosys.specs
 
