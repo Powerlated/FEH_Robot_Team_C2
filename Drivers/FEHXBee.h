@@ -2,6 +2,8 @@
 #define FEHXBEE_H
 #include "derivative.h"
 
+void UART0_RX_TX_IRQHandler();
+
 class FEHXBee
 {
 public:

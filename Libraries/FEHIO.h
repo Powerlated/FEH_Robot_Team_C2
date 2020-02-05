@@ -62,6 +62,13 @@ public:
     }FEHIOInterruptTrigger;
 };
 
+void PORTA_IRQHandler();
+void PORTB_IRQHandler();
+void PORTC_IRQHandler();
+void PORTE_IRQHandler();
+
+void PIT0_IRQHandler();
+
 // Begin Class Declarations for Pin Types
 class DigitalInputPin
 {

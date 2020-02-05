@@ -34,6 +34,17 @@
 //*****************************************************************************
 
 #include "FEHProteus.h"
+#include "derivative.h"
+#include "FEHProteus.h"
+#include "FEHXBee.h"
+#include "FEHRandom.h"
+#include "FEHLCD.h"
+#include "FEHSD.h"
+#include "FEHUtility.h"
+#include "FEHIO.h"
+#include "mcg.h"
+#include "lptmr.h"
+#include "MK60DZ10.h"
 
 #if defined (DEBUG)
 #pragma GCC push_options
@@ -152,7 +163,7 @@ WEAK void CAN1_Rx_Warning_IRQHandler(void);
 WEAK void CAN1_Wake_Up_IRQHandler(void);
 WEAK void Reserved59_IRQHandler(void);
 WEAK void UART0_LON_IRQHandler(void);
-WEAK void UART0_RX_TX_IRQHandler(void);
+//WEAK void UART0_RX_TX_IRQHandler(void);
 WEAK void UART0_ERR_IRQHandler(void);
 WEAK void UART1_RX_TX_IRQHandler(void);
 WEAK void UART1_ERR_IRQHandler(void);
@@ -175,7 +186,7 @@ WEAK void FTM2_IRQHandler(void);
 WEAK void CMT_IRQHandler(void);
 WEAK void RTC_IRQHandler(void);
 WEAK void RTC_Seconds_IRQHandler(void);
-WEAK void PIT0_IRQHandler(void);
+//WEAK void PIT0_IRQHandler(void);
 WEAK void PIT1_IRQHandler(void);
 WEAK void PIT2_IRQHandler(void);
 WEAK void PIT3_IRQHandler(void);
@@ -194,11 +205,11 @@ WEAK void TSI0_IRQHandler(void);
 WEAK void MCG_IRQHandler(void);
 WEAK void LPTMR0_IRQHandler(void);
 WEAK void Reserved102_IRQHandler(void);
-WEAK void PORTA_IRQHandler(void);
-WEAK void PORTB_IRQHandler(void);
-WEAK void PORTC_IRQHandler(void);
+//WEAK void PORTA_IRQHandler(void);
+//WEAK void PORTB_IRQHandler(void);
+//WEAK void PORTC_IRQHandler(void);
 WEAK void PORTD_IRQHandler(void);
-WEAK void PORTE_IRQHandler(void);
+//WEAK void PORTE_IRQHandler(void);
 WEAK void Reserved108_IRQHandler(void);
 WEAK void Reserved109_IRQHandler(void);
 WEAK void SWI_IRQHandler(void);
@@ -243,9 +254,9 @@ void I2S0_Tx_DriverIRQHandler(void) ALIAS(IntDefaultHandler);
 void I2S0_Rx_DriverIRQHandler(void) ALIAS(IntDefaultHandler);
 void CAN1_DriverIRQHandler(void) ALIAS(IntDefaultHandler);
 void Reserved59_DriverIRQHandler(void) ALIAS(IntDefaultHandler);
-//void UART0_LON_DriverIRQHandler(void) ALIAS(IntDefaultHandler);
+void UART0_LON_DriverIRQHandler(void) ALIAS(IntDefaultHandler);
 //void UART0_RX_TX_DriverIRQHandler(void) ALIAS(IntDefaultHandler);
-//void UART0_ERR_DriverIRQHandler(void) ALIAS(IntDefaultHandler);
+void UART0_ERR_DriverIRQHandler(void) ALIAS(IntDefaultHandler);
 void UART1_RX_TX_DriverIRQHandler(void) ALIAS(IntDefaultHandler);
 void UART1_ERR_DriverIRQHandler(void) ALIAS(IntDefaultHandler);
 void UART2_RX_TX_DriverIRQHandler(void) ALIAS(IntDefaultHandler);
@@ -314,17 +325,6 @@ extern void _vStackTop(void);
 #if defined (__cplusplus)
 } // extern "C"
 #endif
-
-#include "derivative.h"
-#include "FEHProteus.h"
-#include "FEHRandom.h"
-#include "FEHLCD.h"
-#include "FEHSD.h"
-#include "FEHUtility.h"
-#include "FEHIO.h"
-#include "mcg.h"
-#include "lptmr.h"
-#include "MK60DZ10.h"
 
 void PORTD_IRQHandler()
 {
@@ -993,17 +993,17 @@ WEAK void Reserved59_IRQHandler(void)
 {   Reserved59_DriverIRQHandler();
 }
 
-/*WEAK void UART0_LON_IRQHandler(void)
+WEAK void UART0_LON_IRQHandler(void)
 {   UART0_LON_DriverIRQHandler();
 }
 
-WEAK void UART0_RX_TX_IRQHandler(void)
-{   UART0_RX_TX_DriverIRQHandler();
-}
+//WEAK void UART0_RX_TX_IRQHandler(void)
+//{   UART0_RX_TX_DriverIRQHandler();
+//}
 
 WEAK void UART0_ERR_IRQHandler(void)
 {   UART0_ERR_DriverIRQHandler();
-}*/
+}
 
 WEAK void UART1_RX_TX_IRQHandler(void)
 {   UART1_RX_TX_DriverIRQHandler();
