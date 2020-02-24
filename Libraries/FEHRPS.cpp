@@ -510,7 +510,7 @@ int FEHRPS::CurrentRegion()
 }
 
 // Objective functions:
-int FEHRPS::WifiTimeLeft()
+int FEHRPS::GetIceCream()
 {
     return (int)_RPS_objective;
 }
@@ -601,7 +601,7 @@ void RPSDataProcess( unsigned char *data, unsigned char length )
         _RPS_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 1600.0f;
         _RPS_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f - 1600.0f;
         _RPS_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f - 1600.0f;
-		_RPS_objective = ((data[ 7 ] << 24),(data[ 8 ] << 16),(data[ 9 ] << 8),(data[10] ));
+		_RPS_objective = (((unsigned int)(data[ 7 ]) << 24) | ((unsigned int)(data[ 8 ]) << 16) | ((unsigned int)(data[ 9 ]) << 8) | (data[10]));
         _RPS_time = data[ 11 ];
         _RPS_stop = (data[12] == STOPDATA);
         _RPS_foundpacket = true;
