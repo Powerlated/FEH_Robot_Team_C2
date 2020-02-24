@@ -512,7 +512,7 @@ int FEHRPS::CurrentRegion()
 // Objective functions:
 int FEHRPS::WifiTimeLeft()
 {
-    return (int)(_RPS_objective & DEADZONE_MASK);
+    return (int)_RPS_objective;
 }
 
 // returns the match time in seconds

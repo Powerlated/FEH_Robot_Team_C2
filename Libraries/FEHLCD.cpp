@@ -773,6 +773,19 @@ bool FEHLCD::Touch(float *x_pos, float *y_pos)
 
 }
 
+bool FEHLCD::Touch(int* x_pos, int* y_pos)
+{
+	float new_x_pos, new_y_pos;
+	bool ret;
+	
+	ret = LCD.Touch(&new_x_pos, &new_y_pos);
+
+	*x_pos = (new_x_pos > 0) ? (int)(new_x_pos + 0.5) : (int)(new_x_pos);
+	*y_pos = (new_y_pos > 0) ? (int)(new_y_pos + 0.5) : (int)(new_x_pos);
+	
+	return ret;
+}
+
 int FEHLCD::abs(int no)
 {
     if(no<0)
@@ -1792,14 +1805,14 @@ void FEHIcon::Icon::ChangeLabelFloat(float val)
     {
         d = (int) val;
         r = (int) ((val-d)*1000);
-        std::sprintf(label,"%d.%03d",d,r);
+        sprintf(label,"%d.%03d",d,r);
     }
     else
     {
         val *= -1;
         d = (int) val;
         r = (int) ((val-d)*1000);
-        std::sprintf(label,"-%d.%03d",d,r);
+        sprintf(label,"-%d.%03d",d,r);
     }
     /* If the new label is not the same length as the old one, then erase the old one so that it does not show up behind the new one */
     if (strlen(label)!=length_i)
@@ -1816,7 +1829,7 @@ void FEHIcon::Icon::ChangeLabelInt(int val)
     int length_i = strlen(label);
 
     /* Convert int to string so it can be auto-centered in icon */
-    std::sprintf(label,"%d",val);
+    sprintf(label,"%d",val);
 
     /* If the new label is not the same length as the old one, then erase the old one so that it does not show up behind the new one */
     if (strlen(label)!=length_i)
