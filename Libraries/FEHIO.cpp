@@ -649,7 +649,7 @@ void AnalogEncoder::SetRate(unsigned int rateHz)
 
 void AnalogEncoder::Init() {
     // Freeze on Debug
-    //PIT_MCR = PIT_MCR_FRZ_MASK;
+    PIT_MCR = PIT_MCR_FRZ_MASK;
 
 
     // Load wait period (100,000 clock divider = 440 Hz interrupts)

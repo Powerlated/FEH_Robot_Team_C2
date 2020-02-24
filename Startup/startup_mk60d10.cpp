@@ -37,6 +37,7 @@
 #include "derivative.h"
 #include "FEHProteus.h"
 #include "FEHXBee.h"
+#include "FEHIO.h"
 #include "FEHRandom.h"
 #include "FEHLCD.h"
 #include "FEHSD.h"
