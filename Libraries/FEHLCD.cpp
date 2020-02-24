@@ -424,11 +424,11 @@ void FEHLCD::_Initialize()
     // widx( 0x29 );  //display on
     //WriteIndex( 0x29 );
 
-    LCD.Clear(FEHLCD::White);
-    LCD.PrintImage(111,30);
-    LCD.PrintLogo(86,175);
-    LCD.SetFontColor(FEHLCD::Black);
-    LCD.WriteAt("v02.08.17",1,1);
+    Clear(FEHLCD::White);
+    PrintImage(111,30);
+    PrintLogo(86,175);
+    SetFontColor(FEHLCD::Black);
+    WriteAt("v02.09.00",1,1);
 
     WriteIndex(0x29);  //display on
     Sleep(100);
@@ -443,9 +443,8 @@ void FEHLCD::_Initialize()
 
     TS_SPI_Init();
 
-
-    LCD.SetFontColor(FEHLCD::White);
-    LCD.SetBackgroundColor(FEHLCD::Black);
+	  SetFontColor(FEHLCD::White);
+    SetBackgroundColor(FEHLCD::Black);
 
 }
 
@@ -458,7 +457,7 @@ FEHLCD::FEHLCD()
 
     _maxlines = 14;
     _maxcols = 26;
-    
+
     _currentline = 0;
     _currentchar = 0;
 
