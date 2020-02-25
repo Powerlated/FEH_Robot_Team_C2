@@ -8,8 +8,6 @@
 
 FEHRPS RPS;
 
-#define DEADZONE_MASK 0x000000ff // bits 0,1
-
 #define STOPDATA 0xAA
 
 void RPSDataProcess( unsigned char *data, unsigned char length );
