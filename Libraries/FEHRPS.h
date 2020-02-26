@@ -34,13 +34,13 @@ public:
 	int CurrentRegion();
 
 	// Objective functions:
-    int WifiTimeLeft();
+    int GetIceCream();
 
 	// returns the match time in seconds
 	int Time();
 
 	unsigned char WaitForPacket();
-  int WaitForPacketDebug(int *packetsFound, int *packetsLost,int *lastFoundPacketTime);
+	int WaitForPacketDebug(int *packetsFound, int *packetsLost,int *lastFoundPacketTime);
 
 	float X();
 	float Y();
