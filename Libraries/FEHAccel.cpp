@@ -70,7 +70,7 @@ double FEHAccel::Z(){
     return(_z/(8.*518.5)*(-1));
 }
 
-bool FEHAccel::isEnabled() {
+bool FEHAccel::IsEnabled() {
 	return !didTimeout();
 }
 
