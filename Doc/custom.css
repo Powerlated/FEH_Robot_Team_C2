@@ -1,0 +1,12 @@
+#top { 
+    background-color: #cccccc;
+}
+
+div#titlearea {
+    padding-bottom: 10px;
+}
+
+#top div, #top a {
+    color: #ff0000;
+    font-weight: bold;
+}

@@ -15,14 +15,14 @@ FEHSD SD;
 static FATFS FATFS_Obj;
 FRESULT f_res;
 FEHFile *filePtrs[25];
-int FEHFile::fileIdNum = 0;
+int FEHFile::prevFileID = 0;
 
 FEHSD::FEHSD(){
 	SD.isInitialized = 0;
 	SD.numberOfFiles = 0;
 }
 
-FEHFile *FEHSD::FOpen(const TCHAR* str, const TCHAR* mode){
+FEHFile *FEHSD::FOpen(const char* str, const char* mode){
     BYTE FatFsMode;
     FEHFile *File = new FEHFile();
     int status;
@@ -106,7 +106,7 @@ int FEHSD::FEof(FEHFile *fptr){
 }
 
 int FEHSD::FPrintf(FEHFile *fptr,
-    const TCHAR* str,	/* Pointer to the format string */
+    const char* str,	/* Pointer to the format string */
     ...
 )
 {
@@ -122,7 +122,7 @@ int FEHSD::FPrintf(FEHFile *fptr,
 	return numChars;
 }
 
-int FEHSD::FScanf(FEHFile *fptr, const TCHAR* format, ...) {
+int FEHSD::FScanf(FEHFile *fptr, const char* format, ...) {
 
 	va_list args;
 	va_start(args, format);
