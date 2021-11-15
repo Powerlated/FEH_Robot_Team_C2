@@ -107,8 +107,9 @@ public:
     int FEof(FEHFile *fptr);
     //int FSeek(FEHFile *fptr, long int offset, int position);
 
-private:
     FEHSD();
+
+private:
     int Initialize();
     int isInitialized;
 	int numberOfFiles;

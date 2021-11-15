@@ -104,8 +104,9 @@ public:
 	void Initialize( int region );
 	void Initialize( char region );
 
+	FEHRPS();
+
 private:
-    FEHRPS();
 	FEHXBee _xbee;
 	int _region;
 };
