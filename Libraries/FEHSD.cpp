@@ -16,8 +16,9 @@ static FATFS FATFS_Obj;
 FRESULT f_res;
 FEHFile *filePtrs[25];
 
+int FEHFile::prevFileId = 0;
+
 FEHSD::FEHSD(){
-	// FEHFile::prevFileId = 0;
 	SD.isInitialized = 0;
 	SD.numberOfFiles = 0;
 }

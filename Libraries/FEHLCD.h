@@ -336,7 +336,7 @@ namespace FEHIcon
 			void Select();
 			void Deselect();
 			int Pressed(float x, float y, int mode);
-			int WhilePressed(float xi, float yi);
+			void WhilePressed(float xi, float yi);
             void ChangeLabelString(const char new_label[20]);
             void ChangeLabelFloat(float val);
             void ChangeLabelInt(int val);

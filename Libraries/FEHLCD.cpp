@@ -1765,6 +1765,7 @@ int FEHIcon::Icon::Pressed(float x, float y, int mode)
             }
             return 1;
         }
+        return 0;
     }
     else
     {
@@ -1773,7 +1774,7 @@ int FEHIcon::Icon::Pressed(float x, float y, int mode)
 }
 
 /* Icon function to wait while it is pressed */
-int FEHIcon::Icon::WhilePressed(float xi, float yi)
+void FEHIcon::Icon::WhilePressed(float xi, float yi)
 {
     float x = xi, y = yi;
     while(Pressed(x, y, 1))
