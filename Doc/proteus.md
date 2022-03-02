@@ -3,7 +3,7 @@ Basic Proteus Information  {#proteus}
 
 Introduction {#proteus_intro}
 ===
-The Proteus is a microcontroller with a powerful Freescale ARM Cortex M4 processor, a touch screen, digital/analog I/O, and motor and servo outputs.  It is programmable in C++, using VSCode with the FEHVSCode extension. For more information, see the Hello, World! tutorial [here](@ref hello_world).
+The Proteus is controller with a powerful Freescale ARM Cortex M4 processor, a touch screen, digital/analog I/O, and motor and servo outputs.  It is programmable in C++, using VSCode with the FEHVSCode extension. For more information, see the Hello, World! tutorial [here](@ref hello_world).
 
 The name "Proteus" is taken from the god of rivers in Greek mythology.  The adjective "protean" means capable of assuming many forms. The Proteus was developed to replace the MIT Handyboard, which was used previously.
 
@@ -18,7 +18,7 @@ In order to extend the life of the Proteus, and to avoid possible fees at the en
 Proteus Kit Contents {#proteus_kit_contents}
 ===
 The Proteus is stored in a plastic container, containing:
-- The Proteus microcontroller
+- The Proteus controller
 - MicroSD to USB adapter
 - MicroSD card
 - Stylus
@@ -47,7 +47,7 @@ Technical Specifications {#proteus_tech_specs}
 - Freescale Kinetis K60 (ARM Cortex M4) processor
     - 96 MHz single core
 - 128 kB RAM
-- 8 core parallax propeller microcontroller
+- 8 core parallax propeller chip
 - Programmable I/O
     - 32 programmable 3.3V I/O ports, capable of:
         - Digital input
