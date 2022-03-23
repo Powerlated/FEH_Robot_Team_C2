@@ -57,6 +57,4 @@ ifeq ($(OS),Windows_NT)
 else
 	@tools/sizeGet
 endif
-	@echo ----------------------------------------------
-	@echo Download Successful. Please eject the SD card. >&2
-	@echo ----------------------------------------------
+	
