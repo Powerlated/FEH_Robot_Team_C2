@@ -11,7 +11,10 @@ else
 fi
 
 if cp ../*.s19 /Volumes/FEHSD/CODE.S19; then
-	echo "S19 file copied from project to SD card and renamed to CODE.S19." >&2
+	echo "S19 file copied from project to SD card and renamed to CODE.S19."
+	echo "----------------------------------------------"
+	echo "Download Successful. Please eject the SD card."
+	echo "----------------------------------------------"
 else
 	echo "S19 file could not be copied to the SD card!" >&2
 	exit 1
