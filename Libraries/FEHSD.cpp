@@ -18,6 +18,8 @@ FEHFile *filePtrs[25];
 
 int FEHFile::prevFileId = 0;
 
+bool inAppendMode = false;
+
 FEHSD::FEHSD(){
 	SD.isInitialized = 0;
 	SD.numberOfFiles = 0;
@@ -41,9 +43,11 @@ FEHFile *FEHSD::FOpen(const char* str, const char* mode){
         }else if(strcmp(mode,"w+") == 0){
         	FatFsMode = FA_CREATE_ALWAYS | FA_WRITE | FA_READ;
         }else if(strcmp(mode,"a") == 0){
-        	FatFsMode = FA_OPEN_ALWAYS | FA_WRITE;
+        	FatFsMode = FA_OPEN_APPEND | FA_WRITE;
+			inAppendMode = true;
         }else if(strcmp(mode,"a+") == 0){
-        	FatFsMode = FA_OPEN_ALWAYS | FA_WRITE | FA_READ;
+        	FatFsMode = FA_OPEN_APPEND | FA_WRITE | FA_READ;
+			inAppendMode = true;
         }else if(strcmp(mode,"wx") == 0){
         	FatFsMode = FA_CREATE_NEW | FA_WRITE;
         }else if(strcmp(mode,"w+x") == 0){
@@ -53,13 +57,15 @@ FEHFile *FEHSD::FOpen(const char* str, const char* mode){
         }
 
         f_res = f_open(&(File->wrapper), str, FatFsMode); //I welcome thou's attempt to use files
-
+		
         filePtrs[SD.numberOfFiles++] = File;
 
 		if(f_res != 0 || f_error(&(File->wrapper)) != 0){
 			LCD.WriteLine("File failed to open");
+		}else if(inAppendMode){
+			f_lseek(&(File->wrapper), f_size(&(File->wrapper))); //go to the end of the file if wanting to append
 		}
-
+		
     } else if (status == -1){
         LCD.WriteLine("SD Card not detected!");
     } else {
@@ -178,14 +184,13 @@ int FEHSD::Initialize(){
         opens = disk_initialize(0);
         if (SDHC_Info.CARD == ESDHC_CARD_SD)
         {
-
             LCD.WriteLine("SD card initialized");
             SD.isInitialized = 1;
         }
         if (SDHC_Info.CARD == ESDHC_CARD_SDHC)
         {
-
             LCD.WriteLine("SDHC card initialized !");
+			SD.isInitialized = 1;
         }
 
         // Mount FAT File System
@@ -197,7 +202,6 @@ int FEHSD::Initialize(){
             return opens;
         }else
         {
-
             LCD.WriteLine("Failed to mount SD card !");
             return opens;
         }
