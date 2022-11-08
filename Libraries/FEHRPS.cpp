@@ -384,7 +384,7 @@ void FEHRPS::InitializeTouchMenu()
     char regions_title_label[1][20] = {"Select RPS Region"};
 
     FEHIcon::Icon regions[8];
-    char regions_labels[8][20] = {"A", "B", "C", "D", "E", "F", "G", "H"};
+    char regions_labels[4][20] = {"A", "B", "C", "D"};
 
     FEHIcon::Icon confirm_title[1];
     char confirm_title_label[1][20] = {""};
@@ -398,7 +398,7 @@ void FEHRPS::InitializeTouchMenu()
     LCD.Clear(BLACK);
 
     FEHIcon::DrawIconArray(regions_title, 1, 1, 1, 201, 1, 1, regions_title_label, BLACK, WHITE);
-    FEHIcon::DrawIconArray(regions, 2, 4, 40, 1, 1, 1, regions_labels, WHITE, WHITE);
+    FEHIcon::DrawIconArray(regions, 1, 4, 40, 90, 1, 1, regions_labels, WHITE, WHITE);
 
 	while (!c)
 	{
