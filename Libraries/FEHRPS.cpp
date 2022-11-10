@@ -9,6 +9,7 @@
 FEHRPS RPS;
 
 #define STOPDATA 0xAA
+#define REGION_COUNT 4
 
 void RPSDataProcess( unsigned char *data, unsigned char length );
 
@@ -383,10 +384,8 @@ void FEHRPS::InitializeTouchMenu()
     FEHIcon::Icon regions_title[1];
     char regions_title_label[1][20] = {"Select RPS Region"};
 
-    //To go back to 8 regions: make regions have 8 elements, add E, F, G, H to the labels, and update the call to DrawIconArray below.
-    //That's all! The initialization code should work as-is for up to 12 regions.
-    FEHIcon::Icon regions[4];
-    char regions_labels[4][20] = {"A", "B", "C", "D"};//, "E", "F", "G", "H"};
+    FEHIcon::Icon regions[REGION_COUNT];
+    char regions_labels[12][20] = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"};
 
     FEHIcon::Icon confirm_title[1];
     char confirm_title_label[1][20] = {""};
@@ -399,10 +398,10 @@ void FEHRPS::InitializeTouchMenu()
     d=0;
     LCD.Clear(BLACK);
 
+    int regionLabelRowCount = REGION_COUNT / 4;
+
     FEHIcon::DrawIconArray(regions_title, 1, 1, 1, 201, 1, 1, regions_title_label, BLACK, WHITE);
-    FEHIcon::DrawIconArray(regions, 1, 4, 40, 90, 1, 1, regions_labels, WHITE, WHITE);
-    //For 8 regions:
-    //FEHIcon::DrawIconArray(regions, 2, 4, 40, 1, 1, 1, regions_labels, WHITE, WHITE);
+    FEHIcon::DrawIconArray(regions, regionLabelRowCount, 4, 40, 2, 1, 1, regions_labels, WHITE, WHITE);
 
 	while (!c)
 	{
