@@ -383,8 +383,10 @@ void FEHRPS::InitializeTouchMenu()
     FEHIcon::Icon regions_title[1];
     char regions_title_label[1][20] = {"Select RPS Region"};
 
-    FEHIcon::Icon regions[8];
-    char regions_labels[4][20] = {"A", "B", "C", "D"};
+    //To go back to 8 regions: make regions have 8 elements, add E, F, G, H to the labels, and update the call to DrawIconArray below.
+    //That's all! The initialization code should work as-is for up to 12 regions.
+    FEHIcon::Icon regions[4];
+    char regions_labels[4][20] = {"A", "B", "C", "D"};//, "E", "F", "G", "H"};
 
     FEHIcon::Icon confirm_title[1];
     char confirm_title_label[1][20] = {""};
@@ -399,6 +401,8 @@ void FEHRPS::InitializeTouchMenu()
 
     FEHIcon::DrawIconArray(regions_title, 1, 1, 1, 201, 1, 1, regions_title_label, BLACK, WHITE);
     FEHIcon::DrawIconArray(regions, 1, 4, 40, 90, 1, 1, regions_labels, WHITE, WHITE);
+    //For 8 regions:
+    //FEHIcon::DrawIconArray(regions, 2, 4, 40, 1, 1, 1, regions_labels, WHITE, WHITE);
 
 	while (!c)
 	{
