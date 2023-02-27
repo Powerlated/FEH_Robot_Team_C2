@@ -79,13 +79,13 @@ public:
 
 	// Objective functions:
 	/**
-	 * @brief Get required ice cream flavor
+	 * @brief Get correct lever for task
 	 * 
-	 * Get required ice cream flavor
+	 * Get correct lever for task
 	 * 
-	 * @return int 0 (left lever/vanilla), 1 (middle lever/twist), 2 (right lever/chocolate)
+	 * @return int 0 (left lever), 1 (middle lever), 2 (right lever)
 	 */
-    int GetIceCream();
+    int GetCorrectLever();
 
 	//RPS debug/deprecated functions:
 	unsigned char WaitForPacket();
