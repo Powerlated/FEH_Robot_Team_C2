@@ -510,8 +510,8 @@ int FEHRPS::CurrentRegion()
 	return _region;
 }
 
-// Objective functions:
-int FEHRPS::GetIceCream()
+// Objective function
+int FEHRPS::GetCorrectLever()
 {
     return (int)_RPS_objective;
 }
