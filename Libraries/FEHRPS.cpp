@@ -292,10 +292,13 @@ void FEHRPS::Initialize( int region, const char* team_str )
         LCD.WriteLine( " " );
 
         // Sending team identifier string to RCS computer
+        LCD.WriteLine("Team Key Sent: ");
         for (int i = 0; i < 9; i++) {
             // Remember to write some sort of error checking
             txbuffer[i] = *(team_str + i);
+            LCD.Write(*(team_str + i));
         }
+        LCD.WriteLine(" ");
         txbuffer[9] = '\r';
         txlength = _xbee.SendData( txbuffer, 10 );
 
