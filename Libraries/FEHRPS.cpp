@@ -310,7 +310,9 @@ void FEHRPS::Initialize( int region, const char* team_str )
 
         //Wait to ensure that a connection is made
         _enabled = true;
-        while( WaitForPacket() == 0x00);
+        while( WaitForPacket() == 0x00) {
+            txlength = _xbee.SendData( txbuffer, 10 );
+        }
         LCD.WriteLine("RPS Enabled Successfully");
         LCD.Clear();
     }
