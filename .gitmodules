@@ -1,0 +1,3 @@
+[submodule "fehproteusfirmware"]
+	path = fehproteusfirmware
+	url = https://github.com/Powerlated/fehproteusfirmware
