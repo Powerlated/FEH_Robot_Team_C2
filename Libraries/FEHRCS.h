@@ -1,21 +1,21 @@
-#ifndef FEHRPS_H
-#define FEHRPS_H
+#ifndef FEHRCS_H
+#define FEHRCS_H
 
 #include <FEHXBee.h>
 
 /**
- * @brief Access to RPS functionality
+ * @brief Access to RCS functionality
  * 
- * Your Proteus will show a blue light indicator when it is in range of RPS.<br/>
- * You must first call InitializeTouchMenu() before RPS functionality will work.
+ * Your Proteus will show a blue light indicator when it is in range of RCS.<br/>
+ * You must first call InitializeTouchMenu() before RCS functionality will work.
  * 
  */
-class FEHRPS
+class FEHRCS
 {
 public:
 
 	/**
-	 * @brief Setup system used to select RPS course
+	 * @brief Setup system used to select RCS course
 	 * 
 	 * You must be in range of the course to be able to successfully initialize.
 	 * 
@@ -37,7 +37,7 @@ public:
 	 * Get current region's corresponding letter from 
 	 * set { A, B, C, D, E, F, G, H, I, J, K, L }
 	 * 
-	 * @return char Region letter RPS was initialized to
+	 * @return char Region letter RCS was initialized to
 	 */
 	char CurrentRegionLetter();
 
@@ -87,7 +87,7 @@ public:
 	 */
     int GetCorrectLever();
 
-	//RPS debug/deprecated functions:
+	//RCS debug/deprecated functions:
 	unsigned char WaitForPacket();
 	int WaitForPacketDebug(int *packetsFound, int *packetsLost,int *lastFoundPacketTime);
 	// returns the number of the current course { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }
@@ -104,7 +104,7 @@ public:
 	void Initialize( int region, const char* team_str );
 	void Initialize( char region, const char* team_str );
 
-	FEHRPS();
+	FEHRCS();
 
 private:
 	FEHXBee _xbee;
@@ -112,11 +112,11 @@ private:
 };
 
 /**
- * @brief Global access to FEHRPS class
+ * @brief Global access to FEHRCS class
  * 
- * Global access to FEHRPS class
+ * Global access to FEHRCS class
  * 
  */
-extern FEHRPS RPS;
+extern FEHRCS RCS;
 
-#endif // FEHRPS_H
+#endif // FEHRCS_H
