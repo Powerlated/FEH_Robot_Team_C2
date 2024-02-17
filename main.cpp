@@ -71,7 +71,7 @@ public:
     float y1, y2;
     float x1, x2;
 
-    constexpr biquad lpf(float fS, float fC, float q) {
+    constexpr static biquad lpf(float fS, float fC, float q) {
         float w = 2 * (float) M_PI * (fC / fS);
         float a = sinf(w) / (2 * q);
 
