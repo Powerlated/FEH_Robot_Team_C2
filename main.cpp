@@ -8,12 +8,15 @@ FEHMotor motorL(FEHMotor::Motor0, 9.0);
 FEHMotor motorR(FEHMotor::Motor1, 9.0);
 
 DigitalEncoder encL(FEHIO::FEHIOPin::P0_0);
+
 DigitalEncoder encR(FEHIO::FEHIOPin::P0_1);
 
 DigitalInputPin frontL(FEHIO::FEHIOPin::P2_0);
+
 DigitalInputPin frontR(FEHIO::FEHIOPin::P2_1);
 
 DigitalInputPin backL(FEHIO::FEHIOPin::P2_2);
+
 DigitalInputPin backR(FEHIO::FEHIOPin::P2_3);
 
 AnalogInputPin colorSensor(FEHIO::FEHIOPin::P3_0);
@@ -58,54 +61,54 @@ void drive_ms(float powerPct, int ms) {
 const int LCD_WIDTH = 320;
 const int LCD_HEIGHT = 240;
 
-struct biquad {
-    float a0;
-    float a1;
-    float a2;
-    float a3;
-    float a4;
-    float y1;
-    float y2;
-    float x1;
-    float x2;
+/**
+ * Formulas taken from RBJ's Audio EQ Cookbook:
+ * https://www.w3.org/TR/audio-eq-cookbook/
+ */
+class biquad {
+public:
+    float c0, c1, c2, c3, c4;
+    float y1, y2;
+    float x1, x2;
+
+    constexpr biquad lpf(float fS, float fC, float q) {
+        float w = 2 * (float) M_PI * (fC / fS);
+        float a = sinf(w) / (2 * q);
+
+        float b0 = (1 - cosf(w)) / 2;
+        float b1 = 1 - cosf(w);
+        float b2 = (1 - cosf(w)) / 2;
+
+        float a0 = 1 + a;
+        float a1 = -2 * cosf(w);
+        float a2 = 1 - a;
+
+        float c0 = b0 / a0;
+        float c1 = b1 / a0;
+        float c2 = b2 / a0;
+        float c3 = a1 / a0;
+        float c4 = a2 / a0;
+
+        return biquad{
+                c0, c1, c2, c3, c4,
+                0, 0,
+                0, 0
+        };
+    }
+
+    // Direct Form 1
+    float process(const float in) {
+        float result = c0 * in + c1 * x1 + c2 * x2 - c3 * y1 - c4 * y2;
+
+        x2 = x1;
+        x1 = in;
+
+        y2 = y1;
+        y1 = result;
+
+        return result;
+    }
 };
-
-// https://www.musicdsp.org/en/latest/Filters/197-rbj-audio-eq-cookbook.html
-float BiQuad(const float sample, biquad* const b)
-{
-    float result;
-
-    result = b->a0 * sample + b->a1 * b->x1 + b->a2 * b->x2 -
-             b->a3 * b->y1 - b->a4 * b->y2;
-
-    b->x2 = b->x1;
-    b->x1 = sample;
-
-    b->y2 = b->y1;
-    b->y1 = result;
-
-    return result;
-}
-
-biquad lpf(float srate, float freq, float q, float dbGain) {
-    biquad f;
-
-    float a = pow(10, dbGain /40);
-    float omega = 2 * M_PI * freq / srate;
-    float sn = sin(omega);
-    float cs = cos(omega);
-    float alpha = sn * sinh(M_LN2 /2 * q * omega /sn);
-    float beta = sqrt(a + a);
-
-    float b0 = (1 - cs) /2;
-    float b1 = 1 - cs;
-    float b2 = (1 - cs) /2;
-    float a0 = 1 + alpha;
-    float a1 = -2 * cs;
-    float a2 = 1 - alpha;
-
-
-}
 
 const int SERVO_MIN = 500;
 const int SERVO_MAX = 2388;
@@ -133,8 +136,6 @@ void back_until_bump() {
     Sleep(100);
     drive(0);
 }
-
-
 
 int main(void) {
     LCD.Clear(BLACK);
