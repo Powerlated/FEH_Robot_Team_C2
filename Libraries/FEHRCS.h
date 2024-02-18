@@ -50,32 +50,32 @@ public:
 	 */
 	int Time();
 	
-	/**
-	 * @brief Get current X position of QR code on course
-	 * 
-	 * Get current X position of QR code on course
-	 * 
-	 * @return float X coordinate (inches)
-	 */
-	float X();
+	// /**
+	//  * @brief Get current X position of QR code on course
+	//  * 
+	//  * Get current X position of QR code on course
+	//  * 
+	//  * @return float X coordinate (inches)
+	//  */
+	// float X();
 
-	/**
-	 * @brief Get current Y position of QR code on course
-	 * 
-	 * Get current Y position of QR code on course
-	 * 
-	 * @return float Y coordinate (inches)
-	 */
-	float Y();
+	// /**
+	//  * @brief Get current Y position of QR code on course
+	//  * 
+	//  * Get current Y position of QR code on course
+	//  * 
+	//  * @return float Y coordinate (inches)
+	//  */
+	// float Y();
 	
-	/**
-	 * @brief Get current heading angle of QR code
-	 * 
-	 * Get current heading angle of QR code
-	 * 
-	 * @return float Heading angle (degrees)
-	 */
-	float Heading();
+	// /**
+	//  * @brief Get current heading angle of QR code
+	//  * 
+	//  * Get current heading angle of QR code
+	//  * 
+	//  * @return float Heading angle (degrees)
+	//  */
+	// float Heading();
 
 	// Objective functions:
 	/**

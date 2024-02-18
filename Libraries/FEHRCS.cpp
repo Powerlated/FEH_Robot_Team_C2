@@ -604,31 +604,38 @@ int FEHRCS::WaitForPacketDebug(int *packetsFound, int *packetsLost, int *lastFou
 
 }
 
-float FEHRCS::X()
-{
-	return _RCS_x;
-}
+// float FEHRCS::X()
+// {
+// 	return _RCS_x;
+// }
 
-float FEHRCS::Y()
-{
-	return _RCS_y;
-}
+// float FEHRCS::Y()
+// {
+// 	return _RCS_y;
+// }
 
-float FEHRCS::Heading()
-{
-	return _RCS_heading;
-}
+// float FEHRCS::Heading()
+// {
+// 	return _RCS_heading;
+// }
 
 void RCSDataProcess( unsigned char *data, unsigned char length )
 {
 	if( _enabled )
 	{
-        _RCS_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 1600.0f;
-        _RCS_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f - 1600.0f;
-        _RCS_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f - 1600.0f;
-		_RCS_objective = (((unsigned int)(data[ 7 ]) << 24) | ((unsigned int)(data[ 8 ]) << 16) | ((unsigned int)(data[ 9 ]) << 8) | (data[10]));
-        _RCS_time = data[ 11 ];
-        _RCS_stop = (data[12] == STOPDATA);
+        /*
+            New packet structure:
+            [0] : RCS Start Byte
+            [1 - 4] : RCS Objective Data
+            [5] : RCS Stop
+        */
+
+        // _RCS_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 1600.0f;
+        // _RCS_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f - 1600.0f;
+        // _RCS_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f - 1600.0f;
+		_RCS_objective = (((unsigned int)(data[ 1 ]) << 24) | ((unsigned int)(data[ 2 ]) << 16) | ((unsigned int)(data[ 3 ]) << 8) | (data[ 4 ]));
+        //_RCS_time = data[ 5 ];
+        _RCS_stop = (data[ 5 ] == STOPDATA);
         _RCS_foundpacket = true;
 
         if(_RCS_stop)
