@@ -634,8 +634,8 @@ void RCSDataProcess( unsigned char *data, unsigned char length )
         // _RCS_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f - 1600.0f;
         // _RCS_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f - 1600.0f;
 		_RCS_objective = (((unsigned int)(data[ 1 ]) << 24) | ((unsigned int)(data[ 2 ]) << 16) | ((unsigned int)(data[ 3 ]) << 8) | (data[ 4 ]));
-        //_RCS_time = data[ 5 ];
-        _RCS_stop = (data[ 5 ] == STOPDATA);
+        _RCS_time = data[ 5 ];
+        _RCS_stop = (data[ 6 ] == STOPDATA);
         _RCS_foundpacket = true;
 
         if(_RCS_stop)
