@@ -1,9 +1,12 @@
 #include <FEHLCD.h>
 #include <FEHMotor.h>
 #include <FEHServo.h>
-#include "FEHIO.h"
+#include <FEHIO.h>
+#include <FEHRPS.h>
 #include <cmath>
 #include <Startup/MK60DZ10.h>
+
+void tick();
 
 FEHMotor
         motor_l(FEHMotor::Motor0, 9.0),
@@ -32,47 +35,12 @@ const int LCD_HEIGHT = 240;
 const int SERVO_MIN = 500;
 const int SERVO_MAX = 2388;
 
-void left(float powerPct) {
-    powerPct *= -0.25;
-    motor_l.SetPercent(powerPct);
-}
-
-void left_ms(float powerPct, int ms) {
-    left(powerPct);
-    Sleep(ms);
-    left(0);
-}
-
-void right(float powerPct) {
-    powerPct *= -0.25;
-    motor_r.SetPercent(powerPct);
-}
-
-void right_ms(float powerPct, int ms) {
-    right(powerPct);
-    Sleep(ms);
-    right(0);
-}
-
-void drive(float powerPct) {
-    powerPct *= -0.25;
-
-    motor_l.SetPercent(powerPct);
-    motor_r.SetPercent(powerPct);
-}
-
-void drive_ms(float powerPct, int ms) {
-    drive(powerPct);
-    Sleep(ms);
-    drive(0);
-}
-
 struct pi_controller {
     float sample_rate, sample_time;
-    float I;
-    float kP, kI, kD;
+    float I{};
+    float kP{}, kI{}, kD{};
 
-    pi_controller(float sample_rate) {
+    explicit pi_controller(float sample_rate) {
         this->sample_rate = sample_rate;
         this->sample_time = 1 / sample_rate;
     }
@@ -136,30 +104,6 @@ struct biquad {
     }
 };
 
-void fwd_until_bump() {
-    LCD.WriteLine("Going forward until front");
-    LCD.WriteLine("bump right is hit");
-    while (front_r.Value()) {
-        drive(100);
-    }
-    LCD.WriteLine("Hit front bump right,");
-    LCD.WriteLine("stopping in 100 ms...");
-    Sleep(100);
-    drive(0);
-}
-
-void back_until_bump() {
-    LCD.WriteLine("Going back until back");
-    LCD.WriteLine("bumps are hit");
-    while (back_l.Value() || back_r.Value()) {
-        drive(-100);
-    }
-    LCD.WriteLine("Hit back bumps,");
-    LCD.WriteLine("stopping in 100 ms...");
-    Sleep(100);
-    drive(0);
-}
-
 constexpr uint32_t cyc(const double sec) {
     return (uint32_t) (sec * PROTEUS_SYSTEM_HZ);
 }
@@ -191,14 +135,15 @@ struct cyctimer {
 };
 
 void init_cyccount() {
-    // Initialize cycle counter
+    // Enable debugging functions including cycle counter
     // 24th bit is TRCENA
     DEMCR |= (0b1 << 24);
+    // Enable the cycle counter itself
     // first bit is CYCCNTENA
     DWT_CTRL |= 0b1;
 }
 
-// K60 manual: Chapter 40: Periodic Interrupt Timer (PIT)
+// NXP Freescale K60 manual: Chapter 40: Periodic Interrupt Timer (PIT)
 template <int pit_num>
 void init_PIT(uint32_t cyc_interval) {
     // PIT0 is being used by FEHIO AnalogEncoder and AnalogInputPin, cannot use
@@ -210,63 +155,35 @@ void init_PIT(uint32_t cyc_interval) {
     // Set up PIT interval
     PIT_BASE_PTR->CHANNEL[pit_num].LDVAL = cyc_interval / BSP_BUS_DIV;
     // Start PIT and enable PIT interrupts
-    PIT_BASE_PTR->CHANNEL[pit_num].TCTRL = 0b11;
+    PIT_BASE_PTR->CHANNEL[pit_num].TCTRL = PIT_TCTRL_TEN_MASK | PIT_TCTRL_TIE_MASK;
 
-    // Clear pending PIT interrupt in NVIC
-    NVICICPR2 |= 1 << ((INT_PIT0 + pit_num) % 16);
-    // Enable PIT in NVIC
+    // Enable corresponding NVIC interrupt
     NVICISER2 |= 1 << ((INT_PIT0 + pit_num) % 16);
 }
 
-cyctimer pit_check_timer;
-
-int biquad_ops;
-const float PIT1_HZ = 1;
-const float ENCODER_SAMPLE_RATE = 1;
+const float TICK_RATE = 1000;
 
 extern "C" void PIT1_IRQHandler(void) {
     // Clear PIT1 interrupt flag
     PIT_BASE_PTR->CHANNEL[1].TFLG = 1;
+    tick();
+}
 
-    LCD.Write(biquad_ops * PIT1_HZ);
-    LCD.WriteLine(" Hz");
-    biquad_ops = 0;
+// This is called every (1 / TICK_RATE) seconds
+void tick() {
+
 }
 
 int main() {
     init_cyccount();
 
     LCD.Clear(BLACK);
-    LCD.WriteLine("Hello World!");
 
     cyctimer pit_check_timer;
     pit_check_timer.begin();
-    init_PIT<1>(cyc(1 / PIT1_HZ));
+    init_PIT<1>(cyc(1 / TICK_RATE));
 
-    biquad b = biquad::lpf(ENCODER_SAMPLE_RATE, 100, 0.5);
-    while (true) {
-        b.process((float)rand());
-        biquad_ops++;
-    }
-
-//    servo.SetMin(SERVO_MIN);
-//    servo.SetMax(SERVO_MAX);
-//
-//    while (true) {
-//        float cds = colorSensor.Value();
-//        float servo_proportion = cds / 3.3;
-//        float servo_deg = servo_proportion * 180;
-//        servo.SetDegree(servo_deg);
-//    }
-
-    fwd_until_bump();
-//    drive_ms(-100, 1000);
-    right_ms(-100, 3000);
-    back_until_bump();
-    fwd_until_bump();
-    left_ms(-100, 3000);
-    back_until_bump();
-    fwd_until_bump();
+    while (true) {}
 
     return 0;
 }
