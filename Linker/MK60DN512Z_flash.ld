@@ -54,7 +54,7 @@ SECTIONS
         *(.after_vectors*)
 
         /* Kinetis Flash Configuration data */
-        . = 0x400 ;
+        . = 0x1600 ;
         PROVIDE(__FLASH_CONFIG_START__ = .) ;
         KEEP(*(.FlashConfig))
         PROVIDE(__FLASH_CONFIG_END__ = .) ;

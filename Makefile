@@ -1,5 +1,4 @@
-CC = arm-none-eabi-g++
-LD = $(CC)
+CXX = arm-none-eabi-g++
 
 ifeq ($(OS),Windows_NT)
     SHELL := CMD
@@ -8,8 +7,8 @@ endif
 SPECS = nosys.specs
 
 INCLUDES = -I.. -I. -ILibraries/ -IDrivers/ -IStartup/ 
-ARGS = -O0 -ffunction-sections -fdata-sections -fno-exceptions -c -fmessage-length=0 -Wno-psabi -specs=$(SPECS)
-CFLAGS =  -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -mcpu=cortex-m4 -mfloat-abi=soft -mthumb -g3 -gdwarf-2 -gstrict-dwarf
+ARGS = -ffunction-sections -fdata-sections -fno-exceptions -c -fmessage-length=0 -Wno-psabi -specs=$(SPECS)
+CFLAGS = -flto -Wall -Os -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -mcpu=cortex-m4 -mfloat-abi=soft -mthumb -g3 -gdwarf-2 -gstrict-dwarf
 
 AUTOCPP := $(wildcard ../*.cpp)
 AUTOH := $(wildcard ../*.h)
@@ -31,13 +30,13 @@ else
 endif
 
 %.o : %.c $(AUTOH)
-	$(CC) $(INCLUDES) $(ARGS) $(CFLAGS) -c $< -o $@
+	$(CXX) $(INCLUDES) $(ARGS) $(CFLAGS) -c $< -o $@
 
 %.o : %.cpp $(AUTOH)
-	$(CC) $(INCLUDES) $(ARGS) $(CFLAGS) -c $< -o $@
+	$(CXX) $(INCLUDES) $(ARGS) $(CFLAGS) -c $< -o $@
 
 $(TARGET).elf: $(OBJECTS)
-	$(LD) $(OBJECTS) -u _printf_float -u _scanf_float -TLinker/MK60DN512Z_flash.ld -Xlinker --gc-sections -Wl,-Map,../$(TARGET).map -n -specs=$(SPECS) -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -g3 -gdwarf-2 -gstrict-dwarf -g -o ../$(TARGET).elf
+	$(CXX) $(CFLAGS) $(OBJECTS) -u _printf_float -u _scanf_float -TLinker/MK60DN512Z_flash.ld -Xlinker --gc-sections -Wl,-Map,../$(TARGET).map -n -specs=$(SPECS) -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -g3 -gdwarf-2 -gstrict-dwarf -g -o ../$(TARGET).elf
 
 $(TARGET).s19: $(TARGET).elf
 	arm-none-eabi-objcopy  -O srec --srec-len=40 --srec-forceS3 ../$(TARGET).elf ../$(TARGET).s19
