@@ -27,9 +27,9 @@
 
 void tick();
 
-const float TICK_RATE = 1000;
-const float TICK_INTERVAL_MICROSECONDS = (1 / TICK_RATE) * 1000000;
-const float TRACK_WIDTH = 8.276;
+constexpr float TICK_RATE = 1000;
+constexpr float TICK_INTERVAL_MICROSECONDS = (1 / TICK_RATE) * 1000000;
+constexpr float TRACK_WIDTH = 8.276;
 
 float rad(float deg) {
     return deg * (M_PI / 180);
@@ -39,18 +39,63 @@ float deg(float rad) {
     return rad * (180 / M_PI);
 }
 
+enum DrivetrainMode {
+    NONE,
+    MAINTAIN_ANGLE,
+    DIRECT_CONTROL,
+    STOP,
+};
+
+struct PIController {
+    float sample_rate, sample_time;
+    float I{}, max_I;
+    float kP, kI;
+
+    explicit PIController(float sample_rate, float kP, float kI, float max_I) :
+            sample_rate(sample_rate), kP(kP), kI(kI), max_I(max_I) {
+        this->sample_time = 1 / sample_rate;
+    }
+
+    float process(float setpoint, float process_variable) {
+        float error = setpoint - process_variable;
+
+        I += error * sample_time;
+        I = fmaxf(-max_I, fminf(max_I, I));
+
+      float control_effort =
+
+            kP * error +
+                kI * I;
+
+        return control_effort;
+    }
+
+    void reset() {
+        I = 0;
+    }
+};
+
 struct Drivetrain {
     FEHMotor ml, mr;
     DigitalEncoder el, er;
+    DrivetrainMode mode = NONE;
 
     float inches_per_tick_l{};
     float inches_per_tick_r{};
 
+    float pct_l{}, pct_r{};
+    float target_pct_l{}, target_pct_r{};
+
+    int totalcounts_l{}, totalcounts_r{};
+
+    PIController angle_controller = PIController(TICK_RATE, 200, 50, 30);
+
     // Position is in inches
-    float pos_x{};
-    float pos_y{};
+    float pos_x{}, pos_y{};
+    float total_dist;
     // Angle in radians
     float angle{};
+    float angle_to_maintain{};
 
     explicit Drivetrain(FEHMotor ml, FEHMotor mr, DigitalEncoder el, DigitalEncoder er) :
             ml(ml), mr(mr), el(el), er(er) {
@@ -69,8 +114,11 @@ struct Drivetrain {
     }
 
     void tick() {
-        int counts_l = el.Counts();
-        int counts_r = er.Counts();
+        uint32_t counts_l = el.Counts();
+        uint32_t counts_r = er.Counts();
+
+        totalcounts_l += counts_l;
+        totalcounts_r += counts_r;
         el.ResetCounts();
         er.ResetCounts();
 
@@ -84,24 +132,59 @@ struct Drivetrain {
             arclength_inner = arclength_l;
         }
 
-        float dAngle = (arclength_r - arclength_l) / TRACK_WIDTH;
+        float dAngle = (arclength_l - arclength_r) / TRACK_WIDTH;
         float radius_inner = fabsf(arclength_inner / dAngle);
 
         // Let R be the distance from the arc center to the point between the wheels
         float R = radius_inner + TRACK_WIDTH / 2;
 
-        float dx = R * (cosf(angle + dAngle) - cosf(angle));
-        float dy = R * (sinf(angle + dAngle) - sinf(angle));
+        float fwd_dist = R * sinf(dAngle);
+        float dx = R * cosf(angle + dAngle) - cosf(angle);
+        float dy = R * sinf(angle + dAngle) - sinf(angle);
 
+        total_dist += fwd_dist;
         pos_x += dx;
         pos_y += dy;
         angle += dAngle;
 
-        if (angle >= 2 * M_PI) {
-            angle -= 2 * M_PI;
-        } else if (angle < 0) {
-            angle += 2 * M_PI;
+        float control_effort;
+        switch (mode) {
+            case MAINTAIN_ANGLE:
+                control_effort = angle_controller.process(angle_to_maintain, angle);
+
+                pct_l = target_pct_l + control_effort;
+                pct_r = target_pct_r - control_effort;
+                break;
+            case STOP:
+                pct_l = 0;
+                pct_r = 0;
+                break;
+            case DIRECT_CONTROL:
+                pct_l = target_pct_l;
+                pct_r = target_pct_r;
+                break;
+            default:
+                break;
         }
+
+        ml.SetPercent(-pct_l);
+        mr.SetPercent(-pct_r);
+    }
+
+    void maintain_angle() {
+        angle_to_maintain = angle;
+        mode = MAINTAIN_ANGLE;
+        angle_controller.reset();
+    }
+
+    void drive_in_straight_line(float percent) {
+        maintain_angle();
+        target_pct_l = percent;
+        target_pct_r = percent;
+    }
+
+    void stop() {
+        mode = STOP;
     }
 };
 
@@ -132,30 +215,6 @@ const int LCD_HEIGHT = 240;
 
 const int SERVO_MIN = 500;
 const int SERVO_MAX = 2388;
-
-struct PIController {
-    float sample_rate, sample_time;
-    float I{}, max_I;
-    float kP, kI;
-
-    explicit PIController(float sample_rate, float kP, float kI, float max_I) :
-            sample_rate(sample_rate), kP(kP), kI(kI), max_I(max_I) {
-        this->sample_time = 1 / sample_rate;
-    }
-
-    float process(float setpoint, float process_variable) {
-        float error = setpoint - process_variable;
-
-        I += error * sample_time;
-        I = fminf(max_I, I);
-
-        float control_effort =
-                kP * error +
-                kI * I;
-
-        return control_effort;
-    }
-};
 
 /**
  * Formulas taken from RBJ's Audio EQ Cookbook:
@@ -262,10 +321,6 @@ void init_PIT(uint32_t cyc_interval) {
 
 template<int pit_num>
 void clear_PIT_irq_flag() {
-    // PIT0 is being used by FEHIO AnalogEncoder and AnalogInputPin, cannot use
-    static_assert(pit_num != 0);
-    static_assert(pit_num < 4);
-
     PIT_BASE_PTR->CHANNEL[pit_num].TFLG = 1;
 }
 
@@ -287,13 +342,40 @@ void tick() {
     tick_microseconds = (int) (((float) ticks / PROTEUS_SYSTEM_HZ) * 1000000);
 }
 
+const double IGWAN_COUNTS_PER_REV = 318;
+
 extern "C" void PIT2_IRQHandler(void) {
     clear_PIT_irq_flag<2>();
+
     LCD.Clear(BLACK);
     LCD.WriteLine("Tick time (microseconds):");
     LCD.WriteLine(tick_microseconds);
     LCD.WriteLine("Tick budget remaining:");
-    LCD.WriteLine((int)TICK_INTERVAL_MICROSECONDS - tick_microseconds);
+    LCD.WriteLine((int) TICK_INTERVAL_MICROSECONDS - tick_microseconds);
+
+    LCD.WriteLine("Angle:");
+    LCD.WriteLine(deg(drivetrain.angle));
+
+    LCD.WriteLine("Left Motor Angle:");
+    LCD.WriteLine((drivetrain.totalcounts_l / IGWAN_COUNTS_PER_REV) * 360);
+    LCD.WriteLine("Right Motor Angle:");
+    LCD.WriteLine((drivetrain.totalcounts_r / IGWAN_COUNTS_PER_REV) * 360);
+}
+
+void pit_sleep_ms(int ms) {
+    clear_PIT_irq_flag<3>();
+
+    int cyc = (int) ((float) ms * (PROTEUS_SYSTEM_HZ / 1000));
+
+    // Enable PIT clock
+    PIT_BASE_PTR->MCR = 0;
+    // Set up PIT3 timeout cycles
+    PIT_BASE_PTR->CHANNEL[3].LDVAL = cyc / BSP_BUS_DIV;
+    // Start PIT3
+    PIT_BASE_PTR->CHANNEL[3].TCTRL = PIT_TCTRL_TEN_MASK;
+
+    // Wait for PIT3 to expire
+    while (!PIT_BASE_PTR->CHANNEL[3].TFLG);
 }
 
 int main() {
@@ -302,10 +384,9 @@ int main() {
     // so the bot will be pointed toward 315 degrees when placed on the starting pad.
     drivetrain.init_pos_and_angle(0, 0, rad(315));
 
-    const double IGWAN_COUNTS_PER_REV = 318;
     const double WHEEL_DIA = 2.5;
     const double INCHES_PER_REV = WHEEL_DIA * M_PI;
-    const float INCHES_PER_COUNT = (float)(INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
+    const float INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
 
     drivetrain.set_inches_per_count(INCHES_PER_COUNT, INCHES_PER_COUNT);
 
@@ -313,7 +394,11 @@ int main() {
     init_PIT<1>(cyc(1 / TICK_RATE));
 
     // Begin the metrics printing timer (PIT2_IRQHandler)
-    init_PIT<2>(cyc(1));
+    init_PIT<2>(cyc(0.2));
+
+    drivetrain.drive_in_straight_line(25);
+//    pit_sleep_ms(2000);
+//    drivetrain.stop();
 
     while (true) {}
 
