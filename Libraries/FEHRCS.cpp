@@ -42,7 +42,7 @@ FEHRCS::FEHRCS()
 // Manually pick and configure a region
 // int region => { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }
 // char region => { a, b, c, d, e, f, g, h, i, j, k, l } || { A, B, C, D, E, F, G, H, I, J, K, L }
-void FEHRCS::Initialize( int region, const char* team_str )
+void FEHRCS::Initialize( int region, const char* team_key )
 {
     if( !_xbee.IsInitialized() )
         _xbee.Initialize();
@@ -295,8 +295,8 @@ void FEHRCS::Initialize( int region, const char* team_str )
         LCD.WriteLine("Team Key Sent: ");
         for (int i = 0; i < 9; i++) {
             // Remember to write some sort of error checking
-            txbuffer[i] = *(team_str + i);
-            LCD.Write(*(team_str + i));
+            txbuffer[i] = *(team_key + i);
+            LCD.Write(*(team_key + i));
         }
         LCD.WriteLine(" ");
         txbuffer[9] = '\r';
@@ -331,19 +331,19 @@ void FEHRCS::Initialize( int region, const char* team_str )
     }
 }
 
-void FEHRCS::Initialize( char region, const char* team_str )
+void FEHRCS::Initialize( char region, const char* team_key )
 {
     if( region >= 'A' && region <= 'L' )
     {
-        Initialize( (int)( region - 'A' ), team_str );
+        Initialize( (int)( region - 'A' ), team_key );
     }
     else if( region >= 'a' && region <= 'l' )
     {
-        Initialize( (int)( region - 'a' ), team_str );
+        Initialize( (int)( region - 'a' ), team_key );
     }
 }
 
-void FEHRCS::InitializeMenu( const char* team_str )
+void FEHRCS::InitializeMenu( const char* team_key )
 {
 	ButtonBoard buttons( FEHIO::Bank3 );
 
@@ -393,13 +393,13 @@ void FEHRCS::InitializeMenu( const char* team_str )
 		}
 	}
 
-	Initialize( region, team_str );
+	Initialize( region, team_key );
 
 	//while( buttons.MiddlePressed() );
 	//Sleep( 1000 );
 }
 
-void FEHRCS::InitializeTouchMenu(const char* team_str)
+void FEHRCS::InitializeTouchMenu(const char* team_key)
 {
 	int cancel = 1;
     int c=0, d=0, n;
@@ -507,7 +507,7 @@ void FEHRCS::InitializeTouchMenu(const char* team_str)
     }
     }
 
-    Initialize( region , team_str );
+    Initialize( region , team_key );
 
 }
 

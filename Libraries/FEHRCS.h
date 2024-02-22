@@ -20,7 +20,7 @@ public:
 	 * You must be in range of the course to be able to successfully initialize.
 	 * 
 	 */
-	void InitializeTouchMenu(const char* team_str);
+	void InitializeTouchMenu(const char* team_key);
 
 	/**
 	 * @brief Get course number corresponding to current region
@@ -97,12 +97,12 @@ public:
 	// Right button increments region
 	// Left button decrements region
 	// Middle button selects region
-	void InitializeMenu( const char* team_str ); //Deprecated because uses button board
+	void InitializeMenu( const char* team_key ); //Deprecated because uses button board
 	// Manually pick and configure a region
 	// int region => { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }
 	// char region => { a, b, c, d, e, f, g, h, i, j, k, l } || { A, B, C, D, E, F, G, H, I, J, K, L }
-	void Initialize( int region, const char* team_str );
-	void Initialize( char region, const char* team_str );
+	void Initialize( int region, const char* team_key );
+	void Initialize( char region, const char* team_key );
 
 	FEHRCS();
 
