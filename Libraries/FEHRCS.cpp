@@ -303,7 +303,7 @@ void FEHRCS::Initialize( int region, const char* team_str )
         txlength = _xbee.SendData( txbuffer, 10 );
 
         // show success
-        LCD.Write( "Successfully initialized region: " );
+        LCD.Write( "Connecting to Region " );
         LCD.WriteLine( CurrentRegionLetter() );
 
 //		_xbee.EnableInterrupt();
@@ -324,7 +324,8 @@ void FEHRCS::Initialize( int region, const char* team_str )
             }
             txlength = _xbee.SendData( txbuffer, 10 );
         }
-        LCD.WriteLine("RCS Enabled Successfully");
+        LCD.WriteLine("RCS Enabled Successfully, Program running in 3 seconds");
+        Sleep(3000);
         LCD.Clear();
     }
     }
