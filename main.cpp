@@ -27,11 +27,8 @@
 
 using namespace std;
 
-void tick();
-
-void drive();
-
-constexpr float TICK_RATE = 100;
+struct Robot;
+constexpr float TICK_RATE = 5000;
 constexpr float TICK_INTERVAL_MICROSECONDS = (1 / TICK_RATE) * 1000000;
 constexpr float TRACK_WIDTH = 8.276;
 
@@ -41,6 +38,16 @@ constexpr double INCHES_PER_REV = WHEEL_DIA * M_PI;
 constexpr auto INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
 
 constexpr float PROTEUS_SYSTEM_HZ = 88000000.0;
+
+constexpr auto DRIVE_MOTOR_MAX_VOLTAGE = 9.0;
+constexpr auto DRIVE_MOTOR_L_PORT = FEHMotor::Motor0;
+constexpr auto DRIVE_MOTOR_R_PORT = FEHMotor::Motor1;
+constexpr auto ENCODER_L_PIN_0 = FEHIO::FEHIOPin::P0_0;
+constexpr auto ENCODER_L_PIN_1 = FEHIO::FEHIOPin::P0_1;
+constexpr auto ENCODER_R_PIN_0 = FEHIO::FEHIOPin::P0_2;
+constexpr auto ENCODER_R_PIN_1 = FEHIO::FEHIOPin::P0_3;
+constexpr auto DRIVE_INCHES_PER_COUNT_L = INCHES_PER_COUNT;
+constexpr auto DRIVE_INCHES_PER_COUNT_R = INCHES_PER_COUNT;
 
 // Declared in startup_mk60d10.cpp
 const int BSP_BUS_DIV = 2;
@@ -58,6 +65,28 @@ constexpr double rad(double deg) {
 constexpr double deg(double rad) {
     return rad * (180 / M_PI);
 }
+
+struct CycTimer {
+    uint32_t value = 0;
+
+    void begin() {
+        // Enable debugging functions including cycle counter
+        // 24th bit is TRCENA
+        DEMCR |= (0b1 << 24);
+        // Enable the cycle counter itself
+        // first bit is CYCCNTENA
+        DWT_CTRL |= 0b1;
+
+        value = DWT_CYCCNT;
+    }
+
+    uint32_t lap() {
+        uint32_t current_cyc = DWT_CYCCNT;
+        uint32_t lap_cyc = current_cyc - value;
+        value = current_cyc;
+        return lap_cyc;
+    }
+};
 
 struct PIController {
     float sample_rate, sample_time;
@@ -96,7 +125,19 @@ struct PIController {
  * V_max = (-at+sqrt((a^2)(t^2) + 4da)) / 2
  */
 
-struct Drivetrain {
+struct Robot {
+    FEHMotor ml{DRIVE_MOTOR_L_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
+    FEHMotor mr{DRIVE_MOTOR_R_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
+    DigitalEncoder el{ENCODER_L_PIN_0, ENCODER_L_PIN_1};
+    DigitalEncoder er{ENCODER_R_PIN_0, ENCODER_R_PIN_1};
+    DigitalInputPin
+            front_l{FEHIO::FEHIOPin::P2_0},
+            front_r{FEHIO::FEHIOPin::P2_1},
+            back_l{FEHIO::FEHIOPin::P2_2},
+            back_r{FEHIO::FEHIOPin::P2_3};
+    AnalogInputPin colorSensor{FEHIO::FEHIOPin::P3_0};
+    FEHServo servo{FEHServo::FEHServoPort::Servo0};
+
     enum class DriveMode {
         STOP,
         FORWARD
@@ -105,23 +146,20 @@ struct Drivetrain {
     enum class ControlMode {
         STOP,
         MAINTAIN_ANGLE,
-        DIRECT_CONTROL,
     };
 
-    int tick_count{};
-
-    FEHMotor ml, mr;
-    DigitalEncoder el, er;
     DriveMode drive_mode = DriveMode::STOP;
     ControlMode control_mode = ControlMode::STOP;
 
-    float inches_per_tick_l, inches_per_tick_r;
+    int tick_count{};
+    int state_number{};
+    bool state_complete = true;
 
     float pct_l{}, pct_r{};
     float target_pct_l{}, target_pct_r{};
     float target_dist{};
 
-    int totalcounts_l{}, totalcounts_r{};
+    int total_counts_l{}, total_counts_r{};
 
     PIController angle_controller = PIController(TICK_RATE, 200, 50, 30);
 
@@ -138,107 +176,16 @@ struct Drivetrain {
      * that we instantiated. I couldn't get this working properly with C++ move semantics, so I'm instantiating the
      * DigitalEncoder objects inside the Drivetrain constructor instead. It's working now.
      */
-    explicit Drivetrain(FEHMotor &&ml,
-                        FEHMotor &&mr,
-                        FEHIO::FEHIOPin l1, FEHIO::FEHIOPin l2,
-                        FEHIO::FEHIOPin r1, FEHIO::FEHIOPin r2,
-                        float inches_per_tick_l,
-                        float inches_per_tick_r) :
-            ml(ml),
-            mr(mr),
-            el(DigitalEncoder(l1, l2)),
-            er(DigitalEncoder(r1, r2)),
-            inches_per_tick_l(inches_per_tick_l),
-            inches_per_tick_r(inches_per_tick_r) {
+    explicit Robot() {
+        // The origin is the starting pad.
+        // angle = 0 degrees is straight up toward the right ramp,
+        // so the bot will be pointed toward 315 degrees when placed on the starting pad.
+        pos_x = 0;
+        pos_y = 0;
+        angle = rad(315);
     }
 
-    // Takes angle in radians
-    void init_pos_and_angle(float _pos_x, float _pos_y, float _angle) {
-        pos_x = _pos_x;
-        pos_y = _pos_y;
-        angle = _angle;
-    }
-
-    void set_inches_per_count(float left, float right) {
-        inches_per_tick_l = left;
-        inches_per_tick_r = right;
-    }
-
-    void tick() {
-        tick_count++;
-
-        auto counts_l = el.Counts();
-        auto counts_r = er.Counts();
-
-        totalcounts_l += counts_l;
-        totalcounts_r += counts_r;
-        el.ResetCounts();
-        er.ResetCounts();
-
-        float arclength_l = inches_per_tick_l * (float) counts_l;
-        float arclength_r = inches_per_tick_r * (float) counts_r;
-
-        float arclength_inner;
-        if (arclength_l > arclength_r) {
-            arclength_inner = arclength_r;
-        } else {
-            arclength_inner = arclength_l;
-        }
-
-        float dAngle = (arclength_l - arclength_r) / TRACK_WIDTH;
-        float radius_inner = fabsf(arclength_inner / dAngle);
-
-        // Let R be the distance from the arc center to the point between the wheels
-        float R = radius_inner + TRACK_WIDTH / 2;
-
-        float fwd_dist = R * sinf(dAngle);
-        float dx = R * cosf(angle + dAngle) - cosf(angle);
-        float dy = R * sinf(angle + dAngle) - sinf(angle);
-
-        total_dist += fwd_dist;
-        pos_x += dx;
-        pos_y += dy;
-        angle += dAngle;
-
-        switch (drive_mode) {
-            case DriveMode::STOP:
-                break;
-            case DriveMode::FORWARD:
-                if (total_dist > target_dist) {
-                    stop();
-                }
-                break;
-        }
-
-        float control_effort;
-        switch (control_mode) {
-            case ControlMode::MAINTAIN_ANGLE:
-                control_effort = angle_controller.process(angle_to_maintain, angle);
-
-                pct_l = target_pct_l + control_effort;
-                pct_r = target_pct_r - control_effort;
-
-                ml.SetPercent(-pct_l);
-                mr.SetPercent(-pct_r);
-                break;
-            case ControlMode::STOP:
-                pct_l = 0;
-                pct_r = 0;
-
-                ml.Stop();
-                mr.Stop();
-                break;
-            case ControlMode::DIRECT_CONTROL:
-                pct_l = target_pct_l;
-                pct_r = target_pct_r;
-
-                ml.SetPercent(-pct_l);
-                mr.SetPercent(-pct_r);
-                break;
-            default:
-                break;
-        }
-    }
+    void next_state();
 
     void maintain_angle() {
         angle_to_maintain = angle;
@@ -277,12 +224,95 @@ struct Drivetrain {
                 return "Stop";
             case ControlMode::MAINTAIN_ANGLE:
                 return "MaintainAngle";
-            case ControlMode::DIRECT_CONTROL:
-                return "DirectControl";
         }
         return "";
     }
-};
+
+    void tick() {
+        tick_count++;
+
+        /*
+         * STATE MANAGEMENT
+         */
+
+        if (state_complete) {
+            next_state();
+            state_number++;
+            state_complete = false;
+        }
+
+        /*
+         * ODOMETRY
+         */
+
+        auto counts_l = el.Counts();
+        auto counts_r = er.Counts();
+
+        total_counts_l += counts_l;
+        total_counts_r += counts_r;
+        el.ResetCounts();
+        er.ResetCounts();
+
+        float arclength_l = DRIVE_INCHES_PER_COUNT_L * (float) counts_l;
+        float arclength_r = DRIVE_INCHES_PER_COUNT_R * (float) counts_r;
+
+        float arclength_inner;
+        if (arclength_l > arclength_r) {
+            arclength_inner = arclength_r;
+        } else {
+            arclength_inner = arclength_l;
+        }
+
+        float dAngle = (arclength_l - arclength_r) / TRACK_WIDTH;
+        float radius_inner = fabsf(arclength_inner / dAngle);
+
+        // Let R be the distance from the arc center to the point between the wheels
+        float R = radius_inner + TRACK_WIDTH / 2;
+
+        float fwd_dist = R * sinf(dAngle);
+        float dx = R * cosf(angle + dAngle) - cosf(angle);
+        float dy = R * sinf(angle + dAngle) - sinf(angle);
+
+        total_dist += fwd_dist;
+        pos_x += dx;
+        pos_y += dy;
+        angle += dAngle;
+
+        /*
+         * DRIVETRAIN MOTOR MANAGEMENT
+         */
+
+        switch (drive_mode) {
+            case DriveMode::FORWARD:
+                if (total_dist > target_dist) {
+                    stop();
+                }
+                break;
+        }
+
+        float control_effort;
+        switch (control_mode) {
+            case ControlMode::MAINTAIN_ANGLE:
+                control_effort = angle_controller.process(angle_to_maintain, angle);
+
+                pct_l = target_pct_l + control_effort;
+                pct_r = target_pct_r - control_effort;
+
+                ml.SetPercent(-pct_l);
+                mr.SetPercent(-pct_r);
+                break;
+            case ControlMode::STOP:
+                pct_l = 0;
+                pct_r = 0;
+
+                ml.Stop();
+                mr.Stop();
+                break;
+            default:
+                break;
+        }
+    }
+} robot;
 
 /**
  * Formulas taken from RBJ's Audio EQ Cookbook:
@@ -332,50 +362,9 @@ struct Biquad {
     }
 };
 
-Drivetrain drivetrain(
-        FEHMotor(FEHMotor::Motor0, 9.0),
-        FEHMotor(FEHMotor::Motor1, 9.0),
-        FEHIO::FEHIOPin::P0_0, FEHIO::FEHIOPin::P0_1,
-        FEHIO::FEHIOPin::P0_2, FEHIO::FEHIOPin::P0_3,
-        INCHES_PER_COUNT,
-        INCHES_PER_COUNT
-);
-
-DigitalInputPin
-        front_l(FEHIO::FEHIOPin::P2_0),
-        front_r(FEHIO::FEHIOPin::P2_1),
-        back_l(FEHIO::FEHIOPin::P2_2),
-        back_r(FEHIO::FEHIOPin::P2_3);
-
-AnalogInputPin colorSensor(FEHIO::FEHIOPin::P3_0);
-
-FEHServo servo(FEHServo::FEHServoPort::Servo0);
-
 constexpr uint32_t cyc(const double sec) {
     return (uint32_t) (sec * PROTEUS_SYSTEM_HZ);
 }
-
-struct CycTimer {
-    uint32_t value = 0;
-
-    void begin() {
-        // Enable debugging functions including cycle counter
-        // 24th bit is TRCENA
-        DEMCR |= (0b1 << 24);
-        // Enable the cycle counter itself
-        // first bit is CYCCNTENA
-        DWT_CTRL |= 0b1;
-
-        value = DWT_CYCCNT;
-    }
-
-    uint32_t lap() {
-        uint32_t current_cyc = DWT_CYCCNT;
-        uint32_t lap_cyc = current_cyc - value;
-        value = current_cyc;
-        return lap_cyc;
-    }
-};
 
 template<int pit_num>
 void enable_PIT_irq() {
@@ -411,8 +400,13 @@ void clear_PIT_irq_flag() {
     PIT_BASE_PTR->CHANNEL[pit_num].TFLG = 1;
 }
 
+CycTimer tick_timer{};
+int tick_cycles{};
+// This is called every (1 / TICK_RATE) seconds by the SysTick timer
 extern "C" void SysTick_Handler(void) {
-    tick();
+    tick_timer.begin();
+    robot.tick();
+    tick_cycles = (int) tick_timer.lap();
 }
 
 template<uint32_t cyc_interval>
@@ -431,48 +425,44 @@ constexpr void init_SysTick() {
     NVIC_BASE_PTR->ISER[0] |= 1 << INT_SysTick;
 }
 
-int tick_microseconds;
-CycTimer tick_timer;
-
-// This is called every (1 / TICK_RATE) seconds by the SysTick IRQ handler
-void tick() {
-    tick_timer.begin();
-
-    drivetrain.tick();
-
-    int ticks = (int) tick_timer.lap();
-    tick_microseconds = (int) (((float) ticks / PROTEUS_SYSTEM_HZ) * 1000000);
-}
-
 extern "C" void PIT1_IRQHandler(void) {
     clear_PIT_irq_flag<1>();
 
     LCD.Clear(BLACK);
-    LCD.Write("Tick time (us): ");
-    LCD.WriteLine(tick_microseconds);
+    LCD.Write("Tick CPU usage: ");
+    // Add 1% to give a safety margin
+    LCD.Write((tick_cycles * 100) / (int)cyc(1 / TICK_RATE) + 1);
+    LCD.WriteLine("%");
     LCD.Write("Tick count: ");
-    LCD.WriteLine((int) drivetrain.tick_count);
+    LCD.WriteLine((int) robot.tick_count);
+
+    LCD.Write("X (inches): ");
+    LCD.WriteLine(robot.pos_x);
+    LCD.Write("Y (inches): ");
+    LCD.WriteLine(robot.pos_y);
 
     LCD.Write("Angle: ");
-    LCD.WriteLine(deg(drivetrain.angle));
+    LCD.WriteLine(deg(robot.angle));
 
     LCD.Write("L Motor Angle: ");
-    LCD.WriteLine((drivetrain.totalcounts_l / IGWAN_COUNTS_PER_REV) * 360);
+    LCD.WriteLine((robot.total_counts_l / IGWAN_COUNTS_PER_REV) * 360);
     LCD.Write("R Motor Angle: ");
-    LCD.WriteLine((drivetrain.totalcounts_r / IGWAN_COUNTS_PER_REV) * 360);
+    LCD.WriteLine((robot.total_counts_r / IGWAN_COUNTS_PER_REV) * 360);
 
     LCD.Write("DriveMode: ");
-    LCD.WriteLine(drivetrain.drive_mode_string());
+    LCD.WriteLine(robot.drive_mode_string());
 
     LCD.Write("ControlMode: ");
-    LCD.WriteLine(drivetrain.control_mode_string());
+    LCD.WriteLine(robot.control_mode_string());
 
     LCD.Write("ControlEffort: ");
-    LCD.WriteLine(drivetrain.angle_controller.control_effort);
+    LCD.WriteLine(robot.angle_controller.control_effort);
     LCD.Write("Error: ");
-    LCD.WriteLine(drivetrain.angle_controller.error);
+    LCD.WriteLine(robot.angle_controller.error);
     LCD.Write("I: ");
-    LCD.WriteLine(drivetrain.angle_controller.I);
+    LCD.WriteLine(robot.angle_controller.I);
+    LCD.Write("State: ");
+    LCD.WriteLine(robot.state_number);
 }
 
 void sleep(int ms) {
@@ -502,18 +492,30 @@ void sleep(int ms) {
 }
 
 int main() {
-    // The origin is the starting pad.
-    // angle = 0 degrees is straight up toward the right ramp,
-    // so the bot will be pointed toward 315 degrees when placed on the starting pad.
-    drivetrain.init_pos_and_angle(0, 0, rad(315));
-
-    // Begin the tick loop timer (SysTick_Handler)
-    init_SysTick<cyc(1 / TICK_RATE)>();
-
-    // Begin the metrics printing timer (PIT1_IRQHandler)
+    /*
+     * Begin the diagnostics printing timer.
+     * Calls PIT1_IRQHandler() every 0.2 seconds.
+     */
     init_PIT<1>(cyc(0.2));
 
-    drivetrain.drive_in_straight_line(25, 12);
+    /*
+     * Begin the SysTick timer that drives the robot controller.
+     * Calls SysTick_Handler() at TICK_RATE hz.
+     */
+    init_SysTick<cyc(1 / TICK_RATE)>();
 
     return 0;
+}
+
+void Robot::next_state() {
+    switch (state_number) {
+        case 0:
+            drive_in_straight_line(50, 12);
+            break;
+        case 1:
+            stop();
+            break;
+        default:
+            break;
+    }
 }
