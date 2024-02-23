@@ -133,7 +133,7 @@ bool DigitalInputPin::Value() {
 DigitalEncoder *encoder_pinsA[32]{};
 DigitalEncoder *encoder_pinsB[32]{};
 
-DigitalEncoder::DigitalEncoder(FEHIO::FEHIOPin&& pin1, FEHIO::FEHIOPin&& pin2) : pin1(pin1), pin2(pin2) {
+DigitalEncoder::DigitalEncoder(FEHIO::FEHIOPin pin1, FEHIO::FEHIOPin pin2) : pin1(pin1), pin2(pin2) {
     encoder_pinsA[pin1] = this;
     encoder_pinsB[pin2] = this;
     SetupGPIO(pin1);

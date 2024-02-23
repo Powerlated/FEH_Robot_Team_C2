@@ -107,7 +107,7 @@ private:
 class DigitalEncoder
 {
 public:
-    DigitalEncoder(FEHIO::FEHIOPin&& pin1, FEHIO::FEHIOPin&& pin2);
+    explicit DigitalEncoder(FEHIO::FEHIOPin pin1, FEHIO::FEHIOPin pin2);
     void ChannelARisingEdge();
     void UpdateChannelB(bool is_high);
     int Counts() const;
