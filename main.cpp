@@ -27,23 +27,29 @@
 
 void tick();
 
+void drive();
+
 constexpr float TICK_RATE = 1000;
 constexpr float TICK_INTERVAL_MICROSECONDS = (1 / TICK_RATE) * 1000000;
 constexpr float TRACK_WIDTH = 8.276;
 
-float rad(float deg) {
+constexpr float rad(float deg) {
     return deg * (M_PI / 180);
 }
 
-float deg(float rad) {
+constexpr float deg(float rad) {
     return rad * (180 / M_PI);
 }
 
-enum DrivetrainMode {
-    NONE,
+enum class DriveMode {
+    STOP,
+    FORWARD
+};
+
+enum class ControlMode {
+    STOP,
     MAINTAIN_ANGLE,
     DIRECT_CONTROL,
-    STOP,
 };
 
 struct PIController {
@@ -62,9 +68,9 @@ struct PIController {
         I += error * sample_time;
         I = fmaxf(-max_I, fminf(max_I, I));
 
-      float control_effort =
+        float control_effort =
 
-            kP * error +
+                kP * error +
                 kI * I;
 
         return control_effort;
@@ -78,13 +84,15 @@ struct PIController {
 struct Drivetrain {
     FEHMotor ml, mr;
     DigitalEncoder el, er;
-    DrivetrainMode mode = NONE;
+    DriveMode drive_mode = DriveMode::STOP;
+    ControlMode control_mode = ControlMode::STOP;
 
     float inches_per_tick_l{};
     float inches_per_tick_r{};
 
     float pct_l{}, pct_r{};
     float target_pct_l{}, target_pct_r{};
+    float target_dist{};
 
     int totalcounts_l{}, totalcounts_r{};
 
@@ -92,12 +100,12 @@ struct Drivetrain {
 
     // Position is in inches
     float pos_x{}, pos_y{};
-    float total_dist;
+    float total_dist{};
     // Angle in radians
     float angle{};
     float angle_to_maintain{};
 
-    explicit Drivetrain(FEHMotor ml, FEHMotor mr, DigitalEncoder el, DigitalEncoder er) :
+    explicit Drivetrain(FEHMotor &&ml, FEHMotor &&mr, DigitalEncoder &&el, DigitalEncoder &&er) :
             ml(ml), mr(mr), el(el), er(er) {
     }
 
@@ -114,8 +122,8 @@ struct Drivetrain {
     }
 
     void tick() {
-        uint32_t counts_l = el.Counts();
-        uint32_t counts_r = er.Counts();
+        auto counts_l = el.Counts();
+        auto counts_r = er.Counts();
 
         totalcounts_l += counts_l;
         totalcounts_r += counts_r;
@@ -147,19 +155,29 @@ struct Drivetrain {
         pos_y += dy;
         angle += dAngle;
 
+        switch (drive_mode) {
+            case DriveMode::STOP:
+                break;
+            case DriveMode::FORWARD:
+                if (total_dist > target_dist) {
+                    stop();
+                }
+                break;
+        }
+
         float control_effort;
-        switch (mode) {
-            case MAINTAIN_ANGLE:
+        switch (control_mode) {
+            case ControlMode::MAINTAIN_ANGLE:
                 control_effort = angle_controller.process(angle_to_maintain, angle);
 
                 pct_l = target_pct_l + control_effort;
                 pct_r = target_pct_r - control_effort;
                 break;
-            case STOP:
+            case ControlMode::STOP:
                 pct_l = 0;
                 pct_r = 0;
                 break;
-            case DIRECT_CONTROL:
+            case ControlMode::DIRECT_CONTROL:
                 pct_l = target_pct_l;
                 pct_r = target_pct_r;
                 break;
@@ -173,26 +191,51 @@ struct Drivetrain {
 
     void maintain_angle() {
         angle_to_maintain = angle;
-        mode = MAINTAIN_ANGLE;
         angle_controller.reset();
+
+        control_mode = ControlMode::MAINTAIN_ANGLE;
     }
 
-    void drive_in_straight_line(float percent) {
-        maintain_angle();
+    void drive_in_straight_line(float percent, float dist) {
         target_pct_l = percent;
         target_pct_r = percent;
+        target_dist = dist;
+        maintain_angle();
+
+        drive_mode = DriveMode::FORWARD;
     }
 
     void stop() {
-        mode = STOP;
+        drive_mode = DriveMode::STOP;
+        control_mode = ControlMode::STOP;
+    }
+
+    [[nodiscard]] const char *drive_mode_string() const {
+        switch (drive_mode) {
+            case DriveMode::STOP:
+                return "Stop";
+            case DriveMode::FORWARD:
+                return "Forward";
+        }
+    }
+
+    [[nodiscard]] const char *control_mode_string() const {
+        switch (control_mode) {
+            case ControlMode::STOP:
+                return "Stop";
+            case ControlMode::MAINTAIN_ANGLE:
+                return "Maintain Angle";
+            case ControlMode::DIRECT_CONTROL:
+                return "Direct Control";
+        }
     }
 };
 
 Drivetrain drivetrain(
         FEHMotor(FEHMotor::Motor0, 9.0),
         FEHMotor(FEHMotor::Motor1, 9.0),
-        DigitalEncoder(FEHIO::FEHIOPin::P0_0, FEHIO::FEHIOInterruptTrigger::EitherEdge),
-        DigitalEncoder(FEHIO::FEHIOPin::P0_1, FEHIO::FEHIOInterruptTrigger::EitherEdge)
+        DigitalEncoder(FEHIO::FEHIOPin::P0_0, FEHIO::FEHIOPin::P0_1),
+        DigitalEncoder(FEHIO::FEHIOPin::P0_2, FEHIO::FEHIOPin::P0_3)
 );
 
 DigitalInputPin
@@ -360,22 +403,33 @@ extern "C" void PIT2_IRQHandler(void) {
     LCD.WriteLine((drivetrain.totalcounts_l / IGWAN_COUNTS_PER_REV) * 360);
     LCD.WriteLine("Right Motor Angle:");
     LCD.WriteLine((drivetrain.totalcounts_r / IGWAN_COUNTS_PER_REV) * 360);
+
+    LCD.WriteLine("Drive Mode:");
+    LCD.WriteLine(drivetrain.drive_mode_string());
+
+    LCD.WriteLine("Control Mode:");
+    LCD.WriteLine(drivetrain.control_mode_string());
 }
 
-void pit_sleep_ms(int ms) {
+void sleep(int ms) {
     clear_PIT_irq_flag<3>();
 
-    int cyc = (int) ((float) ms * (PROTEUS_SYSTEM_HZ / 1000));
+    auto cyc = (uint32_t) ((float) ms * (PROTEUS_SYSTEM_HZ / 1000));
 
     // Enable PIT clock
     PIT_BASE_PTR->MCR = 0;
     // Set up PIT3 timeout cycles
     PIT_BASE_PTR->CHANNEL[3].LDVAL = cyc / BSP_BUS_DIV;
     // Start PIT3
-    PIT_BASE_PTR->CHANNEL[3].TCTRL = PIT_TCTRL_TEN_MASK;
+    PIT_BASE_PTR->CHANNEL[3].TCTRL = 0b11;
 
     // Wait for PIT3 to expire
-    while (!PIT_BASE_PTR->CHANNEL[3].TFLG);
+    while (!(PIT_BASE_PTR->CHANNEL[3].TFLG & 1));
+
+    clear_PIT_irq_flag<3>();
+
+    // Stop PIT3
+    PIT_BASE_PTR->CHANNEL[3].TCTRL = 0;
 }
 
 int main() {
@@ -386,7 +440,7 @@ int main() {
 
     const double WHEEL_DIA = 2.5;
     const double INCHES_PER_REV = WHEEL_DIA * M_PI;
-    const float INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
+    const auto INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
 
     drivetrain.set_inches_per_count(INCHES_PER_COUNT, INCHES_PER_COUNT);
 
@@ -396,11 +450,17 @@ int main() {
     // Begin the metrics printing timer (PIT2_IRQHandler)
     init_PIT<2>(cyc(0.2));
 
-    drivetrain.drive_in_straight_line(25);
-//    pit_sleep_ms(2000);
-//    drivetrain.stop();
-
-    while (true) {}
+    drive();
 
     return 0;
+}
+
+void drive() {
+    while (true) {
+        // Drive forward for 12 inches at 25% speed
+        drivetrain.drive_in_straight_line(25, 12);
+        sleep(2000);
+        drivetrain.stop();
+        sleep(2000);
+    }
 }
