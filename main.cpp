@@ -51,18 +51,20 @@ const int LCD_HEIGHT = 240;
 const int SERVO_MIN = 500;
 const int SERVO_MAX = 2388;
 
-constexpr float rad(float deg) {
+constexpr double rad(double deg) {
     return deg * (M_PI / 180);
 }
 
-constexpr float deg(float rad) {
+constexpr double deg(double rad) {
     return rad * (180 / M_PI);
 }
 
 struct PIController {
     float sample_rate, sample_time;
+    float error{};
     float I{}, max_I;
     float kP, kI;
+    float control_effort{};
 
     explicit PIController(float sample_rate, float kP, float kI, float max_I) :
             sample_rate(sample_rate), kP(kP), kI(kI), max_I(max_I) {
@@ -70,13 +72,12 @@ struct PIController {
     }
 
     float process(float setpoint, float process_variable) {
-        float error = setpoint - process_variable;
+        error = setpoint - process_variable;
 
         I += error * sample_time;
         I = fmaxf(-max_I, fminf(max_I, I));
 
-        float control_effort =
-
+        control_effort =
                 kP * error +
                 kI * I;
 
@@ -87,6 +88,13 @@ struct PIController {
         I = 0;
     }
 };
+
+/**
+ * Sam's Drivetrain Derivations to calculate velocity over time to drive a given distance with
+ * Constant Acceleration and Deceleration:
+ *
+ * V_max = (-at+sqrt((a^2)(t^2) + 4da)) / 2
+ */
 
 struct Drivetrain {
     enum class DriveMode {
@@ -107,8 +115,7 @@ struct Drivetrain {
     DriveMode drive_mode = DriveMode::STOP;
     ControlMode control_mode = ControlMode::STOP;
 
-    float inches_per_tick_l{};
-    float inches_per_tick_r{};
+    float inches_per_tick_l, inches_per_tick_r;
 
     float pct_l{}, pct_r{};
     float target_pct_l{}, target_pct_r{};
@@ -134,11 +141,15 @@ struct Drivetrain {
     explicit Drivetrain(FEHMotor &&ml,
                         FEHMotor &&mr,
                         FEHIO::FEHIOPin l1, FEHIO::FEHIOPin l2,
-                        FEHIO::FEHIOPin r1, FEHIO::FEHIOPin r2) :
+                        FEHIO::FEHIOPin r1, FEHIO::FEHIOPin r2,
+                        float inches_per_tick_l,
+                        float inches_per_tick_r) :
             ml(ml),
             mr(mr),
             el(DigitalEncoder(l1, l2)),
-            er(DigitalEncoder(r1, r2)) {
+            er(DigitalEncoder(r1, r2)),
+            inches_per_tick_l(inches_per_tick_l),
+            inches_per_tick_r(inches_per_tick_r) {
     }
 
     // Takes angle in radians
@@ -206,21 +217,27 @@ struct Drivetrain {
 
                 pct_l = target_pct_l + control_effort;
                 pct_r = target_pct_r - control_effort;
+
+                ml.SetPercent(-pct_l);
+                mr.SetPercent(-pct_r);
                 break;
             case ControlMode::STOP:
                 pct_l = 0;
                 pct_r = 0;
+
+                ml.Stop();
+                mr.Stop();
                 break;
             case ControlMode::DIRECT_CONTROL:
                 pct_l = target_pct_l;
                 pct_r = target_pct_r;
+
+                ml.SetPercent(-pct_l);
+                mr.SetPercent(-pct_r);
                 break;
             default:
                 break;
         }
-
-        ml.SetPercent(-pct_l);
-        mr.SetPercent(-pct_r);
     }
 
     void maintain_angle() {
@@ -259,9 +276,9 @@ struct Drivetrain {
             case ControlMode::STOP:
                 return "Stop";
             case ControlMode::MAINTAIN_ANGLE:
-                return "Maintain Angle";
+                return "MaintainAngle";
             case ControlMode::DIRECT_CONTROL:
-                return "Direct Control";
+                return "DirectControl";
         }
         return "";
     }
@@ -319,7 +336,9 @@ Drivetrain drivetrain(
         FEHMotor(FEHMotor::Motor0, 9.0),
         FEHMotor(FEHMotor::Motor1, 9.0),
         FEHIO::FEHIOPin::P0_0, FEHIO::FEHIOPin::P0_1,
-        FEHIO::FEHIOPin::P0_2, FEHIO::FEHIOPin::P0_3
+        FEHIO::FEHIOPin::P0_2, FEHIO::FEHIOPin::P0_3,
+        INCHES_PER_COUNT,
+        INCHES_PER_COUNT
 );
 
 DigitalInputPin
@@ -429,24 +448,31 @@ extern "C" void PIT1_IRQHandler(void) {
     clear_PIT_irq_flag<1>();
 
     LCD.Clear(BLACK);
-    LCD.WriteLine("Tick time (microseconds):");
+    LCD.Write("Tick time (us): ");
     LCD.WriteLine(tick_microseconds);
-    LCD.WriteLine("Tick count:");
+    LCD.Write("Tick count: ");
     LCD.WriteLine((int) drivetrain.tick_count);
 
-    LCD.WriteLine("Angle:");
+    LCD.Write("Angle: ");
     LCD.WriteLine(deg(drivetrain.angle));
 
-    LCD.WriteLine("Left Motor Angle:");
+    LCD.Write("L Motor Angle: ");
     LCD.WriteLine((drivetrain.totalcounts_l / IGWAN_COUNTS_PER_REV) * 360);
-    LCD.WriteLine("Right Motor Angle:");
+    LCD.Write("R Motor Angle: ");
     LCD.WriteLine((drivetrain.totalcounts_r / IGWAN_COUNTS_PER_REV) * 360);
 
-    LCD.WriteLine("Drive Mode:");
+    LCD.Write("DriveMode: ");
     LCD.WriteLine(drivetrain.drive_mode_string());
 
-    LCD.WriteLine("Control Mode:");
+    LCD.Write("ControlMode: ");
     LCD.WriteLine(drivetrain.control_mode_string());
+
+    LCD.Write("ControlEffort: ");
+    LCD.WriteLine(drivetrain.angle_controller.control_effort);
+    LCD.Write("Error: ");
+    LCD.WriteLine(drivetrain.angle_controller.error);
+    LCD.Write("I: ");
+    LCD.WriteLine(drivetrain.angle_controller.I);
 }
 
 void sleep(int ms) {
@@ -454,6 +480,9 @@ void sleep(int ms) {
     clear_PIT_irq_flag<3>();
 
     auto cyc = (uint32_t) ((float) ms * (PROTEUS_SYSTEM_HZ / 1000));
+
+    // Stop PIT3 just in case
+    PIT_BASE_PTR->CHANNEL[3].TCTRL = 0;
 
     // Enable PIT clock
     PIT_BASE_PTR->MCR = 0;
@@ -465,7 +494,7 @@ void sleep(int ms) {
     // Wait for the PIT3 IRQ flag to show up
     while (!(PIT_BASE_PTR->CHANNEL[3].TFLG & 1));
 
-    // Clear the PTI3 IRQ flag
+    // Clear the PIT3 IRQ flag
     clear_PIT_irq_flag<3>();
 
     // Stop PIT3
@@ -478,25 +507,13 @@ int main() {
     // so the bot will be pointed toward 315 degrees when placed on the starting pad.
     drivetrain.init_pos_and_angle(0, 0, rad(315));
 
-    drivetrain.set_inches_per_count(INCHES_PER_COUNT, INCHES_PER_COUNT);
-
     // Begin the tick loop timer (SysTick_Handler)
     init_SysTick<cyc(1 / TICK_RATE)>();
 
     // Begin the metrics printing timer (PIT1_IRQHandler)
     init_PIT<1>(cyc(0.2));
 
-    drive();
+    drivetrain.drive_in_straight_line(25, 12);
 
     return 0;
-}
-
-void drive() {
-    while (true) {
-        // Drive forward for 12 inches at 25% speed
-        drivetrain.drive_in_straight_line(25, 12);
-        sleep(2000);
-        drivetrain.stop();
-        sleep(2000);
-    }
 }
