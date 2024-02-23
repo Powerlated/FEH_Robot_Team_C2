@@ -33,6 +33,22 @@ constexpr float TICK_RATE = 1000;
 constexpr float TICK_INTERVAL_MICROSECONDS = (1 / TICK_RATE) * 1000000;
 constexpr float TRACK_WIDTH = 8.276;
 
+constexpr double IGWAN_COUNTS_PER_REV = 318;
+constexpr double WHEEL_DIA = 2.5;
+constexpr double INCHES_PER_REV = WHEEL_DIA * M_PI;
+constexpr auto INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
+
+constexpr float PROTEUS_SYSTEM_HZ = 88000000.0;
+
+// Declared in startup_mk60d10.cpp
+const int BSP_BUS_DIV = 2;
+
+const int LCD_WIDTH = 320;
+const int LCD_HEIGHT = 240;
+
+const int SERVO_MIN = 500;
+const int SERVO_MAX = 2388;
+
 constexpr float rad(float deg) {
     return deg * (M_PI / 180);
 }
@@ -40,17 +56,6 @@ constexpr float rad(float deg) {
 constexpr float deg(float rad) {
     return rad * (180 / M_PI);
 }
-
-enum class DriveMode {
-    STOP,
-    FORWARD
-};
-
-enum class ControlMode {
-    STOP,
-    MAINTAIN_ANGLE,
-    DIRECT_CONTROL,
-};
 
 struct PIController {
     float sample_rate, sample_time;
@@ -82,6 +87,17 @@ struct PIController {
 };
 
 struct Drivetrain {
+    enum class DriveMode {
+        STOP,
+        FORWARD
+    };
+
+    enum class ControlMode {
+        STOP,
+        MAINTAIN_ANGLE,
+        DIRECT_CONTROL,
+    };
+
     FEHMotor ml, mr;
     DigitalEncoder el, er;
     DriveMode drive_mode = DriveMode::STOP;
@@ -231,34 +247,6 @@ struct Drivetrain {
     }
 };
 
-Drivetrain drivetrain(
-        FEHMotor(FEHMotor::Motor0, 9.0),
-        FEHMotor(FEHMotor::Motor1, 9.0),
-        DigitalEncoder(FEHIO::FEHIOPin::P0_0, FEHIO::FEHIOPin::P0_1),
-        DigitalEncoder(FEHIO::FEHIOPin::P0_2, FEHIO::FEHIOPin::P0_3)
-);
-
-DigitalInputPin
-        front_l(FEHIO::FEHIOPin::P2_0),
-        front_r(FEHIO::FEHIOPin::P2_1),
-        back_l(FEHIO::FEHIOPin::P2_2),
-        back_r(FEHIO::FEHIOPin::P2_3);
-
-AnalogInputPin colorSensor(FEHIO::FEHIOPin::P3_0);
-
-FEHServo servo(FEHServo::FEHServoPort::Servo0);
-
-constexpr float PROTEUS_SYSTEM_HZ = 88000000.0;
-
-// Declared in startup_mk60d10.cpp
-const int BSP_BUS_DIV = 2;
-
-const int LCD_WIDTH = 320;
-const int LCD_HEIGHT = 240;
-
-const int SERVO_MIN = 500;
-const int SERVO_MAX = 2388;
-
 /**
  * Formulas taken from RBJ's Audio EQ Cookbook:
  * https://www.w3.org/TR/audio-eq-cookbook/
@@ -306,6 +294,23 @@ struct Biquad {
         return result;
     }
 };
+
+Drivetrain drivetrain(
+        FEHMotor(FEHMotor::Motor0, 9.0),
+        FEHMotor(FEHMotor::Motor1, 9.0),
+        DigitalEncoder(FEHIO::FEHIOPin::P0_0, FEHIO::FEHIOPin::P0_1),
+        DigitalEncoder(FEHIO::FEHIOPin::P0_2, FEHIO::FEHIOPin::P0_3)
+);
+
+DigitalInputPin
+        front_l(FEHIO::FEHIOPin::P2_0),
+        front_r(FEHIO::FEHIOPin::P2_1),
+        back_l(FEHIO::FEHIOPin::P2_2),
+        back_r(FEHIO::FEHIOPin::P2_3);
+
+AnalogInputPin colorSensor(FEHIO::FEHIOPin::P3_0);
+
+FEHServo servo(FEHServo::FEHServoPort::Servo0);
 
 constexpr uint32_t cyc(const double sec) {
     return (uint32_t) (sec * PROTEUS_SYSTEM_HZ);
@@ -385,8 +390,6 @@ void tick() {
     tick_microseconds = (int) (((float) ticks / PROTEUS_SYSTEM_HZ) * 1000000);
 }
 
-const double IGWAN_COUNTS_PER_REV = 318;
-
 extern "C" void PIT2_IRQHandler(void) {
     clear_PIT_irq_flag<2>();
 
@@ -412,6 +415,7 @@ extern "C" void PIT2_IRQHandler(void) {
 }
 
 void sleep(int ms) {
+    // Make sure PIT3 IRQ flag isn't on
     clear_PIT_irq_flag<3>();
 
     auto cyc = (uint32_t) ((float) ms * (PROTEUS_SYSTEM_HZ / 1000));
@@ -423,9 +427,10 @@ void sleep(int ms) {
     // Start PIT3
     PIT_BASE_PTR->CHANNEL[3].TCTRL = 0b11;
 
-    // Wait for PIT3 to expire
+    // Wait for the PIT3 IRQ flag to show up
     while (!(PIT_BASE_PTR->CHANNEL[3].TFLG & 1));
 
+    // Clear the PTI3 IRQ flag
     clear_PIT_irq_flag<3>();
 
     // Stop PIT3
@@ -437,10 +442,6 @@ int main() {
     // angle = 0 degrees is straight up toward the right ramp,
     // so the bot will be pointed toward 315 degrees when placed on the starting pad.
     drivetrain.init_pos_and_angle(0, 0, rad(315));
-
-    const double WHEEL_DIA = 2.5;
-    const double INCHES_PER_REV = WHEEL_DIA * M_PI;
-    const auto INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
 
     drivetrain.set_inches_per_count(INCHES_PER_COUNT, INCHES_PER_COUNT);
 
