@@ -107,26 +107,16 @@ private:
 class DigitalEncoder
 {
 public:
-    DigitalEncoder( FEHIO::FEHIOPin pin, FEHIO::FEHIOInterruptTrigger trigger );
-    DigitalEncoder( FEHIO::FEHIOPin pin);
-    /**
-     * @brief Return the current counts for DigitalEncoder object
-     *
-     * @return the current counts for the associated DigitalEncoder object
-     */
-    int Counts();
-
-    /**
-     * @brief Reset counts for DigitalEncoder object to 0
-     *
-     */
+    DigitalEncoder(FEHIO::FEHIOPin&& pin1, FEHIO::FEHIOPin&& pin2);
+    void ChannelARisingEdge();
+    void UpdateChannelB(bool is_high);
+    int Counts() const;
     void ResetCounts();
-
 private:
-    FEHIO::FEHIOPin _pin;
-
-    DigitalEncoder();
-    void Initialize( FEHIO::FEHIOPin pin, FEHIO::FEHIOInterruptTrigger trigger );
+    constexpr static void SetupGPIO(FEHIO::FEHIOPin pin );
+    FEHIO::FEHIOPin pin1, pin2;
+    bool channel_b_high{};
+    int counts{};
 };
 
 /**

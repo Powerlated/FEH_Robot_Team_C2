@@ -1,4 +1,6 @@
 #include "FEHIO.h"
+#include <optional>
+#include "FEHLCD.h"
 
 tADC_Config AnalogInputPin::Master_Adc_Config;
 tADC_Config AnalogInputPin::Encoder_Adc_Config;
@@ -21,7 +23,7 @@ typedef enum {
     ADC1
 } ADCNumber;
 
-const GPIOPort GPIOPorts[32] =
+constexpr GPIOPort GPIOPorts[32] =
         {
                 PortB, PortB, PortB, PortB, PortB, PortB, PortB, PortB,
                 PortC, PortC, PortC, PortC, PortC, PortC, PortA, PortA,
@@ -29,7 +31,7 @@ const GPIOPort GPIOPorts[32] =
                 PortA, PortE, PortE, PortE, PortE, PortE, PortD, PortD
         };
 
-const ADCNumber ADCNumbers[33] =
+constexpr ADCNumber ADCNumbers[33] =
         {
                 ADC1, ADC1, ADC1, ADC1, ADC1, ADC1, ADC1, ADC1,
                 ADC0, ADC0, ADC1, ADC1, ADC1, ADC1, ADC1, ADC0,
@@ -38,7 +40,7 @@ const ADCNumber ADCNumbers[33] =
                 ADC0
         };
 
-const int GPIOPinNumbers[32] =
+constexpr int GPIOPinNumbers[32] =
         {
                 11, 10, 7, 6, 5, 4, 1, 0,
                 0, 1, 8, 9, 10, 11, 17, 16,
@@ -46,7 +48,7 @@ const int GPIOPinNumbers[32] =
                 7, 25, 24, 26, 27, 28, 1, 6
         };
 
-const int AnalogPinNumbers[33] =
+constexpr int AnalogPinNumbers[33] =
         {
                 15, 14, 13, 12, 11, 10, 9, 8,
                 14, 15, 4, 5, 6, 7, 17, 1,
@@ -128,22 +130,34 @@ bool DigitalInputPin::Value() {
     return ret;
 }
 
-// Begin Functions for Digital Encoder Pin Type
-DigitalEncoder::DigitalEncoder(FEHIO::FEHIOPin pin, FEHIO::FEHIOInterruptTrigger trigger) {
-    Initialize(pin, trigger);
+DigitalEncoder *encoder_pinsA[32]{};
+DigitalEncoder *encoder_pinsB[32]{};
+
+DigitalEncoder::DigitalEncoder(FEHIO::FEHIOPin&& pin1, FEHIO::FEHIOPin&& pin2) : pin1(pin1), pin2(pin2) {
+    encoder_pinsA[pin1] = this;
+    encoder_pinsB[pin2] = this;
+    SetupGPIO(pin1);
+    SetupGPIO(pin2);
 }
 
-DigitalEncoder::DigitalEncoder(FEHIO::FEHIOPin pin) {
-    FEHIO::FEHIOInterruptTrigger trigger(FEHIO::EitherEdge);
-    Initialize(pin, trigger);
+void DigitalEncoder::UpdateChannelB(bool is_high) {
+    channel_b_high = is_high;
 }
 
-DigitalEncoder::DigitalEncoder() {
-
+void DigitalEncoder::ChannelARisingEdge() {
+    if (channel_b_high) {
+        counts++;
+    } else {
+        counts--;
+    }
 }
+
+[[nodiscard]] int DigitalEncoder::Counts() const { return counts; }
+
+void DigitalEncoder::ResetCounts() { counts = 0; }
 
 // Function used to enable interrupt register
-void enable_irq(int irq) {
+void enable_port_irq(int irq) {
     int div;
     div = (irq - 16) / 32;
 
@@ -163,107 +177,100 @@ void enable_irq(int irq) {
     }
 }
 
-void DigitalEncoder::Initialize(FEHIO::FEHIOPin pin, FEHIO::FEHIOInterruptTrigger trigger) {
-    // store selected pin number in class
-    _pin = pin;
-    unsigned char trig = (unsigned char) trigger;
-    switch (GPIOPorts[(int) _pin]) {
+constexpr void DigitalEncoder::SetupGPIO(FEHIO::FEHIOPin pin) {
+    auto trig = (unsigned char) FEHIO::FEHIOInterruptTrigger::EitherEdge;
+    uint32_t pcr = 0 | PORT_PCR_MUX(1) | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK | PORT_PCR_IRQC(trig) | PORT_PCR_PFE_MASK;
+    auto gpio_pin_number = GPIOPinNumbers[pin];
+    switch (GPIOPorts[pin]) {
         case PortA: {
-            PORT_PCR_REG(PORTA_BASE_PTR, GPIOPinNumbers[(int) _pin]) = (0 | PORT_PCR_MUX(1) | PORT_PCR_PE_MASK |
-                                                                        PORT_PCR_PS_MASK | PORT_PCR_IRQC(trig) |
-                                                                        PORT_PCR_PFE_MASK);
-            GPIOA_PDDR &= ~GPIO_PDDR_PDD(GPIO_PIN(GPIOPinNumbers[(int) _pin]));
-            enable_irq(INT_PORTA);
+            PORTA_BASE_PTR->PCR[gpio_pin_number] = pcr;
+            GPIOA_PDDR &= ~GPIO_PDDR_PDD(GPIO_PIN(gpio_pin_number));
+            enable_port_irq(INT_PORTA);
             break;
         }
         case PortB: {
-            PORT_PCR_REG(PORTB_BASE_PTR, GPIOPinNumbers[(int) _pin]) = (0 | PORT_PCR_MUX(1) | PORT_PCR_PE_MASK |
-                                                                        PORT_PCR_PS_MASK | PORT_PCR_IRQC(trig) |
-                                                                        PORT_PCR_PFE_MASK);
-            GPIOB_PDDR &= ~GPIO_PDDR_PDD(GPIO_PIN(GPIOPinNumbers[(int) _pin]));
-            enable_irq(INT_PORTB);
+            PORTB_BASE_PTR->PCR[gpio_pin_number] = pcr;
+            GPIOB_PDDR &= ~GPIO_PDDR_PDD(GPIO_PIN(gpio_pin_number));
+            enable_port_irq(INT_PORTB);
             break;
         }
         case PortC: {
-            PORT_PCR_REG(PORTC_BASE_PTR, GPIOPinNumbers[(int) _pin]) = (0 | PORT_PCR_MUX(1) | PORT_PCR_PE_MASK |
-                                                                        PORT_PCR_PS_MASK | PORT_PCR_IRQC(trig) |
-                                                                        PORT_PCR_PFE_MASK);
-            GPIOC_PDDR &= ~GPIO_PDDR_PDD(GPIO_PIN(GPIOPinNumbers[(int) _pin]));
-            enable_irq(INT_PORTC);
+            PORTC_BASE_PTR->PCR[gpio_pin_number] = pcr;
+            GPIOC_PDDR &= ~GPIO_PDDR_PDD(GPIO_PIN(gpio_pin_number));
+            enable_port_irq(INT_PORTC);
             break;
         }
         case PortD: {
             //Port D is already in use for power reset pin. Therefore Digital Encoders cannot be used on P3_6 and P3_7
-            //PORT_PCR_REG( PORTD_BASE_PTR, GPIOPinNumbers[ (int)_pin ] ) = ( 0 | PORT_PCR_MUX( 1 ) | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK | PORT_PCR_IRQC(0xA) | PORT_PCR_PFE_MASK );
-            //GPIOD_PDDR &= ~GPIO_PDDR_PDD( GPIO_PIN( GPIOPinNumbers[ (int)_pin ] ) );
-            //enable_irq(INT_PORTD);
             break;
         }
         case PortE: {
-            PORT_PCR_REG(PORTE_BASE_PTR, GPIOPinNumbers[(int) _pin]) = (0 | PORT_PCR_MUX(1) | PORT_PCR_PE_MASK |
-                                                                        PORT_PCR_PS_MASK | PORT_PCR_IRQC(trig) |
-                                                                        PORT_PCR_PFE_MASK);
-            GPIOE_PDDR &= ~GPIO_PDDR_PDD(GPIO_PIN(GPIOPinNumbers[(int) _pin]));
-            enable_irq(INT_PORTE);
+            PORTE_BASE_PTR->PCR[gpio_pin_number] = pcr;
+            GPIOE_PDDR &= ~GPIO_PDDR_PDD(GPIO_PIN(gpio_pin_number));
+            enable_port_irq(INT_PORTE);
             break;
         }
     }
 }
 
 //Interrupt port functions
-unsigned long interrupt_counts[32];
+void pin_isr(int pin, bool pin_high) {
+    auto encA = encoder_pinsA[pin];
+    auto encB = encoder_pinsB[pin];
+
+    if (encA != nullptr) {
+        if (pin_high) {
+            encA->ChannelARisingEdge();
+        }
+    }
+
+    if (encB != nullptr) {
+        encB->UpdateChannelB(pin_high);
+    }
+}
 
 void PORTB_IRQHandler() {
     int pins[8] = {11, 10, 7, 6, 5, 4, 1, 0};
-
     for (int i = 0; i < 8; i++) {
-
-        if ((PORTB_ISFR & (1 << pins[i])) != 0) {
-            interrupt_counts[i]++;
-            PORTB_ISFR &= (1 << pins[i]);
+        int bitmask = 1 << pins[i];
+        if (PORTB_ISFR & bitmask) {
+            pin_isr(i, GPIOB_PDIR & bitmask);
+            PORTB_ISFR = bitmask;
         }
     }
 }
 
 void PORTC_IRQHandler() {
     int pins[6] = {0, 1, 8, 9, 10, 11};
-
     for (int i = 0; i < 6; i++) {
-        if ((PORTC_ISFR & (1 << pins[i])) != 0) {
-            interrupt_counts[i + 8]++;
-            PORTC_ISFR &= (1 << pins[i]);
+        int bitmask = 1 << pins[i];
+        if (PORTC_ISFR & bitmask) {
+            pin_isr(i + 8, GPIOC_PDIR & bitmask);
+            PORTC_ISFR = bitmask;
         }
     }
 }
 
 void PORTA_IRQHandler() {
     int pins[11] = {17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7};
-
     for (int i = 0; i < 11; i++) {
-        if ((PORTA_ISFR & (1 << pins[i])) != 0) {
-            interrupt_counts[i + 14]++;
-            PORTA_ISFR &= (1 << pins[i]);
+        int bitmask = 1 << pins[i];
+        if (PORTA_ISFR & bitmask) {
+            pin_isr(i + 14, GPIOA_PDIR & bitmask);
+            PORTA_ISFR = bitmask;
         }
     }
 }
 
 void PORTE_IRQHandler() {
     int pins[5] = {25, 24, 26, 27, 28};
-
     for (int i = 0; i < 5; i++) {
-        if ((PORTE_ISFR & (1 << pins[i])) != 0) {
-            interrupt_counts[i + 25]++;
-            PORTE_ISFR &= (1 << pins[i]);
+        int bitmask = 1 << pins[i];
+        if (PORTE_ISFR & bitmask) {
+            pin_isr(i + 25, GPIOE_PDIR & bitmask);
+            PORTE_ISFR = bitmask;
         }
     }
-}
-
-int DigitalEncoder::Counts() {
-    return interrupt_counts[_pin];
-}
-
-void DigitalEncoder::ResetCounts() {
-    interrupt_counts[_pin] = 0;
 }
 
 // Begin Functions for Analog Input Pin Type
@@ -486,7 +493,7 @@ void AnalogInputPin::InitADCs() {
     Master_Adc_Config.CONFIG1 = ADLPC_NORMAL                   // Normal power, (not low power)
                                 | ADC_CFG1_ADIV(ADIV_4)          // Clock divider
                                 | ADLSMP_LONG                    // Take a long time to sample
-                                | ADC_CFG1_MODE(MODE_16)         // 16 bit mode
+                                | ADC_CFG1_MODE(MODE_16)         // 16 bit drivetrain_mode
                                 | ADC_CFG1_ADICLK(ADICLK_BUS);   // use the bus clock
     Master_Adc_Config.CONFIG2 = MUXSEL_ADCB                    // use channel A
                                 | ADACKEN_DISABLED               // Asynch clock disabled?
@@ -511,7 +518,7 @@ void AnalogInputPin::InitADCs() {
 
     Master_Adc_Config.PGA = PGAEN_DISABLED             // PGA disabled
                             | PGACHP_NOCHOP              // no chopping for PGA?
-                            | PGALP_NORMAL               // Normal (not low power mode)
+                            | PGALP_NORMAL               // Normal (not low power drivetrain_mode)
                             | ADC_PGA_PGAG(PGAG_64);     // PGA gain of 64
 
     // Set up channel as all ones for configuration
@@ -545,7 +552,7 @@ void AnalogInputPin::InitADCs() {
     Encoder_Adc_Config.CONFIG1 = ADLPC_NORMAL                   // Normal power, (not low power)
                                  | ADC_CFG1_ADIV(ADIV_4)          // Clock divider
                                  | ADLSMP_LONG                    // Take a long time to sample
-                                 | ADC_CFG1_MODE(MODE_16)         // 16 bit mode
+                                 | ADC_CFG1_MODE(MODE_16)         // 16 bit drivetrain_mode
                                  | ADC_CFG1_ADICLK(ADICLK_BUS);   // use the bus clock
 
     Encoder_Adc_Config.STATUS3 = CAL_OFF                     // Calibration begins off
