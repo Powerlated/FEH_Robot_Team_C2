@@ -25,11 +25,13 @@
 #include <cmath>
 #include <Startup/MK60DZ10.h>
 
+using namespace std;
+
 void tick();
 
 void drive();
 
-constexpr float TICK_RATE = 1000;
+constexpr float TICK_RATE = 100;
 constexpr float TICK_INTERVAL_MICROSECONDS = (1 / TICK_RATE) * 1000000;
 constexpr float TRACK_WIDTH = 8.276;
 
@@ -98,6 +100,8 @@ struct Drivetrain {
         DIRECT_CONTROL,
     };
 
+    int tick_count{};
+
     FEHMotor ml, mr;
     DigitalEncoder el, er;
     DriveMode drive_mode = DriveMode::STOP;
@@ -121,8 +125,20 @@ struct Drivetrain {
     float angle{};
     float angle_to_maintain{};
 
-    explicit Drivetrain(FEHMotor &&ml, FEHMotor &&mr, DigitalEncoder &&el, DigitalEncoder &&er) :
-            ml(ml), mr(mr), el(el), er(er) {
+    /*
+     * Because my modified DigitalEncoder code obtains a pointer to itself using the “this” keyword so that the port
+     * IRQs can update the object state, we MUST avoid using a copy of the object and use the original object
+     * that we instantiated. I couldn't get this working properly with C++ move semantics, so I'm instantiating the
+     * DigitalEncoder objects inside the Drivetrain constructor instead. It's working now.
+     */
+    explicit Drivetrain(FEHMotor &&ml,
+                        FEHMotor &&mr,
+                        FEHIO::FEHIOPin l1, FEHIO::FEHIOPin l2,
+                        FEHIO::FEHIOPin r1, FEHIO::FEHIOPin r2) :
+            ml(ml),
+            mr(mr),
+            el(DigitalEncoder(l1, l2)),
+            er(DigitalEncoder(r1, r2)) {
     }
 
     // Takes angle in radians
@@ -138,6 +154,8 @@ struct Drivetrain {
     }
 
     void tick() {
+        tick_count++;
+
         auto counts_l = el.Counts();
         auto counts_r = er.Counts();
 
@@ -233,6 +251,7 @@ struct Drivetrain {
             case DriveMode::FORWARD:
                 return "Forward";
         }
+        return "";
     }
 
     [[nodiscard]] const char *control_mode_string() const {
@@ -244,6 +263,7 @@ struct Drivetrain {
             case ControlMode::DIRECT_CONTROL:
                 return "Direct Control";
         }
+        return "";
     }
 };
 
@@ -298,8 +318,8 @@ struct Biquad {
 Drivetrain drivetrain(
         FEHMotor(FEHMotor::Motor0, 9.0),
         FEHMotor(FEHMotor::Motor1, 9.0),
-        DigitalEncoder(FEHIO::FEHIOPin::P0_0, FEHIO::FEHIOPin::P0_1),
-        DigitalEncoder(FEHIO::FEHIOPin::P0_2, FEHIO::FEHIOPin::P0_3)
+        FEHIO::FEHIOPin::P0_0, FEHIO::FEHIOPin::P0_1,
+        FEHIO::FEHIOPin::P0_2, FEHIO::FEHIOPin::P0_3
 );
 
 DigitalInputPin
@@ -372,15 +392,30 @@ void clear_PIT_irq_flag() {
     PIT_BASE_PTR->CHANNEL[pit_num].TFLG = 1;
 }
 
-extern "C" void PIT1_IRQHandler(void) {
-    clear_PIT_irq_flag<1>();
+extern "C" void SysTick_Handler(void) {
     tick();
+}
+
+template<uint32_t cyc_interval>
+constexpr void init_SysTick() {
+    // Make sure cyc_interval fits into 24 bits for SYSTICK_RVR
+    static_assert(!(cyc_interval & 0xFF000000));
+    SysTick_BASE_PTR->RVR = cyc_interval;
+
+    // Register SYST_CSR
+    // CLKSOURCE - bit 2 - use processor clock
+    // TICKINT - bit 1 - enable SysTick interrupt
+    // ENABLE - bit 0 - enable Sysick
+    SysTick_BASE_PTR->CSR |= 0b111;
+
+    // Enable SysTick IRQ in NVIC
+    NVIC_BASE_PTR->ISER[0] |= 1 << INT_SysTick;
 }
 
 int tick_microseconds;
 CycTimer tick_timer;
 
-// This is called every (1 / TICK_RATE) seconds by the PIT1 timer IRQ handler
+// This is called every (1 / TICK_RATE) seconds by the SysTick IRQ handler
 void tick() {
     tick_timer.begin();
 
@@ -390,14 +425,14 @@ void tick() {
     tick_microseconds = (int) (((float) ticks / PROTEUS_SYSTEM_HZ) * 1000000);
 }
 
-extern "C" void PIT2_IRQHandler(void) {
-    clear_PIT_irq_flag<2>();
+extern "C" void PIT1_IRQHandler(void) {
+    clear_PIT_irq_flag<1>();
 
     LCD.Clear(BLACK);
     LCD.WriteLine("Tick time (microseconds):");
     LCD.WriteLine(tick_microseconds);
-    LCD.WriteLine("Tick budget remaining:");
-    LCD.WriteLine((int) TICK_INTERVAL_MICROSECONDS - tick_microseconds);
+    LCD.WriteLine("Tick count:");
+    LCD.WriteLine((int) drivetrain.tick_count);
 
     LCD.WriteLine("Angle:");
     LCD.WriteLine(deg(drivetrain.angle));
@@ -445,11 +480,11 @@ int main() {
 
     drivetrain.set_inches_per_count(INCHES_PER_COUNT, INCHES_PER_COUNT);
 
-    // Begin the tick loop timer (PIT1_IRQHandler)
-    init_PIT<1>(cyc(1 / TICK_RATE));
+    // Begin the tick loop timer (SysTick_Handler)
+    init_SysTick<cyc(1 / TICK_RATE)>();
 
-    // Begin the metrics printing timer (PIT2_IRQHandler)
-    init_PIT<2>(cyc(0.2));
+    // Begin the metrics printing timer (PIT1_IRQHandler)
+    init_PIT<1>(cyc(0.2));
 
     drive();
 
