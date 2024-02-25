@@ -24,7 +24,6 @@
 #include <FEHIO.h>
 #include <cmath>
 #include <Startup/MK60DZ10.h>
-#include <array>
 
 using namespace std;
 
@@ -54,9 +53,6 @@ constexpr int BSP_BUS_DIV = 2;
 
 constexpr int LCD_WIDTH = 320;
 constexpr int LCD_HEIGHT = 240;
-
-constexpr int SERVO_MIN = 500;
-constexpr int SERVO_MAX = 2388;
 
 constexpr uint32_t cyc(const double sec) {
     return (uint32_t) (sec * PROTEUS_SYSTEM_HZ);
@@ -112,16 +108,14 @@ struct CycTimer {
 };
 
 struct PIController {
-    float sample_rate, sample_time;
+    float sample_time;
     float error{};
     float kP, kI;
     float I{}, max_I;
     float control_effort{};
 
     explicit PIController(float sample_rate, float kP, float kI, float max_I) :
-            sample_rate(sample_rate), kP(kP), kI(kI), max_I(max_I) {
-        this->sample_time = 1 / sample_rate;
-    }
+            sample_time(1 / sample_rate), kP(kP), kI(kI), max_I(max_I) {}
 
     float process(float setpoint, float process_variable) {
         error = setpoint - process_variable;
@@ -168,11 +162,6 @@ struct Robot {
     FEHMotor mr{DRIVE_MOTOR_R_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
     DigitalEncoder el{ENCODER_L_PIN_0, ENCODER_L_PIN_1};
     DigitalEncoder er{ENCODER_R_PIN_0, ENCODER_R_PIN_1};
-    DigitalInputPin
-            front_l{FEHIO::FEHIOPin::P2_0},
-            front_r{FEHIO::FEHIOPin::P2_1},
-            back_l{FEHIO::FEHIOPin::P2_2},
-            back_r{FEHIO::FEHIOPin::P2_3};
     AnalogInputPin colorSensor{FEHIO::FEHIOPin::P3_0};
     FEHServo servo{FEHServo::FEHServoPort::Servo0};
 
@@ -260,8 +249,9 @@ struct Robot {
         angle += dAngle;
     }
 
-    void action_finished() const {
+    void action_finished() {
         current_task->execute();
+        current_task = current_task->next_task;
     }
 
     void tick() {
@@ -306,7 +296,6 @@ struct Robot {
 
                 ml.Stop();
                 mr.Stop();
-                action_finished();
                 break;
             default:
                 break;
@@ -336,11 +325,11 @@ RobotTask::RobotTask() {
     last->next_task = this;
 };
 
-struct WaitForLight : RobotTask {
+struct WaitForStartLight : RobotTask {
     // TODO: Implement WaitForLight timeout
     int timeout_ms;
 
-    explicit WaitForLight(int timeout_ms) : timeout_ms(timeout_ms) {}
+    explicit WaitForStartLight(int timeout_ms) : timeout_ms(timeout_ms) {}
 
     void execute() override {
         robot.control_mode = ControlMode::WAIT_FOR_LIGHT;
@@ -348,19 +337,29 @@ struct WaitForLight : RobotTask {
 };
 
 struct Straight : RobotTask {
-    float percent, dist;
+    float inches;
 
-    explicit Straight(float percent, float dist) : percent(percent), dist(dist) {};
+    explicit Straight(float inches) : inches(inches) {};
 
     void execute() override {
-        robot.target_pct_l = percent;
-        robot.target_pct_r = percent;
-        robot.target_dist = dist;
+        robot.target_dist = inches;
         robot.target_angle = robot.angle;
         robot.angle_controller.reset();
         robot.control_mode = ControlMode::FORWARD;
     }
 };
+
+struct Speed : RobotTask {
+    float percent;
+
+    explicit Speed(float percent) : percent(percent) {};
+
+    void execute() override {
+        robot.target_pct_l = percent;
+        robot.target_pct_r = percent;
+    }
+};
+
 
 struct Stop : RobotTask {
     void execute() override {
@@ -369,13 +368,45 @@ struct Stop : RobotTask {
 };
 
 struct Turn : RobotTask {
-    float turn_angle;
+    float angle;
 
-    explicit Turn(float turn_angle) : turn_angle(turn_angle) {};
+    explicit Turn(float angle) : angle(angle) {};
 
     void execute() override {
-        robot.target_angle = turn_angle;
+        robot.target_angle = angle;
         robot.control_mode = ControlMode::TURNING;
+    }
+};
+
+struct StampPassport : RobotTask {
+    void execute() override {
+        // TODO
+    }
+};
+
+struct Position4Bar : RobotTask {
+    float target_angle;
+
+    explicit Position4Bar(float target_angle) : target_angle(target_angle) {};
+
+    void execute() override {
+        // TODO
+    }
+};
+
+struct WaitForTicketLight : RobotTask {
+    void execute() override {
+        // TODO
+    }
+};
+
+struct Delay : RobotTask {
+    int ms;
+
+    explicit Delay(int ms) : ms(ms) {};
+
+    void execute() override {
+        // TODO
     }
 };
 
@@ -523,18 +554,76 @@ void sleep(int ms) {
     PIT_BASE_PTR->CHANNEL[3].TCTRL = 0;
 }
 
-int main() {
-    /*
-     * Queue up robot tasks. The RobotTask constructor will add these to the queue as they are declared.
-     */
-    WaitForLight(3000);
-    Straight(50, -3);
-    Straight(100, 6);
-    Turn(45);
-    Straight(100, 3);
-    Turn(0);
-    Stop();
+/*
+ * Queue up robot tasks. The RobotTask constructor will add these to the queue as they are declared.
+ * Static variables in the same .cpp file are initialized in order of declaration so this is fine.
+ */
 
+// Start light & start button
+Speed t00(50);
+WaitForStartLight t01(3000);
+Straight t02(-3);
+Straight t03(6.421);
+
+// Go up ramp
+Turn t10(45);
+Straight t11(5.581);
+Turn t12(0);
+Straight t13(25.965);
+
+// Stamp the passport
+Turn t20(-37.6);
+Straight t21(9.537);
+Turn t22(0);
+Straight t23(6.150);
+
+StampPassport t24();
+
+// Luggage drop
+Straight t30(-6.150);
+Turn t31(64.4);
+Straight t32(-10.631);
+Turn t33(0);
+Straight t34(-5.365);
+Position4Bar t35(90);
+Position4Bar t36(0);
+
+// Ticket booth light
+Straight t40(5.365);
+Turn t41(-9.6);
+Straight t42(17.853);
+
+WaitForTicketLight t43();
+
+// Press ticket booth button
+Turn t50(-74.7);
+Straight t51(-6.342);
+Turn t52(0);
+Straight t53(3);
+Straight t54(-3);
+
+// Flip fuel lever down and back up
+Turn t60(-142.8); // Turn toward ramp
+Straight t61(26.102); // Go to ramp
+Turn t62(-180.0); // Turn down ramp
+Position4Bar t63(25); // Raise 4-bar
+Straight t64(27.993); // Go down ramp
+Position4Bar t65(15); // Lower the lever
+Straight t66(-5.830); // Go back a few inches
+Position4Bar t67(0); // Lower 4-bar
+Delay t68(5000); // Wait 5 seconds
+Straight t69(5.830); // Go forward again
+Position4Bar t6A(10); // Raise the lever
+
+// Push end button
+Straight t70(-5.830);
+Turn t71(-72.5);
+Straight t72(-14.517);
+Turn t73(-45);
+Straight t74(-16.267); // Back into the course end button
+Stop t75();
+
+int main() {
     /*
      * Begin the diagnostics printing timer at the lowest possible priority (15).
      * Calls PIT1_IRQHandler() every 0.2 seconds.
