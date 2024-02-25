@@ -1,4 +1,4 @@
-#include "FEHRPS.h"
+#include "FEHRCS.h"
 #include "FEHIO.h"
 #include "FEHLCD.h"
 #include "FEHSD.h"
@@ -6,43 +6,43 @@
 #include "FEHServo.h"
 #include "string.h"
 
-FEHRPS RPS;
+FEHRCS RCS;
 
 #define STOPDATA 0xAA
 #define REGION_COUNT 4
 
-void RPSDataProcess( unsigned char *data, unsigned char length );
+void RCSDataProcess( unsigned char *data, unsigned char length );
 
 bool _enabled;
 int _region;
-float _RPS_x;
-float _RPS_y;
-float _RPS_heading;
-long _RPS_objective;
-unsigned char _RPS_time;
-bool _RPS_stop;
-bool _RPS_foundpacket;
+float _RCS_x;
+float _RCS_y;
+float _RCS_heading;
+long _RCS_objective;
+unsigned char _RCS_time;
+bool _RCS_stop;
+bool _RCS_foundpacket;
 
 
-FEHRPS::FEHRPS()
+FEHRCS::FEHRCS()
 {
-    _xbee.SetPacketCallBack( &RPSDataProcess );
+    _xbee.SetPacketCallBack( &RCSDataProcess );
 
 	//_enabled = true;
 	_region = -1;
 
-    _RPS_x = 0.0f;
-    _RPS_y = 0.0f;
-    _RPS_heading = 0.0f;
-    _RPS_objective = 0x0;
-    _RPS_time = 0;
-    _RPS_stop = false;
+    _RCS_x = 0.0f;
+    _RCS_y = 0.0f;
+    _RCS_heading = 0.0f;
+    _RCS_objective = 0x0;
+    _RCS_time = 0;
+    _RCS_stop = false;
 }
 
 // Manually pick and configure a region
 // int region => { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }
 // char region => { a, b, c, d, e, f, g, h, i, j, k, l } || { A, B, C, D, E, F, G, H, I, J, K, L }
-void FEHRPS::Initialize( int region )
+void FEHRCS::Initialize( int region, const char* team_key )
 {
     if( !_xbee.IsInitialized() )
         _xbee.Initialize();
@@ -139,7 +139,7 @@ void FEHRPS::Initialize( int region )
         rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
         if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
         {
-            LCD.WriteLine( "Error with RPS configuration" );
+            LCD.WriteLine( "Error with RCS configuration" );
             return;
         }
         for( int i = 0; i < rxlength; i++ )
@@ -165,7 +165,7 @@ void FEHRPS::Initialize( int region )
         rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
         if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
         {
-            LCD.WriteLine( "Error with RPS configuration" );
+            LCD.WriteLine( "Error with RCS configuration" );
             return;
         }
         for( int i = 0; i < rxlength; i++ )
@@ -190,7 +190,7 @@ void FEHRPS::Initialize( int region )
         rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
         if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
         {
-            LCD.WriteLine( "Error with RPS configuration" );
+            LCD.WriteLine( "Error with RCS configuration" );
             return;
         }
         for( int i = 0; i < rxlength; i++ )
@@ -215,7 +215,7 @@ void FEHRPS::Initialize( int region )
         rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
         if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
         {
-            LCD.WriteLine( "Error with RPS configuration" );
+            LCD.WriteLine( "Error with RCS configuration" );
             return;
         }
         for( int i = 0; i < rxlength; i++ )
@@ -240,7 +240,7 @@ void FEHRPS::Initialize( int region )
         rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
         if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
         {
-            LCD.WriteLine( "Error with RPS configuration" );
+            LCD.WriteLine( "Error with RCS configuration" );
             return;
         }
         for( int i = 0; i < rxlength; i++ )
@@ -261,7 +261,7 @@ void FEHRPS::Initialize( int region )
         rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
         if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
         {
-            LCD.WriteLine( "Error with RPS configuration" );
+            LCD.WriteLine( "Error with RCS configuration" );
             return;
         }
         for( int i = 0; i < rxlength; i++ )
@@ -282,7 +282,7 @@ void FEHRPS::Initialize( int region )
         rxlength = _xbee.ReceiveDataSearch( rxbuffer, 10, 'O' );
         if( rxlength < 2 || rxbuffer[ 0 ] != 'O' ) // if error
         {
-            LCD.WriteLine( "Error with RPS configuration" );
+            LCD.WriteLine( "Error with RCS configuration" );
             return;
         }
         for( int i = 0; i < rxlength; i++ )
@@ -291,34 +291,59 @@ void FEHRPS::Initialize( int region )
         }
         LCD.WriteLine( " " );
 
+        // Sending team identifier string to RCS computer
+        LCD.WriteLine("Team Key Sent: ");
+        for (int i = 0; i < 9; i++) {
+            // Remember to write some sort of error checking
+            txbuffer[i] = *(team_key + i);
+            LCD.Write(*(team_key + i));
+        }
+        LCD.WriteLine(" ");
+        txbuffer[9] = '\r';
+        txlength = _xbee.SendData( txbuffer, 10 );
+
         // show success
-        LCD.Write( "Successfully initialized  region: " );
+        LCD.Write( "Connecting to Region " );
         LCD.WriteLine( CurrentRegionLetter() );
 
 //		_xbee.EnableInterrupt();
 
         //Wait to ensure that a connection is made
         _enabled = true;
-        while( WaitForPacket() == 0x00);
-        LCD.WriteLine("RPS Enabled Successfully");
+        int MAX_CONNECT_TRIES = 5;
+        int i = 0;
+        while( WaitForPacket() == 0x00) {
+            if (i > MAX_CONNECT_TRIES) {
+                LCD.Clear();
+                LCD.Write("RCS unable to connect to region ");
+                LCD.WriteLine((char)region);
+
+                LCD.WriteLine("Make sure no other Protei are connected to the region");
+                LCD.WriteLine("Restart the region and retry connecting with your Proteus!");
+                while(true);
+            }
+            txlength = _xbee.SendData( txbuffer, 10 );
+        }
+        LCD.WriteLine("RCS Enabled Successfully, Program running in 3 seconds");
+        Sleep(3000);
         LCD.Clear();
     }
     }
 }
 
-void FEHRPS::Initialize( char region )
+void FEHRCS::Initialize( char region, const char* team_key )
 {
     if( region >= 'A' && region <= 'L' )
     {
-        Initialize( (int)( region - 'A' ) );
+        Initialize( (int)( region - 'A' ), team_key );
     }
     else if( region >= 'a' && region <= 'l' )
     {
-        Initialize( (int)( region - 'a' ) );
+        Initialize( (int)( region - 'a' ), team_key );
     }
 }
 
-void FEHRPS::InitializeMenu()
+void FEHRCS::InitializeMenu( const char* team_key )
 {
 	ButtonBoard buttons( FEHIO::Bank3 );
 
@@ -368,13 +393,13 @@ void FEHRPS::InitializeMenu()
 		}
 	}
 
-	Initialize( region );
+	Initialize( region, team_key );
 
 	//while( buttons.MiddlePressed() );
 	//Sleep( 1000 );
 }
 
-void FEHRPS::InitializeTouchMenu()
+void FEHRCS::InitializeTouchMenu(const char* team_key)
 {
 	int cancel = 1;
     int c=0, d=0, n;
@@ -382,7 +407,7 @@ void FEHRPS::InitializeTouchMenu()
     char region;
 
     FEHIcon::Icon regions_title[1];
-    char regions_title_label[1][20] = {"Select RPS Region"};
+    char regions_title_label[1][20] = {"Select RCS Region"};
 
     FEHIcon::Icon regions[REGION_COUNT];
     char regions_labels[12][20] = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"};
@@ -482,13 +507,13 @@ void FEHRPS::InitializeTouchMenu()
     }
     }
 
-    Initialize( region );
+    Initialize( region , team_key );
 
 }
 
 
 // return the current course number { 1, 2, 3 }
-unsigned char FEHRPS::CurrentCourse()
+unsigned char FEHRCS::CurrentCourse()
 {
 	if( _region >= 0 )
 	{
@@ -499,36 +524,36 @@ unsigned char FEHRPS::CurrentCourse()
 }
 
 // returns the letter of the current region { A, B, C, D, E, F, G, H, I, J, K, L }
-char FEHRPS::CurrentRegionLetter()
+char FEHRCS::CurrentRegionLetter()
 {
 	return ( 'A' + (char)_region );
 }
 
 // returns the number of the current course { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }
-int FEHRPS::CurrentRegion()
+int FEHRCS::CurrentRegion()
 {
 	return _region;
 }
 
 // Objective function
-int FEHRPS::GetCorrectLever()
+int FEHRCS::GetCorrectLever()
 {
-    return (int)_RPS_objective;
+    return (int)_RCS_objective;
 }
 
 // returns the match time in seconds
-int FEHRPS::Time()
+int FEHRCS::Time()
 {
-    return (int)_RPS_time;
+    return (int)_RCS_time;
 }
 
-unsigned char FEHRPS::WaitForPacket()
+unsigned char FEHRCS::WaitForPacket()
 {
 	unsigned long starttime = TimeNowMSec();
-    while( !_RPS_foundpacket && ( TimeNowMSec() - starttime ) < 1000 );
-    if( _RPS_foundpacket )
+    while( !_RCS_foundpacket && ( TimeNowMSec() - starttime ) < 1000 );
+    if( _RCS_foundpacket )
 	{
-        _RPS_foundpacket = false;
+        _RCS_foundpacket = false;
         return 0xFF;
 	}
 	else
@@ -537,11 +562,11 @@ unsigned char FEHRPS::WaitForPacket()
 	}
 }
 
-int FEHRPS::WaitForPacketDebug(int *packetsFound, int *packetsLost, int *lastFoundPacketTime)
+int FEHRCS::WaitForPacketDebug(int *packetsFound, int *packetsLost, int *lastFoundPacketTime)
 {
   Sleep(100);
   //If packets are found, increment the number of packets
-  if(_RPS_foundpacket){
+  if(_RCS_foundpacket){
     int packetFoundEndTime = TimeNowMSec() - *lastFoundPacketTime;
     if(*lastFoundPacketTime != 0){
       *packetsFound = packetFoundEndTime/10;
@@ -560,12 +585,12 @@ int FEHRPS::WaitForPacketDebug(int *packetsFound, int *packetsLost, int *lastFou
   int packetLossStartTime = TimeNowMSec();
   int packetLossEndTime = packetLossStartTime;
 
-  while(!_RPS_foundpacket){
+  while(!_RCS_foundpacket){
     //However if packets are being lost, we want to figure out how long we're losing them for
     packetLossEndTime = TimeNowMSec();
   }
-  //Always assume RPS is broken (this will quickly be set to true by RPSDataProcess)
-  _RPS_foundpacket = false;
+  //Always assume RCS is broken (this will quickly be set to true by RCSDataProcess)
+  _RCS_foundpacket = false;
 
   //A packet has now been found, so stop the clock
   int endtime = TimeNowMSec();
@@ -580,34 +605,41 @@ int FEHRPS::WaitForPacketDebug(int *packetsFound, int *packetsLost, int *lastFou
 
 }
 
-float FEHRPS::X()
-{
-	return _RPS_x;
-}
+// float FEHRCS::X()
+// {
+// 	return _RCS_x;
+// }
 
-float FEHRPS::Y()
-{
-	return _RPS_y;
-}
+// float FEHRCS::Y()
+// {
+// 	return _RCS_y;
+// }
 
-float FEHRPS::Heading()
-{
-	return _RPS_heading;
-}
+// float FEHRCS::Heading()
+// {
+// 	return _RCS_heading;
+// }
 
-void RPSDataProcess( unsigned char *data, unsigned char length )
+void RCSDataProcess( unsigned char *data, unsigned char length )
 {
 	if( _enabled )
 	{
-        _RPS_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 1600.0f;
-        _RPS_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f - 1600.0f;
-        _RPS_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f - 1600.0f;
-		_RPS_objective = (((unsigned int)(data[ 7 ]) << 24) | ((unsigned int)(data[ 8 ]) << 16) | ((unsigned int)(data[ 9 ]) << 8) | (data[10]));
-        _RPS_time = data[ 11 ];
-        _RPS_stop = (data[12] == STOPDATA);
-        _RPS_foundpacket = true;
+        /*
+            New packet structure:
+            [0] : RCS Start Byte
+            [1 - 4] : RCS Objective Data
+            [5] : RCS Stop
+        */
 
-        if(_RPS_stop)
+        // _RCS_x = (float)( (int)( ( ( (unsigned int)data[ 1 ] ) << 8 ) + (unsigned int)data[ 2 ] ) ) / 10.0f - 1600.0f;
+        // _RCS_y = (float)( (int)( ( ( (unsigned int)data[ 3 ] ) << 8 ) + (unsigned int)data[ 4 ] ) ) / 10.0f - 1600.0f;
+        // _RCS_heading = (float)( (int)( ( ( (unsigned int)data[ 5 ] ) << 8 ) + (unsigned int)data[ 6 ] ) ) / 10.0f - 1600.0f;
+		_RCS_objective = (((unsigned int)(data[ 1 ]) << 24) | ((unsigned int)(data[ 2 ]) << 16) | ((unsigned int)(data[ 3 ]) << 8) | (data[ 4 ]));
+        _RCS_time = data[ 5 ];
+        _RCS_stop = (data[ 6 ] == STOPDATA);
+        _RCS_foundpacket = true;
+
+        if(_RCS_stop)
 		{
 			// set kill pin low for power shutdown
             SD.FCloseAll();
