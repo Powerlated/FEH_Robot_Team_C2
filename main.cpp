@@ -50,13 +50,13 @@ constexpr auto DRIVE_INCHES_PER_COUNT_L = INCHES_PER_COUNT;
 constexpr auto DRIVE_INCHES_PER_COUNT_R = INCHES_PER_COUNT;
 
 // Declared in startup_mk60d10.cpp
-const int BSP_BUS_DIV = 2;
+constexpr int BSP_BUS_DIV = 2;
 
-const int LCD_WIDTH = 320;
-const int LCD_HEIGHT = 240;
+constexpr int LCD_WIDTH = 320;
+constexpr int LCD_HEIGHT = 240;
 
-const int SERVO_MIN = 500;
-const int SERVO_MAX = 2388;
+constexpr int SERVO_MIN = 500;
+constexpr int SERVO_MAX = 2388;
 
 constexpr uint32_t cyc(const double sec) {
     return (uint32_t) (sec * PROTEUS_SYSTEM_HZ);
@@ -157,7 +157,9 @@ enum class ControlMode {
 
 struct RobotTask {
     RobotTask *next_task{};
+
     RobotTask();
+
     virtual void execute() = 0;
 };
 
