@@ -27,7 +27,7 @@
 
 using namespace std;
 
-constexpr int TICK_RATE = 5000;
+constexpr int TICK_RATE = 1000;
 constexpr float TICK_INTERVAL_MICROSECONDS = (1.0 / TICK_RATE) * 1000000;
 constexpr float TRACK_WIDTH = 8.276;
 
@@ -60,7 +60,7 @@ constexpr uint32_t cyc(const double sec) {
 
 constexpr int SYSTICK_INTERVAL_CYCLES = cyc(1.0 / TICK_RATE);
 
-[[noreturn]] void robot_control_loop() {
+void robot_control_loop() {
     // Make sure SYSTICK_INTERVAL_CYCLES fits into 24 bits for SYSTICK_RVR
     static_assert(!(SYSTICK_INTERVAL_CYCLES & 0xFF000000));
     SysTick_BASE_PTR->RVR = SYSTICK_INTERVAL_CYCLES;
@@ -68,13 +68,11 @@ constexpr int SYSTICK_INTERVAL_CYCLES = cyc(1.0 / TICK_RATE);
     // Register SYST_CSR
     // CLKSOURCE - bit 2 - use processor clock
     // TICKINT - bit 1 - enable SysTick interrupt
-    // ENABLE - bit 0 - enable Sysick
+    // ENABLE - bit 0 - enable SysTick
     SysTick_BASE_PTR->CSR |= 0b111;
 
     // Enable SysTick IRQ in NVIC
     NVIC_BASE_PTR->ISER[0] |= 1 << INT_SysTick;
-
-    while (true);
 }
 
 constexpr double rad(double deg) {
@@ -633,9 +631,8 @@ int main() {
     /*
      * Initialize the robot control loop by setting up the SysTick timer.
      * Calls SysTick_Handler() at TICK_RATE hz.
-     *
-     * BECAUSE robot_control_loop() DOESN'T RETURN, main() DOESN'T RETURN.
-     * main() MUST NOT RETURN BECAUSE THE QUEUED ROBOT TASKS MUST REMAIN IN THE STACK.
      */
     robot_control_loop();
+
+    return 0;
 }
