@@ -3,3 +3,6 @@
 *.elf
 *.s19
 *.map
+.idea/
+.vscode/
+*.objdump
