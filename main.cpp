@@ -28,7 +28,6 @@
 
 using namespace std;
 
-struct Robot;
 constexpr int TICK_RATE = 5000;
 constexpr float TICK_INTERVAL_MICROSECONDS = (1.0 / TICK_RATE) * 1000000;
 constexpr float TRACK_WIDTH = 8.276;
@@ -64,10 +63,6 @@ constexpr uint32_t cyc(const double sec) {
 }
 
 constexpr int SYSTICK_INTERVAL_CYCLES = cyc(1.0 / TICK_RATE);
-
-void disable_SysTick() {
-    NVIC_BASE_PTR->ISER[0] &= ~(1 << INT_SysTick);
-}
 
 [[noreturn]] void robot_control_loop() {
     // Make sure SYSTICK_INTERVAL_CYCLES fits into 24 bits for SYSTICK_RVR
@@ -160,7 +155,11 @@ enum class ControlMode {
     WAIT_FOR_LIGHT
 };
 
-struct RobotTask;
+struct RobotTask {
+    RobotTask *next_task{};
+    RobotTask();
+    virtual void execute() = 0;
+};
 
 struct Robot {
     FEHMotor ml{DRIVE_MOTOR_L_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
@@ -259,8 +258,8 @@ struct Robot {
         angle += dAngle;
     }
 
-    void action_finished() {
-
+    void action_finished() const {
+        current_task->execute();
     }
 
     void tick() {
@@ -282,6 +281,7 @@ struct Robot {
             case ControlMode::WAIT_FOR_LIGHT:
                 ml.Stop();
                 mr.Stop();
+                // TODO: Wait for light
                 break;
             case ControlMode::TURNING:
                 break;
@@ -312,29 +312,26 @@ struct Robot {
     }
 } robot;
 
-struct RobotTask {
-    RobotTask *next_task{};
+/*
+ * In C++, a parent constructor is implicitly called by all inheriting constructors.
+ */
+RobotTask::RobotTask() {
+    RobotTask **head_ptr = &robot.current_task;
 
-    RobotTask() {
-        RobotTask **head_ptr = &robot.current_task;
+    RobotTask *last = *head_ptr;
+    // If the LL head is null, set this node to the LL head and return
+    if (*head_ptr == nullptr) {
+        *head_ptr = this;
+        return;
+    }
 
-        RobotTask *last = *head_ptr;
-        // If the LL head is null, set this node to the LL head and return
-        if (*head_ptr == nullptr) {
-            *head_ptr = this;
-            return;
-        }
+    // Traverse LL until we reach a task that doesn't have a next task
+    while (last->next_task != nullptr) {
+        last = last->next_task;
+    }
 
-        // Traverse LL until we reach a task that doesn't have a next task
-        while (last->next_task != nullptr) {
-            last = last->next_task;
-        }
-
-        // Set this task as the next task of the last task
-        last->next_task = this;
-    };
-
-    virtual void execute() = 0;
+    // Set this task as the next task of the last task
+    last->next_task = this;
 };
 
 struct WaitForLight : RobotTask {
@@ -524,10 +521,9 @@ void sleep(int ms) {
     PIT_BASE_PTR->CHANNEL[3].TCTRL = 0;
 }
 
-[[noreturn]]
 int main() {
     /*
-     * Queue up robot tasks.
+     * Queue up robot tasks. The RobotTask constructor will add these to the queue as they are declared.
      */
     WaitForLight(3000);
     Straight(50, -3);
@@ -547,8 +543,8 @@ int main() {
      * Initialize the robot control loop by setting up the SysTick timer.
      * Calls SysTick_Handler() at TICK_RATE hz.
      *
-     * BECAUSE robot_control_loop() DOESN'T RETURN, main() DOESN'T RETURN,
-     * AND IT CANNOT BECAUSE THE QUEUED ROBOT TASKS MUST BE KEPT IN THE STACK FRAME.
+     * BECAUSE robot_control_loop() DOESN'T RETURN, main() DOESN'T RETURN.
+     * main() MUST NOT RETURN BECAUSE THE QUEUED ROBOT TASKS MUST REMAIN IN THE STACK.
      */
     robot_control_loop();
 }
