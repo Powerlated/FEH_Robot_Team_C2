@@ -24,12 +24,13 @@
 #include <FEHIO.h>
 #include <cmath>
 #include <Startup/MK60DZ10.h>
+#include <array>
 
 using namespace std;
 
 struct Robot;
-constexpr float TICK_RATE = 5000;
-constexpr float TICK_INTERVAL_MICROSECONDS = (1 / TICK_RATE) * 1000000;
+constexpr int TICK_RATE = 5000;
+constexpr float TICK_INTERVAL_MICROSECONDS = (1.0 / TICK_RATE) * 1000000;
 constexpr float TRACK_WIDTH = 8.276;
 
 constexpr double IGWAN_COUNTS_PER_REV = 318;
@@ -57,6 +58,33 @@ const int LCD_HEIGHT = 240;
 
 const int SERVO_MIN = 500;
 const int SERVO_MAX = 2388;
+
+constexpr uint32_t cyc(const double sec) {
+    return (uint32_t) (sec * PROTEUS_SYSTEM_HZ);
+}
+
+constexpr int SYSTICK_INTERVAL_CYCLES = cyc(1.0 / TICK_RATE);
+
+void disable_SysTick() {
+    NVIC_BASE_PTR->ISER[0] &= ~(1 << INT_SysTick);
+}
+
+[[noreturn]] void robot_control_loop() {
+    // Make sure SYSTICK_INTERVAL_CYCLES fits into 24 bits for SYSTICK_RVR
+    static_assert(!(SYSTICK_INTERVAL_CYCLES & 0xFF000000));
+    SysTick_BASE_PTR->RVR = SYSTICK_INTERVAL_CYCLES;
+
+    // Register SYST_CSR
+    // CLKSOURCE - bit 2 - use processor clock
+    // TICKINT - bit 1 - enable SysTick interrupt
+    // ENABLE - bit 0 - enable Sysick
+    SysTick_BASE_PTR->CSR |= 0b111;
+
+    // Enable SysTick IRQ in NVIC
+    NVIC_BASE_PTR->ISER[0] |= 1 << INT_SysTick;
+
+    while (true);
+}
 
 constexpr double rad(double deg) {
     return deg * (M_PI / 180);
@@ -91,8 +119,8 @@ struct CycTimer {
 struct PIController {
     float sample_rate, sample_time;
     float error{};
-    float I{}, max_I;
     float kP, kI;
+    float I{}, max_I;
     float control_effort{};
 
     explicit PIController(float sample_rate, float kP, float kI, float max_I) :
@@ -125,6 +153,15 @@ struct PIController {
  * V_max = (-at+sqrt((a^2)(t^2) + 4da)) / 2
  */
 
+enum class ControlMode {
+    STOP,
+    TURNING,
+    FORWARD,
+    WAIT_FOR_LIGHT
+};
+
+struct RobotTask;
+
 struct Robot {
     FEHMotor ml{DRIVE_MOTOR_L_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
     FEHMotor mr{DRIVE_MOTOR_R_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
@@ -138,22 +175,10 @@ struct Robot {
     AnalogInputPin colorSensor{FEHIO::FEHIOPin::P3_0};
     FEHServo servo{FEHServo::FEHServoPort::Servo0};
 
-    enum class DriveMode {
-        STOP,
-        FORWARD
-    };
-
-    enum class ControlMode {
-        STOP,
-        MAINTAIN_ANGLE,
-    };
-
-    DriveMode drive_mode = DriveMode::STOP;
+    RobotTask *current_task{};
     ControlMode control_mode = ControlMode::STOP;
 
-    int tick_count{};
-    int state_number{};
-    bool state_complete = true;
+    volatile int tick_count{}, task_tick_count{};
 
     float pct_l{}, pct_r{};
     float target_pct_l{}, target_pct_r{};
@@ -168,7 +193,7 @@ struct Robot {
     float total_dist{};
     // Angle in radians
     float angle{};
-    float angle_to_maintain{};
+    float target_angle{};
 
     /*
      * Because my modified DigitalEncoder code obtains a pointer to itself using the “this” keyword so that the port
@@ -179,72 +204,27 @@ struct Robot {
     explicit Robot() {
         // The origin is the starting pad.
         // angle = 0 degrees is straight up toward the right ramp,
-        // so the bot will be pointed toward 315 degrees when placed on the starting pad.
+        // so the bot will be pointed toward -45 degrees when placed on the starting pad.
         pos_x = 0;
         pos_y = 0;
-        angle = rad(315);
-    }
-
-    void next_state();
-
-    void maintain_angle() {
-        angle_to_maintain = angle;
-        angle_controller.reset();
-
-        control_mode = ControlMode::MAINTAIN_ANGLE;
-    }
-
-    void drive_in_straight_line(float percent, float dist) {
-        target_pct_l = percent;
-        target_pct_r = percent;
-        target_dist = dist;
-        maintain_angle();
-
-        drive_mode = DriveMode::FORWARD;
-    }
-
-    void stop() {
-        drive_mode = DriveMode::STOP;
-        control_mode = ControlMode::STOP;
-    }
-
-    [[nodiscard]] const char *drive_mode_string() const {
-        switch (drive_mode) {
-            case DriveMode::STOP:
-                return "Stop";
-            case DriveMode::FORWARD:
-                return "Forward";
-        }
-        return "";
+        angle = rad(-45);
     }
 
     [[nodiscard]] const char *control_mode_string() const {
         switch (control_mode) {
             case ControlMode::STOP:
                 return "Stop";
-            case ControlMode::MAINTAIN_ANGLE:
-                return "MaintainAngle";
+            case ControlMode::FORWARD:
+                return "Forward";
+            case ControlMode::TURNING:
+                return "Turning";
+            case ControlMode::WAIT_FOR_LIGHT:
+                return "Wait4Light";
         }
         return "";
     }
 
-    void tick() {
-        tick_count++;
-
-        /*
-         * STATE MANAGEMENT
-         */
-
-        if (state_complete) {
-            next_state();
-            state_number++;
-            state_complete = false;
-        }
-
-        /*
-         * ODOMETRY
-         */
-
+    void process_odometry() {
         auto counts_l = el.Counts();
         auto counts_r = er.Counts();
 
@@ -277,29 +257,46 @@ struct Robot {
         pos_x += dx;
         pos_y += dy;
         angle += dAngle;
+    }
+
+    void action_finished() {
+
+    }
+
+    void tick() {
+        tick_count++;
+        task_tick_count++;
+
+        /*
+         * ODOMETRY
+         */
+
+        process_odometry();
 
         /*
          * DRIVETRAIN MOTOR MANAGEMENT
          */
 
-        switch (drive_mode) {
-            case DriveMode::FORWARD:
-                if (total_dist > target_dist) {
-                    stop();
-                }
-                break;
-        }
-
         float control_effort;
         switch (control_mode) {
-            case ControlMode::MAINTAIN_ANGLE:
-                control_effort = angle_controller.process(angle_to_maintain, angle);
+            case ControlMode::WAIT_FOR_LIGHT:
+                ml.Stop();
+                mr.Stop();
+                break;
+            case ControlMode::TURNING:
+                break;
+            case ControlMode::FORWARD:
+                control_effort = angle_controller.process(target_angle, angle);
 
                 pct_l = target_pct_l + control_effort;
                 pct_r = target_pct_r - control_effort;
 
                 ml.SetPercent(-pct_l);
                 mr.SetPercent(-pct_r);
+
+                if (total_dist > target_dist) {
+                    action_finished();
+                }
                 break;
             case ControlMode::STOP:
                 pct_l = 0;
@@ -307,12 +304,81 @@ struct Robot {
 
                 ml.Stop();
                 mr.Stop();
+                action_finished();
                 break;
             default:
                 break;
         }
     }
 } robot;
+
+struct RobotTask {
+    RobotTask *next_task{};
+
+    RobotTask() {
+        RobotTask **head_ptr = &robot.current_task;
+
+        RobotTask *last = *head_ptr;
+        // If the LL head is null, set this node to the LL head and return
+        if (*head_ptr == nullptr) {
+            *head_ptr = this;
+            return;
+        }
+
+        // Traverse LL until we reach a task that doesn't have a next task
+        while (last->next_task != nullptr) {
+            last = last->next_task;
+        }
+
+        // Set this task as the next task of the last task
+        last->next_task = this;
+    };
+
+    virtual void execute() = 0;
+};
+
+struct WaitForLight : RobotTask {
+    // TODO: Implement WaitForLight timeout
+    int timeout_ms;
+
+    explicit WaitForLight(int timeout_ms) : timeout_ms(timeout_ms) {}
+
+    void execute() override {
+        robot.control_mode = ControlMode::WAIT_FOR_LIGHT;
+    }
+};
+
+struct Straight : RobotTask {
+    float percent, dist;
+
+    explicit Straight(float percent, float dist) : percent(percent), dist(dist) {};
+
+    void execute() override {
+        robot.target_pct_l = percent;
+        robot.target_pct_r = percent;
+        robot.target_dist = dist;
+        robot.target_angle = robot.angle;
+        robot.angle_controller.reset();
+        robot.control_mode = ControlMode::FORWARD;
+    }
+};
+
+struct Stop : RobotTask {
+    void execute() override {
+        robot.control_mode = ControlMode::STOP;
+    }
+};
+
+struct Turn : RobotTask {
+    float turn_angle;
+
+    explicit Turn(float turn_angle) : turn_angle(turn_angle) {};
+
+    void execute() override {
+        robot.target_angle = turn_angle;
+        robot.control_mode = ControlMode::TURNING;
+    }
+};
 
 /**
  * Formulas taken from RBJ's Audio EQ Cookbook:
@@ -362,28 +428,15 @@ struct Biquad {
     }
 };
 
-constexpr uint32_t cyc(const double sec) {
-    return (uint32_t) (sec * PROTEUS_SYSTEM_HZ);
-}
-
-template<int pit_num>
-void enable_PIT_irq() {
-    // Enable interrupt in NVIC
-    NVICISER2 |= 1 << ((INT_PIT0 + pit_num) % 16);
-}
-
-template<int pit_num>
-void disable_PIT_irq() {
-    // Disable interrupt in NVIC
-    NVICISER2 &= ~(1 << ((INT_PIT0 + pit_num) % 16));
-}
-
 // NXP Freescale K60 manual: Chapter 40: Periodic Interrupt Timer (PIT)
-template<int pit_num>
+template<int pit_num, int irq_priority>
 void init_PIT(uint32_t cyc_interval) {
     // PIT0 is being used by FEHIO AnalogEncoder and AnalogInputPin, cannot use
     static_assert(pit_num != 0);
     static_assert(pit_num < 4);
+
+    // Set priority
+    NVIC_BASE_PTR->IP[(INT_PIT0 - 16) + pit_num] = irq_priority;
 
     // Enable PIT clock
     PIT_BASE_PTR->MCR = 0;
@@ -392,7 +445,8 @@ void init_PIT(uint32_t cyc_interval) {
     // Start PIT and enable PIT interrupts
     PIT_BASE_PTR->CHANNEL[pit_num].TCTRL = PIT_TCTRL_TEN_MASK | PIT_TCTRL_TIE_MASK;
 
-    enable_PIT_irq<pit_num>();
+    // Enable interrupt in NVIC
+    NVICISER2 |= 1 << ((INT_PIT0 + pit_num) % 16);
 }
 
 template<int pit_num>
@@ -409,29 +463,13 @@ extern "C" void SysTick_Handler(void) {
     tick_cycles = (int) tick_timer.lap();
 }
 
-template<uint32_t cyc_interval>
-constexpr void init_SysTick() {
-    // Make sure cyc_interval fits into 24 bits for SYSTICK_RVR
-    static_assert(!(cyc_interval & 0xFF000000));
-    SysTick_BASE_PTR->RVR = cyc_interval;
-
-    // Register SYST_CSR
-    // CLKSOURCE - bit 2 - use processor clock
-    // TICKINT - bit 1 - enable SysTick interrupt
-    // ENABLE - bit 0 - enable Sysick
-    SysTick_BASE_PTR->CSR |= 0b111;
-
-    // Enable SysTick IRQ in NVIC
-    NVIC_BASE_PTR->ISER[0] |= 1 << INT_SysTick;
-}
-
 extern "C" void PIT1_IRQHandler(void) {
     clear_PIT_irq_flag<1>();
 
     LCD.Clear(BLACK);
     LCD.Write("Tick CPU usage: ");
     // Add 1% to give a safety margin
-    LCD.Write((tick_cycles * 100) / (int)cyc(1 / TICK_RATE) + 1);
+    LCD.Write((tick_cycles * 100) / (int) cyc(1.0 / TICK_RATE) + 1);
     LCD.WriteLine("%");
     LCD.Write("Tick count: ");
     LCD.WriteLine((int) robot.tick_count);
@@ -449,9 +487,6 @@ extern "C" void PIT1_IRQHandler(void) {
     LCD.Write("R Motor Angle: ");
     LCD.WriteLine((robot.total_counts_r / IGWAN_COUNTS_PER_REV) * 360);
 
-    LCD.Write("DriveMode: ");
-    LCD.WriteLine(robot.drive_mode_string());
-
     LCD.Write("ControlMode: ");
     LCD.WriteLine(robot.control_mode_string());
 
@@ -461,8 +496,6 @@ extern "C" void PIT1_IRQHandler(void) {
     LCD.WriteLine(robot.angle_controller.error);
     LCD.Write("I: ");
     LCD.WriteLine(robot.angle_controller.I);
-    LCD.Write("State: ");
-    LCD.WriteLine(robot.state_number);
 }
 
 void sleep(int ms) {
@@ -491,31 +524,31 @@ void sleep(int ms) {
     PIT_BASE_PTR->CHANNEL[3].TCTRL = 0;
 }
 
+[[noreturn]]
 int main() {
     /*
-     * Begin the diagnostics printing timer.
-     * Calls PIT1_IRQHandler() every 0.2 seconds.
+     * Queue up robot tasks.
      */
-    init_PIT<1>(cyc(0.2));
+    WaitForLight(3000);
+    Straight(50, -3);
+    Straight(100, 6);
+    Turn(45);
+    Straight(100, 3);
+    Turn(0);
+    Stop();
 
     /*
-     * Begin the SysTick timer that drives the robot controller.
-     * Calls SysTick_Handler() at TICK_RATE hz.
+     * Begin the diagnostics printing timer at the lowest possible priority (15).
+     * Calls PIT1_IRQHandler() every 0.2 seconds.
      */
-    init_SysTick<cyc(1 / TICK_RATE)>();
+    init_PIT<1, 15>(cyc(0.2));
 
-    return 0;
-}
-
-void Robot::next_state() {
-    switch (state_number) {
-        case 0:
-            drive_in_straight_line(50, 12);
-            break;
-        case 1:
-            stop();
-            break;
-        default:
-            break;
-    }
+    /*
+     * Initialize the robot control loop by setting up the SysTick timer.
+     * Calls SysTick_Handler() at TICK_RATE hz.
+     *
+     * BECAUSE robot_control_loop() DOESN'T RETURN, main() DOESN'T RETURN,
+     * AND IT CANNOT BECAUSE THE QUEUED ROBOT TASKS MUST BE KEPT IN THE STACK FRAME.
+     */
+    robot_control_loop();
 }
