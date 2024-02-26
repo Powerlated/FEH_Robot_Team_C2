@@ -10,20 +10,20 @@
 #include <string.h>
 #include <LCDColors.h>
 
-#define CLR_CS GPIOC_PDOR &= ~GPIO_PDOR_PDO( ( 1 << 3 ) )
-#define SET_CS GPIOC_PDOR |= GPIO_PDOR_PDO( ( 1 << 3 ) )
+#define CLR_CS GPIOC_PCOR = ( 1 << 3 )
+#define SET_CS GPIOC_PSOR = ( 1 << 3 )
 
-#define CLR_RS GPIOB_PDOR &= ~GPIO_PDOR_PDO( ( 1 << 18 ) )
-#define SET_RS GPIOB_PDOR |= GPIO_PDOR_PDO( ( 1 << 18 ) )
+#define CLR_RS GPIOB_PCOR = ( 1 << 18 )
+#define SET_RS GPIOB_PSOR = ( 1 << 18 )
 
-#define CLR_Rd GPIOB_PDOR &= ~GPIO_PDOR_PDO( ( 1 << 16 ) )
-#define SET_RD GPIOB_PDOR |= GPIO_PDOR_PDO( ( 1 << 16 ) )
+#define CLR_Rd GPIOB_PCOR = ( 1 << 16 )
+#define SET_RD GPIOB_PSOR = ( 1 << 16 )
 
-#define CLR_WR GPIOB_PDOR &= ~GPIO_PDOR_PDO( ( 1 << 17 ) )
-#define SET_WR GPIOB_PDOR |= GPIO_PDOR_PDO( ( 1 << 17 ) )
+#define CLR_WR GPIOB_PCOR = ( 1 << 17 )
+#define SET_WR GPIOB_PSOR = ( 1 << 17 )
 
-#define CLR_RESET GPIOB_PDOR &= ~GPIO_PDOR_PDO( ( 1 << 3 ) )
-#define SET_RESET GPIOB_PDOR |= GPIO_PDOR_PDO( ( 1 << 3 ) )
+#define CLR_RESET GPIOB_PCOR = ( 1 << 3 )
+#define SET_RESET GPIOB_PSOR = ( 1 << 3 )
 
 
 #define CharHeight 17
@@ -224,6 +224,8 @@ bool initialized = false;
 #define LCD_HORI_START              (LCD_HORI_PULSE_WIDTH + LCD_HORI_BACK_PORCH)
 #define LCD_VERT_START              (LCD_VERT_PULSE_WIDTH + LCD_VERT_BACK_PORCH)
 
+// Black & white LCD buffer
+uint8_t LCDBuffer[LCD_WIDTH * LCD_HEIGHT / 8];
 
 void FEHLCD::_Initialize()
 {
@@ -776,12 +778,12 @@ bool FEHLCD::Touch(int* x_pos, int* y_pos)
 {
 	float new_x_pos, new_y_pos;
 	bool ret;
-	
+
 	ret = LCD.Touch(&new_x_pos, &new_y_pos);
 
 	*x_pos = (new_x_pos > 0) ? (int)(new_x_pos + 0.5) : (int)(new_x_pos);
 	*y_pos = (new_y_pos > 0) ? (int)(new_y_pos + 0.5) : (int)(new_x_pos);
-	
+
 	return ret;
 }
 
@@ -1559,13 +1561,13 @@ void FEHLCD::_ForePixel(){
     SET_RS;
 
     // clear all bits
-    GPIOB_PDOR &= ~GPIO_PDOR_PDO( ( 1 << 9 ) | ( 1 << 8 ) );
-    GPIOC_PDOR &= ~GPIO_PDOR_PDO( ( 1 << 4 ) | ( 1 << 5 ) | ( 1 << 6 ) | ( 1 << 7 ) | ( 1 << 12 ) | ( 1 << 13 ) | ( 1 << 14 ) | ( 1 << 15 ) | ( 1 << 16 ) | ( 1 << 17 ) | ( 1 << 18 ) | ( 1 << 19 ) );
-    GPIOD_PDOR &= ~GPIO_PDOR_PDO( ( 1 << 0 ) | ( 1 << 2 ) | ( 1 << 3 ) | ( 1 << 4 ) );
+    GPIOB_PCOR = ( 1 << 9 ) | ( 1 << 8 );
+    GPIOC_PCOR = ( 1 << 4 ) | ( 1 << 5 ) | ( 1 << 6 ) | ( 1 << 7 ) | ( 1 << 12 ) | ( 1 << 13 ) | ( 1 << 14 ) | ( 1 << 15 ) | ( 1 << 16 ) | ( 1 << 17 ) | ( 1 << 18 ) | ( 1 << 19 );
+    GPIOD_PCOR = ( 1 << 0 ) | ( 1 << 2 ) | ( 1 << 3 ) | ( 1 << 4 );
 
-    GPIOB_PDOR |= foreRegisterValues.BVal;
-    GPIOC_PDOR |= foreRegisterValues.CVal;
-    GPIOD_PDOR |= foreRegisterValues.DVal;
+    GPIOB_PSOR = foreRegisterValues.BVal;
+    GPIOC_PSOR = foreRegisterValues.CVal;
+    GPIOD_PSOR = foreRegisterValues.DVal;
 
     // WR=0;
     CLR_WR;
@@ -1593,15 +1595,13 @@ void FEHLCD::_BackPixel() {
     SET_RS;
 
     // clear all bits
-    GPIOB_PDOR &= ~GPIO_PDOR_PDO( ( 1 << 9 ) | ( 1 << 8 ) );
-    GPIOC_PDOR &= ~GPIO_PDOR_PDO( ( 1 << 4 ) | ( 1 << 5 ) | ( 1 << 6 ) | ( 1 << 7 ) | ( 1 << 12 ) | ( 1 << 13 ) | ( 1 << 14 ) | ( 1 << 15 ) | ( 1 << 16 ) | ( 1 << 17 ) | ( 1 << 18 ) | ( 1 << 19 ) );
-    GPIOD_PDOR &= ~GPIO_PDOR_PDO( ( 1 << 0 ) | ( 1 << 2 ) | ( 1 << 3 ) | ( 1 << 4 ) );
+    GPIOB_PCOR = ( 1 << 9 ) | ( 1 << 8 );
+    GPIOC_PCOR = ( 1 << 4 ) | ( 1 << 5 ) | ( 1 << 6 ) | ( 1 << 7 ) | ( 1 << 12 ) | ( 1 << 13 ) | ( 1 << 14 ) | ( 1 << 15 ) | ( 1 << 16 ) | ( 1 << 17 ) | ( 1 << 18 ) | ( 1 << 19 );
+    GPIOD_PCOR = ( 1 << 0 ) | ( 1 << 2 ) | ( 1 << 3 ) | ( 1 << 4 );
 
-
-    GPIOB_PDOR |= backRegisterValues.BVal;
-    GPIOC_PDOR |= backRegisterValues.CVal;
-    GPIOD_PDOR |= backRegisterValues.DVal;
-
+    GPIOB_PSOR = backRegisterValues.BVal;
+    GPIOC_PSOR = backRegisterValues.CVal;
+    GPIOD_PSOR = backRegisterValues.DVal;
 
     // WR=0;
     CLR_WR;
