@@ -59,6 +59,7 @@ public:
 	bool Touch(int* x_pos, int* y_pos);
 
     void ClearBuffer();
+    void DrawScreen();
 
     /**
      * @brief Prints an image to the LCD screen
@@ -286,7 +287,7 @@ private:
 
     void WriteIndex( unsigned char index );
     void WriteParameter( unsigned char param );
-    void RepeatColor();
+    void RepeatPixel();
 
     unsigned int ConvertFEHColorTo24Bit(FEHLCDColor color);
     unsigned int Convert24BitColorTo16Bit(unsigned int color);
@@ -296,6 +297,7 @@ private:
     void CheckLine();
     void NextChar();
     void SetDrawRegion(int x, int y, int width, int height);
+    void LCDDrawRegion(int x, int y, int width, int height);
 
     FEHLCDOrientation _orientation;
 
