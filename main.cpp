@@ -142,6 +142,7 @@ struct PIController {
  */
 
 enum class ControlMode {
+    INIT_TASK,
     STOP,
     TURNING,
     FORWARD,
@@ -165,9 +166,9 @@ struct Robot {
     FEHServo servo{FEHServo::FEHServoPort::Servo0};
 
     RobotTask *current_task{};
-    ControlMode control_mode = ControlMode::STOP;
+    ControlMode control_mode = ControlMode::INIT_TASK;
 
-    volatile int tick_count{}, task_tick_count{};
+    volatile int tick_count{}, task_tick_count{}, task_number{};
 
     float pct_l{}, pct_r{};
     float target_pct_l{}, target_pct_r{};
@@ -201,6 +202,8 @@ struct Robot {
 
     [[nodiscard]] const char *control_mode_string() const {
         switch (control_mode) {
+            case ControlMode::INIT_TASK:
+                return "InitTask";
             case ControlMode::STOP:
                 return "Stop";
             case ControlMode::FORWARD:
@@ -248,9 +251,10 @@ struct Robot {
         angle += dAngle;
     }
 
-    void action_finished() {
+    void task_finished() {
         current_task->execute();
         current_task = current_task->next_task;
+        task_number++;
     }
 
     void tick() {
@@ -269,6 +273,9 @@ struct Robot {
 
         float control_effort;
         switch (control_mode) {
+            case ControlMode::INIT_TASK:
+                task_finished();
+                break;
             case ControlMode::WAIT_FOR_LIGHT:
                 ml.Stop();
                 mr.Stop();
@@ -286,7 +293,7 @@ struct Robot {
                 mr.SetPercent(-pct_r);
 
                 if (total_dist > target_dist) {
-                    action_finished();
+                    task_finished();
                 }
                 break;
             case ControlMode::STOP:
@@ -597,6 +604,8 @@ extern "C" void PIT1_IRQHandler(void) {
         LCD.Write("R Motor Angle: ");
         LCD.WriteLine((robot.total_counts_r / IGWAN_COUNTS_PER_REV) * 360);
 
+        LCD.Write("Task#: ");
+        LCD.WriteLine(robot.task_number);
         LCD.Write("ControlMode: ");
         LCD.WriteLine(robot.control_mode_string());
 
@@ -606,6 +615,8 @@ extern "C" void PIT1_IRQHandler(void) {
         LCD.WriteLine(robot.angle_controller.error);
         LCD.Write("I: ");
         LCD.WriteLine(robot.angle_controller.I);
+        LCD.Write("CDS Value: ");
+        LCD.WriteLine(robot.colorSensor.Value());
     }
 
     LCD.DrawScreen();
