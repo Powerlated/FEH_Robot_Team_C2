@@ -289,9 +289,6 @@ float AnalogInputPin::Value() {
 
     unsigned int result;
 
-    // Disable Encoder Interrupts Temporarily
-    NVICICER2 = (1 << (4));
-
     if (adcNum == ADC0) {
         ADC_Config_Alt(ADC0_BASE_PTR, &Master_Adc_Config);  // config ADC0
 
@@ -306,15 +303,6 @@ float AnalogInputPin::Value() {
         result = ADC1_RA;
 
     }
-
-    // Re-enable Encoder Interrupt
-    NVICICPR2 |= (1 << (4));
-    NVICISER2 |= (1 << (4));
-
-    // // Re-enable button Interrupt
-    // NVICICPR2 |= (1 << ( 26 ));
-    // NVICISER2 |= (1 << ( 26 ));
-
 
     float v = (result & 0xFFFFu) * 3.33 / (0xFFFFu);
     return v;
