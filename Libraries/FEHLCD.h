@@ -62,31 +62,6 @@ public:
     void DrawScreen();
 
     /**
-     * @brief Prints an image to the LCD screen
-     * 
-     * @param x
-     *      X-coordinate for the start of the draw region
-     *  
-     * @param y
-     *      Y-coordinate for the start of the draw region
-     * 
-     * Draws image to the LCD screen for sizeof(image) / sizeof(image[0])
-     */
-    void PrintImage(int x, int y);
-
-    /**
-     * @brief Prints OSU logo to the LCD screen
-     * 
-     * @param x
-     *      X-coordinate for the start of the draw region
-     *  
-     * @param y
-     *      Y-coordinate for the start of the draw region
-     * Draws logo to the LCD screen for sizeof(logo) / sizeof(logo[0])
-     */
-    void PrintLogo(int x, int y);
-
-    /**
      * @brief Access function to private member {@code} _Initialize()
      * 
      * If LCD is not already intialized, do so by calling {@code} _Initialize()
@@ -171,6 +146,7 @@ public:
     void DrawHorizontalLine(int y,int x1, int x2);
     void DrawVerticalLine(int x, int y1, int y2);
     void DrawLine(int x1, int y1, int x2, int y2);
+    void DrawThickLine(int x1, int y1, int x2, int y2);
     void DrawRectangle(int x, int y, int width, int height);
     void FillRectangle(int x, int y, int width, int height);
     void DrawCircle(int x0, int y0, int r);

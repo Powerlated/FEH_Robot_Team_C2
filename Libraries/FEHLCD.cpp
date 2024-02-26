@@ -4,11 +4,11 @@
 #include "mcg.h"
 #include "lptmr.h"
 #include "stdio.h"
-#include "image.h"
 #include "spi.h"
 #include <FEHBuzzer.h>
 #include <string.h>
 #include <LCDColors.h>
+#include <cmath>
 
 #define CLR_CS GPIOC_PCOR = ( 1 << 3 )
 #define SET_CS GPIOC_PSOR = ( 1 << 3 )
@@ -504,64 +504,6 @@ void FEHLCD::Initialize() {
 
         _Initialize();
     }
-}
-
-
-void FEHLCD::PrintImage(int x, int y) {
-    SetDrawRegion(x, y, 98, 126);
-    int image_length = sizeof(image) / sizeof(image[0]);
-    for (int i = 0; i < image_length; i += 2) {
-        for (int j = 0; j < image[i]; j++) {
-            unsigned char r, g, b;
-            if (image[i + 1] == 0) {
-                r = 255;
-                g = 255;
-                b = 255;
-            } else if (image[i + 1] == 1) {
-                r = 212;
-                g = 0;
-                b = 38;
-            } else {
-                r = 181;
-                g = 186;
-                b = 176;
-            }
-            //_forecolor = ConvertRGBColorTo16Bit(image[k][0],image[k][1],image[k][2]);
-            _forecolor = ConvertRGBColorTo16Bit(r, g, b);
-
-            SetRegisterColorValues();
-            _ForePixel();
-        }
-    }
-}
-
-void FEHLCD::PrintLogo(int x, int y) {
-    SetDrawRegion(x, y, 149, 39);
-    int logo_length = sizeof(logo) / sizeof(logo[0]);
-    for (int i = 0; i < logo_length; i += 2) {
-        for (int j = 0; j < logo[i]; j++) {
-            unsigned char r, g, b;
-            if (logo[i + 1] == 0) {
-                r = 255;
-                g = 255;
-                b = 255;
-            } else if (logo[i + 1] == 1) {
-                r = 0;
-                g = 0;
-                b = 0;
-            } else {
-                r = 212;
-                g = 0;
-                b = 38;
-            }
-            //_forecolor = ConvertRGBColorTo16Bit(image[k][0],image[k][1],image[k][2]);
-            _forecolor = ConvertRGBColorTo16Bit(r, g, b);
-
-            SetRegisterColorValues();
-            _ForePixel();
-        }
-    }
-
 }
 
 void FEHLCD::SetOrientation(FEHLCDOrientation orientation) {
@@ -1240,6 +1182,58 @@ void FEHLCD::DrawLine(int x1, int y1, int x2, int y2) {
     }
 }
 
+void FEHLCD::DrawThickLine(int x1, int y1, int x2, int y2) {
+    int dx = abs(x2 - x1);
+    int dy = abs(y2 - y1);
+    bool steep = (dy > dx);
+
+    // If the line is steep, we'll iterate over y
+    // instead of x. To keep code simple, I just
+    // swap and always iterate over x
+    if (steep) {
+        Swap(x1, y1);
+        Swap(x2, y2);
+    }
+
+    // Alwasy iterate from low x to high x
+    if (x1 > x2) {
+        Swap(x1, x2);
+        Swap(y1, y2);
+    }
+
+    // If x2==x1, then the line is just a pixel
+    if (x2 == x1) {
+        DrawPixel(x1, y1);
+        return;
+    }
+
+    float slope = (y2 - y1) / ((float) (x2 - x1));
+    float y = y1;
+
+    // Iterate over x
+    for (int x = x1; x <= x2; x++) {
+        // Round the y coordinate, and draw
+        // swap back x and y if we swapped them initially
+        if (steep) {
+            int pxy = lround(y + .5);
+            DrawPixel(pxy, x);
+            DrawPixel(pxy + 1, x);
+            DrawPixel(pxy - 1, x);
+            DrawPixel(pxy, x + 1);
+            DrawPixel(pxy, x - 1);
+        } else {
+            int pxy = lround(y + .5);
+            DrawPixel(x, pxy);
+            DrawPixel(x + 1, pxy);
+            DrawPixel(x - 1, pxy);
+            DrawPixel(x, pxy + 1);
+            DrawPixel(x, pxy - 1);
+        }
+
+        y += slope;
+    }
+}
+
 void FEHLCD::DrawCircle(int x0, int y0, int radius) {
     // This alogorithm is from wikipedia
     // It's called the "midpoint circle algorithm"
@@ -1471,6 +1465,7 @@ void LCDPixel() {
 }
 
 bool last_color = false;
+
 void FEHLCD::RepeatPixel() {
     set_pixel(draw_x, draw_y, last_color);
     next_pixel();
