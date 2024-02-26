@@ -452,11 +452,14 @@ void FEHLCD::_Initialize() {
     // widx( 0x29 );  //display on
     //WriteIndex( 0x29 );
 
-    Clear(FEHLCD::White);
-    PrintImage(111, 30);
-    PrintLogo(86, 175);
-    SetFontColor(FEHLCD::Black);
-    WriteAt("v02.09.00", 1, 1);
+    SetFontColor(FEHLCD::White);
+    Clear(FEHLCD::Black);
+    WriteLine("v02.09.00-SHIBA");
+    WriteLine("TEAM ID: C2");
+    WriteLine("TEAM NAME: LOREM IPSEM");
+    WriteLine(" ");
+    WriteLine("CUSTOM PROTEUS FIRMWARE");
+    DrawScreen();
 
     WriteIndex(0x29);  //display on
     Sleep(100);
