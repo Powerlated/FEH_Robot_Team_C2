@@ -22,6 +22,7 @@
 #include <FEHMotor.h>
 #include <FEHServo.h>
 #include <FEHIO.h>
+#include <FEHAccel.h>
 #include <cmath>
 #include <Startup/MK60DZ10.h>
 
@@ -491,39 +492,123 @@ extern "C" void SysTick_Handler(void) {
     tick_cycles = (int) tick_timer.lap();
 }
 
+struct Vec2 {
+    float x, y;
+};
+
+struct Mat2x2 {
+    float mat[4];
+
+    Vec2 multiply(Vec2 &b) {
+        return Vec2{
+                mat[0] * b.x + mat[1] * b.y,
+                mat[2] * b.x + mat[3] * b.y,
+        };
+    }
+
+    static Mat2x2 Rotation(float angle) {
+        float cos = cosf(angle);
+        float sin = sinf(angle);
+
+        return Mat2x2{
+                cos, -sin,
+                sin, cos
+        };
+    }
+};
+
+Vec2 arrow_vtx[] = {
+        Vec2{-24, 0},
+        Vec2{24, 0},
+        Vec2{24, 70},
+        Vec2{32, 70},
+        Vec2{0, 100},
+        Vec2{-32, 70},
+        Vec2{-24, 70},
+};
+const int arrow_vtx_len = sizeof(arrow_vtx) / sizeof(Vec2);
+
+void draw_vtx_list(Vec2 vtx_list[], int len, int offs_x, int offs_y, Mat2x2 mat) {
+    for (int i = 0; i < len - 1; i++) {
+        Vec2 vtx1 = mat.multiply(vtx_list[i]);
+        Vec2 vtx2 = mat.multiply(vtx_list[i + 1]);
+        LCD.DrawLine(
+                (int) vtx1.x + offs_x,
+                (int) vtx1.y + offs_y,
+                (int) vtx2.x + offs_x,
+                (int) vtx2.y + offs_y);
+    }
+
+    Vec2 vtx1 = mat.multiply(vtx_list[0]);
+    Vec2 vtx2 = mat.multiply(vtx_list[len - 1]);
+    LCD.DrawLine(
+            (int) vtx1.x + offs_x,
+            (int) vtx1.y + offs_y,
+            (int) vtx2.x + offs_x,
+            (int) vtx2.y + offs_y);
+}
+
 extern "C" void PIT1_IRQHandler(void) {
     clear_PIT_irq_flag<1>();
 
+    static bool prev_touching = false;
+    static bool display_compass = true;
+
+    int x, y;
+    bool touching = LCD.Touch(&x, &y);
+    if (touching && !prev_touching) {
+        display_compass = !display_compass;
+    }
+    prev_touching = touching;
+
+    static float angle = 0;
+
     LCD.Clear(BLACK);
-    LCD.Write("Tick CPU usage: ");
-    // Add 1% to give a safety margin
-    LCD.Write((tick_cycles * 100) / (int) cyc(1.0 / TICK_RATE) + 1);
-    LCD.WriteLine("%");
-    LCD.Write("Tick count: ");
-    LCD.WriteLine((int) robot.tick_count);
+    if (display_compass) {
+        LCD.SetFontColor(WHITE);
+        LCD.DrawCircle(LCD_WIDTH / 2, LCD_HEIGHT / 2, 100);
 
-    LCD.Write("X (inches): ");
-    LCD.WriteLine(robot.pos_x);
-    LCD.Write("Y (inches): ");
-    LCD.WriteLine(robot.pos_y);
+        Mat2x2 mat = Mat2x2::Rotation(angle);
+        draw_vtx_list(arrow_vtx, arrow_vtx_len, LCD_WIDTH / 2, LCD_HEIGHT / 2, mat);
 
-    LCD.Write("Angle: ");
-    LCD.WriteLine(deg(robot.angle));
+        angle += rad(10);
+        if (angle >= 2 * M_PI) {
+            angle -= 2 * M_PI;
+        }
+    } else {
+        LCD.Clear(BLACK);
+        LCD.Write("Tick CPU usage: ");
+        // Add 1% to give a safety margin
+        LCD.Write((tick_cycles * 100) / (int) cyc(1.0 / TICK_RATE) + 1);
+        LCD.WriteLine("%");
+        LCD.Write("Tick count: ");
+        LCD.WriteLine((int) robot.tick_count);
 
-    LCD.Write("L Motor Angle: ");
-    LCD.WriteLine((robot.total_counts_l / IGWAN_COUNTS_PER_REV) * 360);
-    LCD.Write("R Motor Angle: ");
-    LCD.WriteLine((robot.total_counts_r / IGWAN_COUNTS_PER_REV) * 360);
+        LCD.Write("X (inches): ");
+        LCD.WriteLine(robot.pos_x);
+        LCD.Write("Y (inches): ");
+        LCD.WriteLine(robot.pos_y);
 
-    LCD.Write("ControlMode: ");
-    LCD.WriteLine(robot.control_mode_string());
+        LCD.Write("Angle: ");
+        LCD.WriteLine(deg(robot.angle));
 
-    LCD.Write("ControlEffort: ");
-    LCD.WriteLine(robot.angle_controller.control_effort);
-    LCD.Write("Error: ");
-    LCD.WriteLine(robot.angle_controller.error);
-    LCD.Write("I: ");
-    LCD.WriteLine(robot.angle_controller.I);
+        LCD.Write("L Motor Angle: ");
+        LCD.WriteLine((robot.total_counts_l / IGWAN_COUNTS_PER_REV) * 360);
+        LCD.Write("R Motor Angle: ");
+        LCD.WriteLine((robot.total_counts_r / IGWAN_COUNTS_PER_REV) * 360);
+
+        LCD.Write("ControlMode: ");
+        LCD.WriteLine(robot.control_mode_string());
+
+        LCD.Write("ControlEffort: ");
+        LCD.WriteLine(robot.angle_controller.control_effort);
+        LCD.Write("Error: ");
+        LCD.WriteLine(robot.angle_controller.error);
+        LCD.Write("I: ");
+        LCD.WriteLine(robot.angle_controller.I);
+    }
+
+    LCD.DrawScreen();
 }
 
 void sleep(int ms) {
@@ -557,76 +642,80 @@ void sleep(int ms) {
  * Static variables in the same .cpp file are initialized in order of declaration so this is fine.
  */
 
-// Start light & start button
-Speed t00(50);
-WaitForStartLight t01(3000);
-Straight t02(-3);
-Straight t03(6.421);
+Speed t0(50);
 
-// Go up ramp
-Turn t10(45);
-Straight t11(5.581);
-Turn t12(0);
-Straight t13(25.965);
+// 1. Wait for start light to turn on.
+WaitForStartLight t1(3000);
 
-// Stamp the passport
-Turn t20(-37.6);
-Straight t21(9.537);
-Turn t22(0);
-Straight t23(6.150);
+// 2. Push the start button.
+Straight t2(-3);
+Straight t3(6.421);
 
-StampPassport t24();
+// 3. Go up ramp.
+Turn t4(45);
+Straight t5(5.581);
+Turn t6(0);
+Straight t7(25.965);
 
-// Luggage drop
-Straight t30(-6.150);
-Turn t31(64.4);
-Straight t32(-10.631);
-Turn t33(0);
-Straight t34(-5.365);
-Position4Bar t35(90);
-Position4Bar t36(0);
+// 4. Stamp the passport.
+Turn t8(-37.6);
+Straight t9(9.537);
+Turn t10(0);
+Straight t11(6.150);
 
-// Ticket booth light
-Straight t40(5.365);
-Turn t41(-9.6);
-Straight t42(17.853);
+StampPassport t12();
 
-WaitForTicketLight t43();
+// 5. Drop the luggage into the high chute.
+Straight t13(-6.150);
+Turn t14(64.4);
+Straight t15(-10.631);
+Turn t16(0);
+Straight t17(-5.365);
+Position4Bar t18(90);
+Position4Bar t19(0);
 
-// Press ticket booth button
-Turn t50(-74.7);
-Straight t51(-6.342);
-Turn t52(0);
-Straight t53(3);
-Straight t54(-3);
+// 6. Go to the ticket booth light, wait for it to turn on, and record its color.
+Straight t20(5.365);
+Turn t21(-9.6);
+Straight t22(17.853);
 
-// Flip fuel lever down and back up
-Turn t60(-142.8); // Turn toward ramp
-Straight t61(26.102); // Go to ramp
-Turn t62(-180.0); // Turn down ramp
-Position4Bar t63(25); // Raise 4-bar
-Straight t64(27.993); // Go down ramp
-Position4Bar t65(15); // Lower the lever
-Straight t66(-5.830); // Go back a few inches
-Position4Bar t67(0); // Lower 4-bar
-Delay t68(5000); // Wait 5 seconds
-Straight t69(5.830); // Go forward again
-Position4Bar t6A(10); // Raise the lever
+WaitForTicketLight t23();
 
-// Push end button
-Straight t70(-5.830);
-Turn t71(-72.5);
-Straight t72(-14.517);
-Turn t73(-45);
-Straight t74(-16.267); // Back into the course end button
-Stop t75();
+// 7. Press the left ticket booth button.
+// TODO: Press the correct ticket booth button.
+Turn t24(-74.7);
+Straight t25(-6.342);
+Turn t26(0);
+Straight t27(3);
+Straight t28(-3);
+
+// 8. Flip the fuel lever, wait 5 seconds, and flip it back up.
+Turn t29(-142.8); // Turn toward ramp
+Straight t30(26.102); // Go to ramp
+Turn t31(-180.0); // Turn down ramp
+Position4Bar t32(25); // Raise 4-bar
+Straight t33(27.993); // Go down ramp
+Position4Bar t34(15); // Lower the lever
+Straight t35(-5.830); // Go back a few inches
+Position4Bar t36(0); // Lower 4-bar
+Delay t37(5000); // Wait 5 seconds
+Straight t38(5.830); // Go forward again
+Position4Bar t39(10); // Raise the lever
+
+// 9. Push end button.
+Straight t40(-5.830);
+Turn t41(-72.5);
+Straight t42(-14.517);
+Turn t43(-45);
+Straight t44(-16.267); // Back into the course end button
+Stop t45();
 
 int main() {
     /*
      * Begin the diagnostics printing timer at the lowest possible priority (15).
-     * Calls PIT1_IRQHandler() every 0.2 seconds.
+     * Calls PIT1_IRQHandler() every 0.05 seconds.
      */
-    init_PIT<1, 15>(cyc(0.2));
+    init_PIT<1, 255>(cyc(0.01));
 
     /*
      * Initialize the robot control loop by setting up the SysTick timer.
