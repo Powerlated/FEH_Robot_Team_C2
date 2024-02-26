@@ -191,14 +191,7 @@ struct Robot {
      * that we instantiated. I couldn't get this working properly with C++ move semantics, so I'm instantiating the
      * DigitalEncoder objects inside the Drivetrain constructor instead. It's working now.
      */
-    explicit Robot() {
-        // The origin is the starting pad.
-        // angle = 0 degrees is straight up toward the right ramp,
-        // so the bot will be pointed toward -45 degrees when placed on the starting pad.
-        pos_x = 0;
-        pos_y = 0;
-        angle = rad(-45);
-    }
+    explicit Robot() {}
 
     [[nodiscard]] const char *control_mode_string() const {
         switch (control_mode) {
@@ -274,6 +267,13 @@ struct Robot {
         float control_effort;
         switch (control_mode) {
             case ControlMode::INIT_TASK:
+                // The origin is the starting pad.
+                // angle = 0 degrees is straight up toward the right ramp,
+                // so the bot will be pointed toward -45 degrees when placed on the starting pad.
+                pos_x = 0;
+                pos_y = 0;
+                angle = rad(-45);
+
                 task_finished();
                 break;
             case ControlMode::WAIT_FOR_LIGHT:
@@ -501,6 +501,13 @@ extern "C" void SysTick_Handler(void) {
 
 struct Vec2 {
     float x, y;
+
+    Vec2 add(Vec2 &b) {
+        return Vec2{
+                x + b.x,
+                y + b.y
+        };
+    }
 };
 
 struct Mat2x2 {
@@ -524,14 +531,23 @@ struct Mat2x2 {
     }
 };
 
+const char *nesw[4] = {"N", "W", "S", "E"};
+
+Vec2 nesw_poss[] = {
+        Vec2{0, 80},
+        Vec2{80, 0},
+        Vec2{0, -80},
+        Vec2{-80, 0},
+};
+
 Vec2 arrow_vtx[] = {
-        Vec2{-24, 0},
-        Vec2{24, 0},
-        Vec2{24, 70},
-        Vec2{32, 70},
-        Vec2{0, 100},
-        Vec2{-32, 70},
-        Vec2{-24, 70},
+        Vec2{-10, 0},
+        Vec2{10, 0},
+        Vec2{10, 45},
+        Vec2{14, 45},
+        Vec2{0, 64},
+        Vec2{-14, 45},
+        Vec2{-10, 45},
 };
 const int arrow_vtx_len = sizeof(arrow_vtx) / sizeof(Vec2);
 
@@ -539,7 +555,7 @@ void draw_vtx_list(Vec2 vtx_list[], int len, int offs_x, int offs_y, Mat2x2 mat)
     for (int i = 0; i < len - 1; i++) {
         Vec2 vtx1 = mat.multiply(vtx_list[i]);
         Vec2 vtx2 = mat.multiply(vtx_list[i + 1]);
-        LCD.DrawLine(
+        LCD.DrawThickLine(
                 (int) vtx1.x + offs_x,
                 (int) vtx1.y + offs_y,
                 (int) vtx2.x + offs_x,
@@ -548,7 +564,7 @@ void draw_vtx_list(Vec2 vtx_list[], int len, int offs_x, int offs_y, Mat2x2 mat)
 
     Vec2 vtx1 = mat.multiply(vtx_list[0]);
     Vec2 vtx2 = mat.multiply(vtx_list[len - 1]);
-    LCD.DrawLine(
+    LCD.DrawThickLine(
             (int) vtx1.x + offs_x,
             (int) vtx1.y + offs_y,
             (int) vtx2.x + offs_x,
@@ -568,19 +584,20 @@ extern "C" void PIT1_IRQHandler(void) {
     }
     prev_touching = touching;
 
-    static float angle = 0;
-
     LCD.Clear(BLACK);
     if (display_compass) {
         LCD.SetFontColor(WHITE);
-        LCD.DrawCircle(LCD_WIDTH / 2, LCD_HEIGHT / 2, 100);
+        LCD.DrawCircle(LCD_WIDTH / 2, LCD_HEIGHT / 2, 64);
 
-        Mat2x2 mat = Mat2x2::Rotation(angle);
+        Mat2x2 mat = Mat2x2::Rotation(-robot.angle);
         draw_vtx_list(arrow_vtx, arrow_vtx_len, LCD_WIDTH / 2, LCD_HEIGHT / 2, mat);
 
-        angle += rad(10);
-        if (angle >= 2 * M_PI) {
-            angle -= 2 * M_PI;
+        for (int i= 0; i < 4; i++) {
+            Vec2 offs{LCD_WIDTH / 2.0 - 12.0 / 2, LCD_HEIGHT / 2.0 - 17.0 / 2};
+            Vec2 pos = mat.multiply(nesw_poss[i]).add(offs);
+
+            LCD.WriteAt(deg(robot.angle), LCD_WIDTH / 2 - 42, 17);
+            LCD.WriteAt(nesw[i], (int)pos.x, (int)pos.y);
         }
     } else {
         LCD.Clear(BLACK);
