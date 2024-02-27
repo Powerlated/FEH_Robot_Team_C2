@@ -29,23 +29,32 @@
 using namespace std;
 
 constexpr int TICK_RATE = 1000;
+constexpr int DIAGNOSTICS_HZ = 20;
 constexpr float TICK_INTERVAL_MICROSECONDS = (1.0 / TICK_RATE) * 1000000;
 constexpr float TRACK_WIDTH = 8.276;
 
-constexpr double IGWAN_COUNTS_PER_REV = 318;
+constexpr double IGWAN_COUNTS_PER_REV = 159;
 constexpr double WHEEL_DIA = 2.5;
 constexpr double INCHES_PER_REV = WHEEL_DIA * M_PI;
 constexpr auto INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
+constexpr float DRIVE_SLEW_RATE = 20; // Percent per m/s
+constexpr float TURN_SLEW_RATE = 20; // Percent per radian/s
+constexpr float DRIVE_MIN_PERCENT = 0;
+constexpr float TURN_MIN_PERCENT = 0;
+constexpr float STOPPED_I = 10;
 
 constexpr float PROTEUS_SYSTEM_HZ = 88000000.0;
+constexpr float FORCE_START_HOLD_SEC = 0.5;
+constexpr float FORCE_START_TOTAL_SEC = 1;
 
 constexpr auto DRIVE_MOTOR_MAX_VOLTAGE = 9.0;
 constexpr auto DRIVE_MOTOR_L_PORT = FEHMotor::Motor0;
 constexpr auto DRIVE_MOTOR_R_PORT = FEHMotor::Motor1;
-constexpr auto ENCODER_L_PIN_0 = FEHIO::FEHIOPin::P0_0;
-constexpr auto ENCODER_L_PIN_1 = FEHIO::FEHIOPin::P0_1;
-constexpr auto ENCODER_R_PIN_0 = FEHIO::FEHIOPin::P0_2;
-constexpr auto ENCODER_R_PIN_1 = FEHIO::FEHIOPin::P0_3;
+constexpr auto ENCODER_L_PIN_0 = FEHIO::FEHIOPin::P3_0;
+constexpr auto ENCODER_L_PIN_1 = FEHIO::FEHIOPin::P3_1;
+constexpr auto ENCODER_R_PIN_0 = FEHIO::FEHIOPin::P0_0;
+constexpr auto ENCODER_R_PIN_1 = FEHIO::FEHIOPin::P0_1;
+constexpr auto LIGHT_SENSOR_PIN = FEHIO::FEHIOPin::P2_0;
 constexpr auto DRIVE_INCHES_PER_COUNT_L = INCHES_PER_COUNT;
 constexpr auto DRIVE_INCHES_PER_COUNT_R = INCHES_PER_COUNT;
 
@@ -57,6 +66,10 @@ constexpr int LCD_HEIGHT = 240;
 
 constexpr uint32_t cyc(const double sec) {
     return (uint32_t) (sec * PROTEUS_SYSTEM_HZ);
+}
+
+constexpr uint32_t ticks(const double sec) {
+    return (uint32_t) (sec * TICK_RATE);
 }
 
 constexpr int SYSTICK_INTERVAL_CYCLES = cyc(1.0 / TICK_RATE);
@@ -76,11 +89,15 @@ void robot_control_loop() {
     NVIC_BASE_PTR->ISER[0] |= 1 << INT_SysTick;
 }
 
-constexpr double rad(double deg) {
+void stop_robot_control_loop() {
+    NVIC_BASE_PTR->ISER[0] &= ~(1 << INT_SysTick);
+}
+
+constexpr float rad(double deg) {
     return deg * (M_PI / 180);
 }
 
-constexpr double deg(double rad) {
+constexpr float deg(double rad) {
     return rad * (180 / M_PI);
 }
 
@@ -150,40 +167,58 @@ enum class ControlMode {
 };
 
 struct RobotTask {
-    RobotTask *next_task{};
+    RobotTask *next_task = nullptr;
 
     RobotTask();
 
     virtual void execute() = 0;
 };
 
+float slew(float rate, float min, float max, float dist_from_start, float dist_to_end) {
+    float slewed_start = sqrtf(rate * fabs(dist_from_start));
+    float slewed_end = sqrtf(rate * fabs(dist_to_end));
+    return fmin(max, fmin(slewed_start, slewed_end) + min);
+}
+
 struct Robot {
     FEHMotor ml{DRIVE_MOTOR_L_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
     FEHMotor mr{DRIVE_MOTOR_R_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
     DigitalEncoder el{ENCODER_L_PIN_0, ENCODER_L_PIN_1};
     DigitalEncoder er{ENCODER_R_PIN_0, ENCODER_R_PIN_1};
-    AnalogInputPin colorSensor{FEHIO::FEHIOPin::P3_0};
+    AnalogInputPin light_sensor{LIGHT_SENSOR_PIN};
+    float light_sensor_value;
     FEHServo servo{FEHServo::FEHServoPort::Servo0};
 
     RobotTask *current_task{};
     ControlMode control_mode = ControlMode::INIT_TASK;
 
+    bool force_start{};
+    int last_nonconfident_wait_for_light_tick{};
+
     volatile int tick_count{}, task_tick_count{}, task_number{};
 
     float pct_l{}, pct_r{};
-    float target_pct_l{}, target_pct_r{};
+    float target_pct{};
     float target_dist{};
 
     int total_counts_l{}, total_counts_r{};
 
-    PIController angle_controller = PIController(TICK_RATE, 200, 50, 30);
+    PIController angle_controller = PIController(TICK_RATE, 100, 50, 30);
 
     // Position is in inches
     float pos_x{}, pos_y{};
-    float total_dist{};
+    float pos_x0{}, pos_y0{};
     // Angle in radians
     float angle{};
     float target_angle{};
+    float turn_start_angle{};
+    bool turning_right;
+    float dist{};
+    float R;
+
+    int last_encoder_l_tick_at = 0;
+    int last_encoder_r_tick_at = 0;
+    float stopped_i;
 
     /*
      * Because my modified DigitalEncoder code obtains a pointer to itself using the “this” keyword so that the port
@@ -211,10 +246,28 @@ struct Robot {
 
     void process_odometry() {
         auto counts_l = el.Counts();
-        auto counts_r = er.Counts();
+        auto counts_r = -er.Counts();
 
         total_counts_l += counts_l;
         total_counts_r += counts_r;
+
+        if (counts_l != 0) {
+            last_encoder_l_tick_at = tick_count;
+        }
+        if (counts_r != 0) {
+            last_encoder_r_tick_at = tick_count;
+        }
+
+        bool l_stopped{}, r_stopped{};
+        if (last_encoder_l_tick_at + ticks(0.25) < tick_count) {
+            stopped_i += 1.0 / TICK_RATE;
+            l_stopped = true;
+        }
+        if (last_encoder_r_tick_at + ticks(0.25) < tick_count) {
+            stopped_i += 1.0 / TICK_RATE;
+            r_stopped = true;
+        }
+
         el.ResetCounts();
         er.ResetCounts();
 
@@ -232,13 +285,13 @@ struct Robot {
         float radius_inner = fabsf(arclength_inner / dAngle);
 
         // Let R be the distance from the arc center to the point between the wheels
-        float R = radius_inner + TRACK_WIDTH / 2;
+        R = radius_inner + TRACK_WIDTH / 2;
 
-        float fwd_dist = R * sinf(dAngle);
-        float dx = R * cosf(angle + dAngle) - cosf(angle);
-        float dy = R * sinf(angle + dAngle) - sinf(angle);
+        float dx = R * (cosf(angle + dAngle) - cosf(angle));
+        float dy = R * (sinf(angle + dAngle) - sinf(angle));
 
-        total_dist += fwd_dist;
+        dist += arclength_l;
+
         pos_x += dx;
         pos_y += dy;
         angle += dAngle;
@@ -246,13 +299,21 @@ struct Robot {
 
     void task_finished() {
         current_task->execute();
-        current_task = current_task->next_task;
+        if (current_task->next_task) {
+            current_task = current_task->next_task;
+        }
         task_number++;
     }
 
     void tick() {
         tick_count++;
         task_tick_count++;
+
+        /*
+         * GET ANALOG INPUT DATA
+         */
+
+        light_sensor_value = light_sensor.Value();
 
         /*
          * ODOMETRY
@@ -263,6 +324,8 @@ struct Robot {
         /*
          * DRIVETRAIN MOTOR MANAGEMENT
          */
+        const float WAIT_FOR_LIGHT_THRESHOLD_VOLTAGE = 0.5;
+        const int WAIT_FOR_LIGHT_CONFIRM_TICKS = ticks(0.1);
 
         float control_effort;
         switch (control_mode) {
@@ -273,35 +336,80 @@ struct Robot {
                 pos_x = 0;
                 pos_y = 0;
                 angle = rad(-45);
+                target_angle = rad(-45);
 
                 task_finished();
                 break;
             case ControlMode::WAIT_FOR_LIGHT:
                 ml.Stop();
                 mr.Stop();
-                // TODO: Wait for light
-                break;
-            case ControlMode::TURNING:
-                break;
-            case ControlMode::FORWARD:
-                control_effort = angle_controller.process(target_angle, angle);
 
-                pct_l = target_pct_l + control_effort;
-                pct_r = target_pct_r - control_effort;
-
-                ml.SetPercent(-pct_l);
-                mr.SetPercent(-pct_r);
-
-                if (total_dist > target_dist) {
+                if (light_sensor_value >= WAIT_FOR_LIGHT_THRESHOLD_VOLTAGE) {
+                    last_nonconfident_wait_for_light_tick = tick_count;
+                }
+                if (force_start || last_nonconfident_wait_for_light_tick + WAIT_FOR_LIGHT_CONFIRM_TICKS < tick_count) {
                     task_finished();
                 }
                 break;
+            case ControlMode::TURNING: {
+                float angle_turned_so_far = fabs(angle - turn_start_angle);
+                float angle_remain = fabs(target_angle - angle);
+                float slewed_pct = slew(
+                        TURN_SLEW_RATE,
+                        TURN_MIN_PERCENT,
+                        50,
+                        angle_turned_so_far,
+                        angle_remain
+                );
+                slewed_pct += stopped_i * STOPPED_I;
+
+                if (turning_right) {
+                    ml.SetPercent(slewed_pct);
+                    mr.SetPercent(-slewed_pct);
+                    if (angle >= target_angle) {
+                        task_finished();
+                    }
+                } else {
+                    ml.SetPercent(-slewed_pct);
+                    mr.SetPercent(slewed_pct);
+                    if (angle <= target_angle) {
+                        task_finished();
+                    }
+                }
+                break;
+            }
+            case ControlMode::FORWARD: {
+                control_effort = angle_controller.process(target_angle, angle);
+
+                float dist_remain = fabs(target_dist) - fabs(dist);
+                float slewed_pct = slew(
+                        DRIVE_SLEW_RATE,
+                        DRIVE_MIN_PERCENT,
+                        target_pct,
+                        dist,
+                        dist_remain
+                );
+                slewed_pct += stopped_i * STOPPED_I;
+
+                if (target_dist < 0) {
+                    ml.SetPercent(-slewed_pct + control_effort);
+                    mr.SetPercent(-slewed_pct - control_effort);
+                } else {
+                    ml.SetPercent(slewed_pct + control_effort);
+                    mr.SetPercent(slewed_pct - control_effort);
+                }
+
+                if (fabs(dist) > fabsf(target_dist)) {
+                    task_finished();
+                }
+                break;
+            }
             case ControlMode::STOP:
                 pct_l = 0;
                 pct_r = 0;
 
-                ml.Stop();
-                mr.Stop();
+                ml.SetPercent(0);
+                mr.SetPercent(0);
                 break;
             default:
                 break;
@@ -335,7 +443,7 @@ struct WaitForStartLight : RobotTask {
     // TODO: Implement WaitForLight timeout
     int timeout_ms;
 
-    explicit WaitForStartLight(int timeout_ms) : timeout_ms(timeout_ms) {}
+    explicit WaitForStartLight(int timeout_ms) : RobotTask(), timeout_ms(timeout_ms) {}
 
     void execute() override {
         robot.control_mode = ControlMode::WAIT_FOR_LIGHT;
@@ -345,55 +453,65 @@ struct WaitForStartLight : RobotTask {
 struct Straight : RobotTask {
     float inches;
 
-    explicit Straight(float inches) : inches(inches) {};
+    explicit Straight(float inches) : RobotTask(), inches(inches) {};
 
     void execute() override {
+        robot.dist = 0;
+        robot.pos_x0 = robot.pos_x;
+        robot.pos_y0 = robot.pos_y;
         robot.target_dist = inches;
-        robot.target_angle = robot.angle;
         robot.angle_controller.reset();
         robot.control_mode = ControlMode::FORWARD;
+        robot.stopped_i = 0;
     }
 };
 
 struct Speed : RobotTask {
     float percent;
 
-    explicit Speed(float percent) : percent(percent) {};
+    explicit Speed(float percent) : RobotTask(), percent(percent) {};
 
     void execute() override {
-        robot.target_pct_l = percent;
-        robot.target_pct_r = percent;
+        robot.target_pct = percent;
+        robot.target_pct = percent;
     }
 };
 
 
 struct Stop : RobotTask {
+    explicit Stop() : RobotTask() {};
+
     void execute() override {
         robot.control_mode = ControlMode::STOP;
     }
 };
 
 struct Turn : RobotTask {
+    explicit Turn(float angle) : RobotTask(), angle(angle) {};
+
     float angle;
 
-    explicit Turn(float angle) : angle(angle) {};
-
     void execute() override {
-        robot.target_angle = angle;
+        robot.target_angle = (float) rad(angle);
+        robot.turn_start_angle = (float) rad(angle);
+        robot.turning_right = robot.target_angle > robot.angle;
         robot.control_mode = ControlMode::TURNING;
+        robot.stopped_i = 0;
     }
 };
 
 struct StampPassport : RobotTask {
+    explicit StampPassport() : RobotTask() {};
+
     void execute() override {
         // TODO
     }
 };
 
 struct Position4Bar : RobotTask {
-    float target_angle;
+    explicit Position4Bar(float target_angle) : RobotTask(), target_angle(target_angle) {};
 
-    explicit Position4Bar(float target_angle) : target_angle(target_angle) {};
+    float target_angle;
 
     void execute() override {
         // TODO
@@ -401,15 +519,17 @@ struct Position4Bar : RobotTask {
 };
 
 struct WaitForTicketLight : RobotTask {
+    explicit WaitForTicketLight(int ms) : RobotTask() {};
+
     void execute() override {
         // TODO
     }
 };
 
 struct Delay : RobotTask {
-    int ms;
+    explicit Delay(int ms) : RobotTask(), ms(ms) {};
 
-    explicit Delay(int ms) : ms(ms) {};
+    int ms;
 
     void execute() override {
         // TODO
@@ -549,6 +669,7 @@ Vec2 arrow_vtx[] = {
         Vec2{-14, 45},
         Vec2{-10, 45},
 };
+
 const int arrow_vtx_len = sizeof(arrow_vtx) / sizeof(Vec2);
 
 void draw_vtx_list(Vec2 vtx_list[], int len, int offs_x, int offs_y, Mat2x2 mat) {
@@ -576,11 +697,14 @@ extern "C" void PIT1_IRQHandler(void) {
 
     static bool prev_touching = false;
     static bool display_compass = true;
+    static float holding_sec = 0;
 
     int x, y;
     bool touching = LCD.Touch(&x, &y);
     if (touching && !prev_touching) {
-        display_compass = !display_compass;
+        if (x < LCD_WIDTH / 2) {
+            display_compass = !display_compass;
+        }
     }
     prev_touching = touching;
 
@@ -589,40 +713,42 @@ extern "C" void PIT1_IRQHandler(void) {
         LCD.SetFontColor(WHITE);
         LCD.DrawCircle(LCD_WIDTH / 2, LCD_HEIGHT / 2, 64);
 
-        Mat2x2 mat = Mat2x2::Rotation(-robot.angle);
+        Mat2x2 mat = Mat2x2::Rotation(-robot.angle + rad(180));
         draw_vtx_list(arrow_vtx, arrow_vtx_len, LCD_WIDTH / 2, LCD_HEIGHT / 2, mat);
 
-        for (int i= 0; i < 4; i++) {
+        for (int i = 0; i < 4; i++) {
             Vec2 offs{LCD_WIDTH / 2.0 - 12.0 / 2, LCD_HEIGHT / 2.0 - 17.0 / 2};
             Vec2 pos = mat.multiply(nesw_poss[i]).add(offs);
 
             LCD.WriteAt(deg(robot.angle), LCD_WIDTH / 2 - 42, 17);
-            LCD.WriteAt(nesw[i], (int)pos.x, (int)pos.y);
+            LCD.WriteAt(nesw[i], (int) pos.x, (int) pos.y);
         }
     } else {
         LCD.Clear(BLACK);
-        LCD.Write("Tick CPU usage: ");
+//        LCD.Write("Tick CPU usage: ");
         // Add 1% to give a safety margin
-        LCD.Write((tick_cycles * 100) / (int) cyc(1.0 / TICK_RATE) + 1);
-        LCD.WriteLine("%");
-        LCD.Write("Tick count: ");
-        LCD.WriteLine((int) robot.tick_count);
+//        LCD.Write((tick_cycles * 100) / (int) cyc(1.0 / TICK_RATE) + 1);
+//        LCD.WriteLine("%");
+//        LCD.Write("Tick count: ");
+//        LCD.WriteLine((int) robot.tick_count);
 
-        LCD.Write("X (inches): ");
-        LCD.WriteLine(robot.pos_x);
-        LCD.Write("Y (inches): ");
-        LCD.WriteLine(robot.pos_y);
+        LCD.Write("X/Ymm: ");
+        LCD.Write(robot.pos_x * 1000);
+        LCD.Write(" ");
+        LCD.WriteLine(robot.pos_y * 1000);
 
         LCD.Write("Angle: ");
         LCD.WriteLine(deg(robot.angle));
+        LCD.Write("TargetAngle: ");
+        LCD.WriteLine(deg(robot.target_angle));
 
         LCD.Write("L Motor Angle: ");
         LCD.WriteLine((robot.total_counts_l / IGWAN_COUNTS_PER_REV) * 360);
         LCD.Write("R Motor Angle: ");
         LCD.WriteLine((robot.total_counts_r / IGWAN_COUNTS_PER_REV) * 360);
 
-        LCD.Write("Task#: ");
-        LCD.WriteLine(robot.task_number);
+        LCD.Write("Turn radius: ");
+        LCD.WriteLine(robot.R);
         LCD.Write("ControlMode: ");
         LCD.WriteLine(robot.control_mode_string());
 
@@ -633,7 +759,33 @@ extern "C" void PIT1_IRQHandler(void) {
         LCD.Write("I: ");
         LCD.WriteLine(robot.angle_controller.I);
         LCD.Write("CDS Value: ");
-        LCD.WriteLine(robot.colorSensor.Value());
+        LCD.WriteLine(robot.light_sensor_value);
+
+        LCD.Write("Dist: ");
+        LCD.WriteLine(robot.dist);
+        LCD.Write("TargetDist: ");
+        LCD.WriteLine(robot.target_dist);
+    }
+
+    if (holding_sec < FORCE_START_HOLD_SEC) {
+        if (touching && x >= LCD_WIDTH / 2) {
+            holding_sec += 1.0 / DIAGNOSTICS_HZ;
+        } else {
+            holding_sec = 0;
+        }
+    } else {
+        holding_sec += 1.0 / DIAGNOSTICS_HZ;
+
+        if (holding_sec > FORCE_START_TOTAL_SEC) {
+            robot.force_start = true;
+            holding_sec = 0;
+        }
+    }
+
+    if (holding_sec > 0) {
+        float progress = holding_sec / FORCE_START_TOTAL_SEC;
+        auto progress_bar_width = (int) (progress * LCD_WIDTH);
+        LCD.FillRectangle(0, 0, progress_bar_width, 32);
     }
 
     LCD.DrawScreen();
@@ -738,12 +890,14 @@ Turn t43(-45);
 Straight t44(-16.267); // Back into the course end button
 Stop t45();
 
+Stop t46();
+
 int main() {
     /*
      * Begin the diagnostics printing timer at the lowest possible priority (15).
      * Calls PIT1_IRQHandler() every 0.05 seconds.
      */
-    init_PIT<1, 255>(cyc(0.01));
+    init_PIT<1, 255>(cyc(1.0 / DIAGNOSTICS_HZ));
 
     /*
      * Initialize the robot control loop by setting up the SysTick timer.
