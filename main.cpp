@@ -359,6 +359,14 @@ struct Robot {
         }
     }
 
+    void motor_power(float new_pct_l, float new_pct_r) {
+        pct_l = new_pct_l;
+        pct_r = new_pct_r;
+
+        ml.SetPercent(pct_l);
+        ml.SetPercent(pct_r);
+    }
+
     void tick() {
         tick_count++;
         task_tick_count++;
@@ -417,14 +425,12 @@ struct Robot {
                 slewed_pct += stopped_i * STOPPED_I;
 
                 if (turning_right) {
-                    ml.SetPercent(slewed_pct);
-                    mr.SetPercent(-slewed_pct);
+                    motor_power(slewed_pct, -slewed_pct);
                     if (angle >= target_angle) {
                         task_finished();
                     }
                 } else {
-                    ml.SetPercent(-slewed_pct);
-                    mr.SetPercent(slewed_pct);
+                    motor_power(-slewed_pct, slewed_pct);
                     if (angle <= target_angle) {
                         task_finished();
                     }
@@ -450,11 +456,9 @@ struct Robot {
                 slewed_pct += stopped_i * STOPPED_I;
 
                 if (target_dist < 0) {
-                    ml.SetPercent(-slewed_pct + control_effort);
-                    mr.SetPercent(-slewed_pct - control_effort);
+                    motor_power(-slewed_pct + control_effort, -slewed_pct - control_effort);
                 } else {
-                    ml.SetPercent(slewed_pct + control_effort);
-                    mr.SetPercent(slewed_pct - control_effort);
+                    motor_power(slewed_pct + control_effort, slewed_pct - control_effort);
                 }
 
                 if (fabs(dist) > fabsf(target_dist)) {
@@ -489,7 +493,7 @@ RobotTask::RobotTask() {
 
     // Set this task as the next task of the last task
     last->next_task = this;
-};
+}
 
 struct WaitForStartLight : RobotTask {
     // TODO: Implement WaitForLight timeout
@@ -757,6 +761,7 @@ extern "C" void PIT1_IRQHandler(void) {
         LCD.WriteLine("%");
         LCD.Write("Tick count: ");
         LCD.WriteLine((int) robot.tick_count);
+         */
 
         LCD.Write("X/Ymm: ");
         LCD.Write(robot.pos.x * 1000);
