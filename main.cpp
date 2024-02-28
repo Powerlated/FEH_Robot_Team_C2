@@ -35,7 +35,19 @@ using Second = float;
 using Inch = float;
 using Hertz = int;
 
+constexpr Hertz PROTEUS_SYSTEM_HZ = 88000000.0;
+
+constexpr uint32_t cyc(const double sec) {
+    return (uint32_t) (sec * PROTEUS_SYSTEM_HZ);
+}
+
 constexpr Hertz TICK_RATE = 1000;
+constexpr int SYSTICK_INTERVAL_CYCLES = cyc(1.0 / TICK_RATE);
+
+constexpr uint32_t ticks(const double sec) {
+    return (uint32_t) (sec * TICK_RATE);
+}
+
 constexpr Hertz DIAGNOSTICS_HZ = 20;
 constexpr Microsecond TICK_INTERVAL_MICROSECONDS = (1.0 / TICK_RATE) * 1000000;
 constexpr Inch TRACK_WIDTH = 8.276;
@@ -51,8 +63,9 @@ constexpr float TURN_MIN_PERCENT = 0;
 constexpr float STOPPED_I = 10;
 constexpr float STOPPED_I_ACCUMULATE = 6;
 constexpr float STOPPED_I_HIGHPASS = 0.999;
+constexpr float WAIT_FOR_LIGHT_THRESHOLD_VOLTAGE = 0.5;
+constexpr int WAIT_FOR_LIGHT_CONFIRM_TICKS = ticks(0.1);
 
-constexpr Hertz PROTEUS_SYSTEM_HZ = 88000000.0;
 constexpr Second FORCE_START_HOLD_SEC = 0.5;
 constexpr Second FORCE_START_TOTAL_SEC = 1;
 
@@ -73,14 +86,6 @@ constexpr int BSP_BUS_DIV = 2;
 
 constexpr int LCD_WIDTH = 320;
 constexpr int LCD_HEIGHT = 240;
-
-constexpr uint32_t cyc(const double sec) {
-    return (uint32_t) (sec * PROTEUS_SYSTEM_HZ);
-}
-
-constexpr uint32_t ticks(const double sec) {
-    return (uint32_t) (sec * TICK_RATE);
-}
 
 struct Vec2 {
     float x, y;
@@ -120,8 +125,6 @@ struct Mat2x2 {
         };
     }
 };
-
-constexpr int SYSTICK_INTERVAL_CYCLES = cyc(1.0 / TICK_RATE);
 
 void robot_control_loop() {
     // Make sure SYSTICK_INTERVAL_CYCLES fits into 24 bits for SYSTICK_RVR
@@ -386,8 +389,6 @@ struct Robot {
         /*
          * DRIVETRAIN MOTOR MANAGEMENT
          */
-        const float WAIT_FOR_LIGHT_THRESHOLD_VOLTAGE = 0.5;
-        const int WAIT_FOR_LIGHT_CONFIRM_TICKS = ticks(0.1);
 
         float control_effort;
         switch (control_mode) {
