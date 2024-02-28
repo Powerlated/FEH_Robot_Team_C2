@@ -37,11 +37,13 @@ constexpr double IGWAN_COUNTS_PER_REV = 159;
 constexpr double WHEEL_DIA = 2.5;
 constexpr double INCHES_PER_REV = WHEEL_DIA * M_PI;
 constexpr auto INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
-constexpr float DRIVE_SLEW_RATE = 20; // Percent per m/s
-constexpr float TURN_SLEW_RATE = 20; // Percent per radian/s
+constexpr float DRIVE_SLEW_RATE = 80; // Percent per m/s
+constexpr float TURN_SLEW_RATE = 50; // Percent per radian/s
 constexpr float DRIVE_MIN_PERCENT = 0;
 constexpr float TURN_MIN_PERCENT = 0;
 constexpr float STOPPED_I = 10;
+constexpr float STOPPED_I_ACCUMULATE = 3;
+constexpr float STOPPED_I_HIGHPASS = 0.998;
 
 constexpr float PROTEUS_SYSTEM_HZ = 88000000.0;
 constexpr float FORCE_START_HOLD_SEC = 0.5;
@@ -55,6 +57,7 @@ constexpr auto ENCODER_L_PIN_1 = FEHIO::FEHIOPin::P3_1;
 constexpr auto ENCODER_R_PIN_0 = FEHIO::FEHIOPin::P0_0;
 constexpr auto ENCODER_R_PIN_1 = FEHIO::FEHIOPin::P0_1;
 constexpr auto LIGHT_SENSOR_PIN = FEHIO::FEHIOPin::P2_0;
+constexpr auto BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_7;
 constexpr auto DRIVE_INCHES_PER_COUNT_L = INCHES_PER_COUNT;
 constexpr auto DRIVE_INCHES_PER_COUNT_R = INCHES_PER_COUNT;
 
@@ -90,7 +93,7 @@ void robot_control_loop() {
 }
 
 void stop_robot_control_loop() {
-    NVIC_BASE_PTR->ISER[0] &= ~(1 << INT_SysTick);
+    SysTick_BASE_PTR->CSR = 0;
 }
 
 constexpr float rad(double deg) {
@@ -160,9 +163,9 @@ struct PIController {
 
 enum class ControlMode {
     INIT_TASK,
-    STOP,
     TURNING,
     FORWARD,
+    FORWARD_UNTIL_SWITCH,
     WAIT_FOR_LIGHT
 };
 
@@ -185,6 +188,7 @@ struct Robot {
     FEHMotor mr{DRIVE_MOTOR_R_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
     DigitalEncoder el{ENCODER_L_PIN_0, ENCODER_L_PIN_1};
     DigitalEncoder er{ENCODER_R_PIN_0, ENCODER_R_PIN_1};
+    DigitalInputPin bump_switch{BUMP_SWITCH_PIN};
     AnalogInputPin light_sensor{LIGHT_SENSOR_PIN};
     float light_sensor_value;
     FEHServo servo{FEHServo::FEHServoPort::Servo0};
@@ -232,8 +236,6 @@ struct Robot {
         switch (control_mode) {
             case ControlMode::INIT_TASK:
                 return "InitTask";
-            case ControlMode::STOP:
-                return "Stop";
             case ControlMode::FORWARD:
                 return "Forward";
             case ControlMode::TURNING:
@@ -258,15 +260,13 @@ struct Robot {
             last_encoder_r_tick_at = tick_count;
         }
 
-        bool l_stopped{}, r_stopped{};
-        if (last_encoder_l_tick_at + ticks(0.25) < tick_count) {
-            stopped_i += 1.0 / TICK_RATE;
-            l_stopped = true;
+        if (last_encoder_l_tick_at + ticks(0.05) < tick_count) {
+            stopped_i += STOPPED_I_ACCUMULATE / TICK_RATE;
         }
-        if (last_encoder_r_tick_at + ticks(0.25) < tick_count) {
-            stopped_i += 1.0 / TICK_RATE;
-            r_stopped = true;
+        if (last_encoder_r_tick_at + ticks(0.05) < tick_count) {
+            stopped_i += STOPPED_I_ACCUMULATE / TICK_RATE;
         }
+        stopped_i *= STOPPED_I_HIGHPASS;
 
         el.ResetCounts();
         er.ResetCounts();
@@ -290,7 +290,7 @@ struct Robot {
         float dx = R * (cosf(angle + dAngle) - cosf(angle));
         float dy = R * (sinf(angle + dAngle) - sinf(angle));
 
-        dist += arclength_l;
+        dist += (arclength_l + arclength_r) / 2;
 
         pos_x += dx;
         pos_y += dy;
@@ -298,10 +298,14 @@ struct Robot {
     }
 
     void task_finished() {
-        current_task->execute();
-        if (current_task->next_task) {
-            current_task = current_task->next_task;
+        // Stop the robot control loop once we've ifnished the last task
+        if (current_task == nullptr) {
+            ml.SetPercent(0);
+            mr.SetPercent(0);
+            stop_robot_control_loop();
         }
+        current_task->execute();
+        current_task = current_task->next_task;
         task_number++;
     }
 
@@ -339,7 +343,7 @@ struct Robot {
                 target_angle = rad(-45);
 
                 task_finished();
-                break;
+                return;
             case ControlMode::WAIT_FOR_LIGHT:
                 ml.Stop();
                 mr.Stop();
@@ -350,14 +354,14 @@ struct Robot {
                 if (force_start || last_nonconfident_wait_for_light_tick + WAIT_FOR_LIGHT_CONFIRM_TICKS < tick_count) {
                     task_finished();
                 }
-                break;
+                return;
             case ControlMode::TURNING: {
                 float angle_turned_so_far = fabs(angle - turn_start_angle);
                 float angle_remain = fabs(target_angle - angle);
                 float slewed_pct = slew(
                         TURN_SLEW_RATE,
                         TURN_MIN_PERCENT,
-                        50,
+                        target_pct,
                         angle_turned_so_far,
                         angle_remain
                 );
@@ -376,8 +380,13 @@ struct Robot {
                         task_finished();
                     }
                 }
-                break;
+                return;
             }
+            case ControlMode::FORWARD_UNTIL_SWITCH:
+                if (!bump_switch.Value()) {
+                    task_finished();
+                    return;
+                }
             case ControlMode::FORWARD: {
                 control_effort = angle_controller.process(target_angle, angle);
 
@@ -402,17 +411,10 @@ struct Robot {
                 if (fabs(dist) > fabsf(target_dist)) {
                     task_finished();
                 }
-                break;
+                return;
             }
-            case ControlMode::STOP:
-                pct_l = 0;
-                pct_r = 0;
-
-                ml.SetPercent(0);
-                mr.SetPercent(0);
-                break;
             default:
-                break;
+                return;
         }
     }
 } robot;
@@ -466,6 +468,23 @@ struct Straight : RobotTask {
     }
 };
 
+struct StraightUntilSwitch : RobotTask {
+    float inches;
+
+    explicit StraightUntilSwitch(float inches) : RobotTask(), inches(inches) {};
+
+    void execute() override {
+        robot.dist = 0;
+        robot.pos_x0 = robot.pos_x;
+        robot.pos_y0 = robot.pos_y;
+        robot.target_dist = inches;
+        robot.angle_controller.reset();
+        robot.control_mode = ControlMode::FORWARD_UNTIL_SWITCH;
+        robot.stopped_i = 0;
+    }
+};
+
+
 struct Speed : RobotTask {
     float percent;
 
@@ -473,16 +492,6 @@ struct Speed : RobotTask {
 
     void execute() override {
         robot.target_pct = percent;
-        robot.target_pct = percent;
-    }
-};
-
-
-struct Stop : RobotTask {
-    explicit Stop() : RobotTask() {};
-
-    void execute() override {
-        robot.control_mode = ControlMode::STOP;
     }
 };
 
@@ -822,21 +831,32 @@ void sleep(int ms) {
  * Static variables in the same .cpp file are initialized in order of declaration so this is fine.
  */
 
-Speed t0(50);
+Speed t0(100);
 
-// 1. Wait for start light to turn on.
+// Wait for start light to turn on.
 WaitForStartLight t1(3000);
 
-// 2. Push the start button.
-Straight t2(-3);
-Straight t3(6.421);
-
-// 3. Go up ramp.
+// Go up ramp.
+Straight t3(3.92100);
 Turn t4(45);
 Straight t5(5.581);
 Turn t6(0);
-Straight t7(25.965);
+Straight t7(26.33900);
 
+// Turn toward kiosk
+Turn kiosk1(-45.2);
+Straight kiosk2(14.35);
+Turn kiosk3(0);
+StraightUntilSwitch kiosk4(11);
+
+// Take the exact same path backwards 💀💀💀💀💀💀
+Straight down1(-10.076);
+Turn down2(-48);
+Straight down3(-16);
+Turn down4(0);
+Straight down5(-26.33900);
+
+/*
 // 4. Stamp the passport.
 Turn t8(-37.6);
 Straight t9(9.537);
@@ -888,9 +908,7 @@ Turn t41(-72.5);
 Straight t42(-14.517);
 Turn t43(-45);
 Straight t44(-16.267); // Back into the course end button
-Stop t45();
-
-Stop t46();
+ */
 
 int main() {
     /*
