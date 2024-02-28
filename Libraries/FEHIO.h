@@ -108,14 +108,14 @@ class DigitalEncoder
 {
 public:
     explicit DigitalEncoder(FEHIO::FEHIOPin pin1, FEHIO::FEHIOPin pin2);
-    void ChannelARisingEdge();
-    void UpdateChannelB(bool is_high);
+    void ChannelAEdge(bool is_high);
+    void ChannelBEdge(bool is_high);
     int Counts() const;
     void ResetCounts();
 private:
     constexpr static void SetupGPIO(FEHIO::FEHIOPin pin );
     FEHIO::FEHIOPin pin1, pin2;
-    bool channel_b_high{};
+    bool channel_a_high{}, channel_b_high{};
     int counts{};
 };
 

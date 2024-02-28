@@ -140,19 +140,43 @@ DigitalEncoder::DigitalEncoder(FEHIO::FEHIOPin pin1, FEHIO::FEHIOPin pin2) : pin
     SetupGPIO(pin2);
 }
 
-void DigitalEncoder::UpdateChannelB(bool is_high) {
-    channel_b_high = is_high;
-}
+void DigitalEncoder::ChannelAEdge(bool is_high) {
+    channel_a_high = is_high;
 
-void DigitalEncoder::ChannelARisingEdge() {
-    if (channel_b_high) {
-        counts++;
+    if (channel_a_high) {
+        if (channel_b_high) {
+            counts++;
+        } else {
+            counts--;
+        }
     } else {
-        counts--;
+        if (channel_b_high) {
+            counts--;
+        } else {
+            counts++;
+        }
     }
 }
 
-[[nodiscard]] int DigitalEncoder::Counts() const { return counts; }
+void DigitalEncoder::ChannelBEdge(bool is_high) {
+    channel_b_high = is_high;
+
+    if (channel_b_high) {
+        if (channel_a_high) {
+            counts--;
+        } else {
+            counts++;
+        }
+    } else {
+        if (channel_a_high) {
+            counts++;
+        } else {
+            counts--;
+        }
+    }
+}
+
+int DigitalEncoder::Counts() const { return counts; }
 
 void DigitalEncoder::ResetCounts() { counts = 0; }
 
@@ -213,19 +237,13 @@ constexpr void DigitalEncoder::SetupGPIO(FEHIO::FEHIOPin pin) {
     }
 }
 
-//Interrupt port functions
+// Interrupt port functions
 void pin_isr(int pin, bool pin_high) {
-    auto encA = encoder_pinsA[pin];
-    auto encB = encoder_pinsB[pin];
-
-    if (encA != nullptr) {
-        if (pin_high) {
-            encA->ChannelARisingEdge();
-        }
+    if (encoder_pinsA[pin] != nullptr) {
+        encoder_pinsA[pin]->ChannelAEdge(pin_high);
     }
-
-    if (encB != nullptr) {
-        encB->UpdateChannelB(pin_high);
+    if (encoder_pinsB[pin] != nullptr) {
+        encoder_pinsB[pin]->ChannelBEdge(pin_high);
     }
 }
 
