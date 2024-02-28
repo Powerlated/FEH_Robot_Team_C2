@@ -28,7 +28,7 @@
 using namespace std;
 
 using Radian = float;
-using Volts = float;
+using Volt = float;
 using Degree = float;
 using Microsecond = float;
 using Second = float;
@@ -56,7 +56,7 @@ constexpr Hertz PROTEUS_SYSTEM_HZ = 88000000.0;
 constexpr Second FORCE_START_HOLD_SEC = 0.5;
 constexpr Second FORCE_START_TOTAL_SEC = 1;
 
-constexpr auto DRIVE_MOTOR_MAX_VOLTAGE = 9.0;
+constexpr Volt DRIVE_MOTOR_MAX_VOLTAGE = 9.0;
 constexpr auto DRIVE_MOTOR_L_PORT = FEHMotor::Motor0;
 constexpr auto DRIVE_MOTOR_R_PORT = FEHMotor::Motor1;
 constexpr auto ENCODER_L_PIN_0 = FEHIO::FEHIOPin::P3_0;
@@ -247,7 +247,7 @@ struct Robot {
     DigitalEncoder er{ENCODER_R_PIN_0, ENCODER_R_PIN_1};
     DigitalInputPin bump_switch{BUMP_SWITCH_PIN};
     AnalogInputPin light_sensor{LIGHT_SENSOR_PIN};
-    float light_sensor_value{};
+    Volt light_sensor_value{};
     FEHServo servo{FEHServo::FEHServoPort::Servo0};
 
     RobotTask *current_task{};
