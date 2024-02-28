@@ -22,21 +22,28 @@
 #include <FEHMotor.h>
 #include <FEHServo.h>
 #include <FEHIO.h>
-#include <FEHAccel.h>
 #include <cmath>
 #include <Startup/MK60DZ10.h>
 
 using namespace std;
 
-constexpr int TICK_RATE = 1000;
-constexpr int DIAGNOSTICS_HZ = 20;
-constexpr float TICK_INTERVAL_MICROSECONDS = (1.0 / TICK_RATE) * 1000000;
-constexpr float TRACK_WIDTH = 8.276;
+using Radian = float;
+using Volts = float;
+using Degree = float;
+using Microsecond = float;
+using Second = float;
+using Inch = float;
+using Hertz = int;
 
-constexpr double IGWAN_COUNTS_PER_REV = 636;
-constexpr double WHEEL_DIA = 2.5;
-constexpr double INCHES_PER_REV = WHEEL_DIA * M_PI;
-constexpr auto INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
+constexpr Hertz TICK_RATE = 1000;
+constexpr Hertz DIAGNOSTICS_HZ = 20;
+constexpr Microsecond TICK_INTERVAL_MICROSECONDS = (1.0 / TICK_RATE) * 1000000;
+constexpr Inch TRACK_WIDTH = 8.276;
+
+constexpr float IGWAN_COUNTS_PER_REV = 636;
+constexpr Inch WHEEL_DIA = 2.5;
+constexpr Inch INCHES_PER_REV = WHEEL_DIA * M_PI;
+constexpr Inch INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
 constexpr float DRIVE_SLEW_RATE = 200; // Percent per m/s
 constexpr float TURN_SLEW_RATE = 50; // Percent per radian/s
 constexpr float DRIVE_MIN_PERCENT = 0;
@@ -45,9 +52,9 @@ constexpr float STOPPED_I = 10;
 constexpr float STOPPED_I_ACCUMULATE = 6;
 constexpr float STOPPED_I_HIGHPASS = 0.999;
 
-constexpr float PROTEUS_SYSTEM_HZ = 88000000.0;
-constexpr float FORCE_START_HOLD_SEC = 0.5;
-constexpr float FORCE_START_TOTAL_SEC = 1;
+constexpr Hertz PROTEUS_SYSTEM_HZ = 88000000.0;
+constexpr Second FORCE_START_HOLD_SEC = 0.5;
+constexpr Second FORCE_START_TOTAL_SEC = 1;
 
 constexpr auto DRIVE_MOTOR_MAX_VOLTAGE = 9.0;
 constexpr auto DRIVE_MOTOR_L_PORT = FEHMotor::Motor0;
@@ -58,8 +65,8 @@ constexpr auto ENCODER_R_PIN_0 = FEHIO::FEHIOPin::P0_0;
 constexpr auto ENCODER_R_PIN_1 = FEHIO::FEHIOPin::P0_1;
 constexpr auto LIGHT_SENSOR_PIN = FEHIO::FEHIOPin::P2_0;
 constexpr auto BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_7;
-constexpr auto DRIVE_INCHES_PER_COUNT_L = INCHES_PER_COUNT;
-constexpr auto DRIVE_INCHES_PER_COUNT_R = INCHES_PER_COUNT;
+constexpr Inch DRIVE_INCHES_PER_COUNT_L = INCHES_PER_COUNT;
+constexpr Inch DRIVE_INCHES_PER_COUNT_R = INCHES_PER_COUNT;
 
 // Declared in startup_mk60d10.cpp
 constexpr int BSP_BUS_DIV = 2;
@@ -74,6 +81,45 @@ constexpr uint32_t cyc(const double sec) {
 constexpr uint32_t ticks(const double sec) {
     return (uint32_t) (sec * TICK_RATE);
 }
+
+struct Vec2 {
+    float x, y;
+
+    Vec2 add(Vec2 &b) const {
+        return Vec2{
+                x + b.x,
+                y + b.y
+        };
+    }
+
+    [[nodiscard]] Vec2 add(float bx, float by) const {
+        return Vec2{
+                x + bx,
+                y + by
+        };
+    }
+};
+
+struct Mat2x2 {
+    float mat[4];
+
+    Vec2 multiply(Vec2 &b) const {
+        return Vec2{
+                mat[0] * b.x + mat[1] * b.y,
+                mat[2] * b.x + mat[3] * b.y,
+        };
+    }
+
+    static Mat2x2 Rotation(float angle) {
+        float cos = cosf(angle);
+        float sin = sinf(angle);
+
+        return Mat2x2{
+                cos, -sin,
+                sin, cos
+        };
+    }
+};
 
 constexpr int SYSTICK_INTERVAL_CYCLES = cyc(1.0 / TICK_RATE);
 
@@ -100,12 +146,12 @@ void stop_robot_control_loop() {
     SysTick_BASE_PTR->CSR = 0;
 }
 
-constexpr float rad(double deg) {
-    return deg * (M_PI / 180);
+constexpr Radian rad(Degree deg) {
+    return (float) (deg * (M_PI / 180));
 }
 
-constexpr float deg(double rad) {
-    return rad * (180 / M_PI);
+constexpr Degree deg(Radian rad) {
+    return (float) (rad * (180 / M_PI));
 }
 
 struct CycTimer {
@@ -188,13 +234,20 @@ float slew(float rate, float min, float max, float dist_from_start, float dist_t
 }
 
 struct Robot {
+    /*
+    * Because my modified DigitalEncoder code obtains a pointer to itself using the “this” keyword so that the port
+    * IRQs can update the object state, we MUST avoid using a copy of the object and use the original object
+    * that we instantiated. I couldn't get this working properly with C++ move semantics, so I'm instantiating the
+    * DigitalEncoder objects inside the Drivetrain constructor instead. It's working now.
+    */
+
     FEHMotor ml{DRIVE_MOTOR_L_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
     FEHMotor mr{DRIVE_MOTOR_R_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
     DigitalEncoder el{ENCODER_L_PIN_0, ENCODER_L_PIN_1};
     DigitalEncoder er{ENCODER_R_PIN_0, ENCODER_R_PIN_1};
     DigitalInputPin bump_switch{BUMP_SWITCH_PIN};
     AnalogInputPin light_sensor{LIGHT_SENSOR_PIN};
-    float light_sensor_value;
+    float light_sensor_value{};
     FEHServo servo{FEHServo::FEHServoPort::Servo0};
 
     RobotTask *current_task{};
@@ -207,34 +260,25 @@ struct Robot {
 
     float pct_l{}, pct_r{};
     float target_pct{};
-    float target_dist{};
+    Inch target_dist{};
 
     int total_counts_l{}, total_counts_r{};
 
     PIController angle_controller = PIController(TICK_RATE, 100, 50, 30);
 
     // Position is in inches
-    float pos_x{}, pos_y{};
-    float pos_x0{}, pos_y0{};
+    Vec2 pos{}, pos0{};
     // Angle in radians
-    float angle{};
-    float target_angle{};
-    float turn_start_angle{};
-    bool turning_right;
-    float dist{};
-    float R;
+    Radian angle{};
+    Radian target_angle{};
+    Radian turn_start_angle{};
+    bool turning_right{};
+    Inch dist{};
+    float R{};
 
     int last_encoder_l_tick_at = 0;
     int last_encoder_r_tick_at = 0;
-    float stopped_i;
-
-    /*
-     * Because my modified DigitalEncoder code obtains a pointer to itself using the “this” keyword so that the port
-     * IRQs can update the object state, we MUST avoid using a copy of the object and use the original object
-     * that we instantiated. I couldn't get this working properly with C++ move semantics, so I'm instantiating the
-     * DigitalEncoder objects inside the Drivetrain constructor instead. It's working now.
-     */
-    explicit Robot() {}
+    float stopped_i{};
 
     [[nodiscard]] const char *control_mode_string() const {
         switch (control_mode) {
@@ -277,29 +321,28 @@ struct Robot {
         el.ResetCounts();
         er.ResetCounts();
 
-        float arclength_l = DRIVE_INCHES_PER_COUNT_L * (float) counts_l;
-        float arclength_r = DRIVE_INCHES_PER_COUNT_R * (float) counts_r;
+        Inch arclength_l = DRIVE_INCHES_PER_COUNT_L * (float) counts_l;
+        Inch arclength_r = DRIVE_INCHES_PER_COUNT_R * (float) counts_r;
 
-        float arclength_inner;
+        Inch arclength_inner;
         if (arclength_l > arclength_r) {
             arclength_inner = arclength_r;
         } else {
             arclength_inner = arclength_l;
         }
 
-        float dAngle = (arclength_l - arclength_r) / TRACK_WIDTH;
-        float radius_inner = fabsf(arclength_inner / dAngle);
+        Radian dAngle = (arclength_l - arclength_r) / TRACK_WIDTH;
+        Inch radius_inner = fabsf(arclength_inner / dAngle);
 
         // Let R be the distance from the arc center to the point between the wheels
         R = radius_inner + TRACK_WIDTH / 2;
 
-        float dx = R * (cosf(angle + dAngle) - cosf(angle));
-        float dy = R * (sinf(angle + dAngle) - sinf(angle));
+        Inch dx = R * (cosf(angle + dAngle) - cosf(angle));
+        Inch dy = R * (sinf(angle + dAngle) - sinf(angle));
 
         dist += (arclength_l + arclength_r) / 2;
 
-        pos_x += dx;
-        pos_y += dy;
+        pos = pos.add(dx, dy);
         angle += dAngle;
     }
 
@@ -344,8 +387,7 @@ struct Robot {
                 // The origin is the starting pad.
                 // angle = 0 degrees is straight up toward the right ramp,
                 // so the bot will be pointed toward -45 degrees when placed on the starting pad.
-                pos_x = 0;
-                pos_y = 0;
+                pos = {0, 0};
                 angle = rad(-45);
                 target_angle = rad(-45);
 
@@ -363,8 +405,8 @@ struct Robot {
                 }
                 return;
             case ControlMode::TURNING: {
-                float angle_turned_so_far = fabs(angle - turn_start_angle);
-                float angle_remain = fabs(target_angle - angle);
+                Radian angle_turned_so_far = fabs(angle - turn_start_angle);
+                Radian angle_remain = fabs(target_angle - angle);
                 float slewed_pct = slew(
                         TURN_SLEW_RATE,
                         TURN_MIN_PERCENT,
@@ -397,7 +439,7 @@ struct Robot {
             case ControlMode::FORWARD: {
                 control_effort = angle_controller.process(target_angle, angle);
 
-                float dist_remain = fabs(target_dist) - fabs(dist);
+                Inch dist_remain = fabs(target_dist) - fabs(dist);
                 float slewed_pct = slew(
                         DRIVE_SLEW_RATE,
                         DRIVE_MIN_PERCENT,
@@ -427,7 +469,8 @@ struct Robot {
 } robot;
 
 /*
- * In C++, a parent constructor is implicitly called by all inheriting constructors.
+ * Adds the newly created task to the task linked list.
+ * All inheriting constructors must explicitly run this to add themselves to the task list.
  */
 RobotTask::RobotTask() {
     RobotTask **head_ptr = &robot.current_task;
@@ -460,14 +503,13 @@ struct WaitForStartLight : RobotTask {
 };
 
 struct Straight : RobotTask {
-    float inches;
+    Inch inches;
 
-    explicit Straight(float inches) : RobotTask(), inches(inches) {};
+    explicit Straight(Inch inches) : RobotTask(), inches(inches) {};
 
     void execute() override {
         robot.dist = 0;
-        robot.pos_x0 = robot.pos_x;
-        robot.pos_y0 = robot.pos_y;
+        robot.pos0 = robot.pos;
         robot.target_dist = inches;
         robot.angle_controller.reset();
         robot.control_mode = ControlMode::FORWARD;
@@ -476,14 +518,13 @@ struct Straight : RobotTask {
 };
 
 struct StraightUntilSwitch : RobotTask {
-    float inches;
+    Inch inches;
 
-    explicit StraightUntilSwitch(float inches) : RobotTask(), inches(inches) {};
+    explicit StraightUntilSwitch(Inch inches) : RobotTask(), inches(inches) {};
 
     void execute() override {
         robot.dist = 0;
-        robot.pos_x0 = robot.pos_x;
-        robot.pos_y0 = robot.pos_y;
+        robot.pos0 = robot.pos;
         robot.target_dist = inches;
         robot.angle_controller.reset();
         robot.control_mode = ControlMode::FORWARD_UNTIL_SWITCH;
@@ -503,9 +544,9 @@ struct Speed : RobotTask {
 };
 
 struct Turn : RobotTask {
-    explicit Turn(float angle) : RobotTask(), angle(angle) {};
+    explicit Turn(Degree angle) : RobotTask(), angle(angle) {};
 
-    float angle;
+    Degree angle;
 
     void execute() override {
         robot.target_angle = (float) rad(angle);
@@ -525,7 +566,7 @@ struct StampPassport : RobotTask {
 };
 
 struct Position4Bar : RobotTask {
-    explicit Position4Bar(float target_angle) : RobotTask(), target_angle(target_angle) {};
+    explicit Position4Bar(Degree target_angle) : RobotTask(), target_angle(target_angle) {};
 
     float target_angle;
 
@@ -635,38 +676,6 @@ extern "C" void SysTick_Handler(void) {
     tick_cycles = (int) tick_timer.lap();
 }
 
-struct Vec2 {
-    float x, y;
-
-    Vec2 add(Vec2 &b) {
-        return Vec2{
-                x + b.x,
-                y + b.y
-        };
-    }
-};
-
-struct Mat2x2 {
-    float mat[4];
-
-    Vec2 multiply(Vec2 &b) {
-        return Vec2{
-                mat[0] * b.x + mat[1] * b.y,
-                mat[2] * b.x + mat[3] * b.y,
-        };
-    }
-
-    static Mat2x2 Rotation(float angle) {
-        float cos = cosf(angle);
-        float sin = sinf(angle);
-
-        return Mat2x2{
-                cos, -sin,
-                sin, cos
-        };
-    }
-};
-
 const char *nesw[4] = {"N", "W", "S", "E"};
 
 Vec2 nesw_poss[] = {
@@ -741,17 +750,18 @@ extern "C" void PIT1_IRQHandler(void) {
         }
     } else {
         LCD.Clear(BLACK);
-//        LCD.Write("Tick CPU usage: ");
-        // Add 1% to give a safety margin
-//        LCD.Write((tick_cycles * 100) / (int) cyc(1.0 / TICK_RATE) + 1);
-//        LCD.WriteLine("%");
-//        LCD.Write("Tick count: ");
-//        LCD.WriteLine((int) robot.tick_count);
+        /*
+        LCD.Write("Tick CPU usage: ");
+//         Add 1% to give a safety margin
+        LCD.Write((tick_cycles * 100) / (int) cyc(1.0 / TICK_RATE) + 1);
+        LCD.WriteLine("%");
+        LCD.Write("Tick count: ");
+        LCD.WriteLine((int) robot.tick_count);
 
         LCD.Write("X/Ymm: ");
-        LCD.Write(robot.pos_x * 1000);
+        LCD.Write(robot.pos.x * 1000);
         LCD.Write(" ");
-        LCD.WriteLine(robot.pos_y * 1000);
+        LCD.WriteLine(robot.pos.y * 1000);
 
         LCD.Write("Angle: ");
         LCD.WriteLine(deg(robot.angle));
