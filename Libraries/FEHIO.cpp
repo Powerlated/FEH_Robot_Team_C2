@@ -237,58 +237,105 @@ constexpr void DigitalEncoder::SetupGPIO(FEHIO::FEHIOPin pin) {
     }
 }
 
-// Interrupt port functions
-void pin_isr(int pin, bool pin_high) {
-    if (encoder_pinsA[pin] != nullptr) {
-        encoder_pinsA[pin]->ChannelAEdge(pin_high);
-    }
-    if (encoder_pinsB[pin] != nullptr) {
-        encoder_pinsB[pin]->ChannelBEdge(pin_high);
+/*
+ * Called by the PORT IRQ handlers to resolve Proteus logical pin numbers from interrupt bit flags,
+ * and update the DigitalEncoders.
+ */
+void pin_isr(uint32_t port_ifsr, uint32_t gpio_pdir, const int8_t bit_pin_map[]) {
+    // Resolve the logical pin numbers from the PORT IFSR (Interrupt Flag Status Register)
+    int bit = 0;
+    while (port_ifsr != 0) {
+        // __builtin_ctz counts the 0 bits at the end of port_ifsr
+        int tz = __builtin_ctz(port_ifsr);
+        // check to see if the bit we want to look at is set
+        bool bit_set = port_ifsr & (1 << tz);
+        // Shift away the trailing zeros AND the set bit
+        port_ifsr >>= tz + 1;
+        // Add tz to the bit counter so bit becomes the index of the set bit
+        bit += tz;
+
+        if (bit_set) {
+            int8_t pin = bit_pin_map[bit];
+            // A pin of -1 indicates that a PORT bit is not associated with a Proteus pin.
+            if (pin != -1) {
+                // Update encoders
+                bool pin_high = gpio_pdir & (1 << bit);
+                if (encoder_pinsA[pin] != nullptr) {
+                    encoder_pinsA[pin]->ChannelAEdge(pin_high);
+                }
+                if (encoder_pinsB[pin] != nullptr) {
+                    encoder_pinsB[pin]->ChannelBEdge(pin_high);
+                }
+            }
+        }
+
+        // Now add 1 to the bit counter, so it becomes the index of the bit after the set bit
+        bit++;
     }
 }
 
+/*
+ * These arrays map PORT/GPIO bit numbers to Proteus logical pin numbers.
+ * A pin of -1 indicates that a PORT bit is not associated with a Proteus pin.
+ *
+ * Generated from the original code using JavaScript.
+ *
+ * Example for Port A:
+ *
+ * let arr = [17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7];
+ * let out = Array(32).fill(-1);
+ * let pinOffs = 0;
+ *
+ * for (let i = 0; i < arr.length; i++) {
+ *     let bit = arr[i];
+ *     let pin = i;
+ *
+ *     out[bit] = pin + pinOffs;
+ * }
+ *
+ * console.log(out);
+ */
+
+int8_t port_b_bit_pin_map[] = {7, 6, -1, -1, 5, 4, 3, 2,
+                               -1, -1, 1, 0, -1, -1, -1, -1,
+                               -1, -1, -1, -1, -1, -1, -1, -1,
+                               -1, -1, -1, -1, -1, -1, -1, -1};
+int8_t port_c_bit_pin_map[] = {8, 9, -1, -1, -1, -1, -1, -1,
+                               10, 11, 12, 13, -1, -1, -1, -1,
+                               -1, -1, -1, -1, -1, -1, -1,
+                               -1, -1, -1, -1, -1, -1, -1, -1, -1};
+int8_t port_a_bit_pin_map[] = {-1, -1, -1, -1, -1, -1, -1, 24,
+                               23, 22, 21, 20, 19, 18, 17, 16,
+                               15, 14, -1, -1, -1, -1, -1, -1,
+                               -1, -1, -1, -1, -1, -1, -1, -1};
+int8_t port_e_bit_pin_map[] = {-1, -1, -1, -1, -1, -1, -1, -1,
+                               -1, -1, -1, -1, -1, -1, -1, -1,
+                               -1, -1, -1, -1, -1, -1, -1, -1,
+                               26, 25, 27, 28, 29, -1, -1, -1};
+
+/*
+ * These handle interrupts for DigitalEncoder.
+ * PORT ISFR registers are write 1 to clear, so writing 0xFFFFFFFF will clear the entire register.
+ */
+
 void PORTB_IRQHandler() {
-    int pins[8] = {11, 10, 7, 6, 5, 4, 1, 0};
-    for (int i = 0; i < 8; i++) {
-        int bitmask = 1 << pins[i];
-        if (PORTB_ISFR & bitmask) {
-            pin_isr(i, GPIOB_PDIR & bitmask);
-            PORTB_ISFR = bitmask;
-        }
-    }
+    pin_isr(PORTB_ISFR, GPIOB_PDIR, port_b_bit_pin_map);
+    PORTB_ISFR = 0xFFFFFFFF;
 }
 
 void PORTC_IRQHandler() {
-    int pins[6] = {0, 1, 8, 9, 10, 11};
-    for (int i = 0; i < 6; i++) {
-        int bitmask = 1 << pins[i];
-        if (PORTC_ISFR & bitmask) {
-            pin_isr(i + 8, GPIOC_PDIR & bitmask);
-            PORTC_ISFR = bitmask;
-        }
-    }
+    pin_isr(PORTC_ISFR, GPIOC_PDIR, port_c_bit_pin_map);
+    PORTC_ISFR = 0xFFFFFFFF;
 }
 
 void PORTA_IRQHandler() {
-    int pins[11] = {17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7};
-    for (int i = 0; i < 11; i++) {
-        int bitmask = 1 << pins[i];
-        if (PORTA_ISFR & bitmask) {
-            pin_isr(i + 14, GPIOA_PDIR & bitmask);
-            PORTA_ISFR = bitmask;
-        }
-    }
+    pin_isr(PORTA_ISFR, GPIOA_PDIR, port_a_bit_pin_map);
+    PORTA_ISFR = 0xFFFFFFFF;
 }
 
 void PORTE_IRQHandler() {
-    int pins[5] = {25, 24, 26, 27, 28};
-    for (int i = 0; i < 5; i++) {
-        int bitmask = 1 << pins[i];
-        if (PORTE_ISFR & bitmask) {
-            pin_isr(i + 25, GPIOE_PDIR & bitmask);
-            PORTE_ISFR = bitmask;
-        }
-    }
+    pin_isr(PORTE_ISFR, GPIOE_PDIR, port_e_bit_pin_map);
+    PORTE_ISFR = 0xFFFFFFFF;
 }
 
 // Begin Functions for Analog Input Pin Type
@@ -636,7 +683,7 @@ AnalogEncoder::AnalogEncoder(FEHIO::FEHIOPin pin_) : AnalogInputPin(pin_) {
         // If the pin is in the list
         if (pCurPin->pin == pin_) {
             pPinInfo = pCurPin;
-            AnalogEncoder *pCurEnc = pPinInfo->encoderList;
+            AnalogEncoder * pCurEnc = pPinInfo->encoderList;
             // Loop to end of encoder list
             while (pCurEnc->pNext != NULL) {
                 pCurEnc = pCurEnc->pNext;
