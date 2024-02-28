@@ -33,17 +33,17 @@ constexpr int DIAGNOSTICS_HZ = 20;
 constexpr float TICK_INTERVAL_MICROSECONDS = (1.0 / TICK_RATE) * 1000000;
 constexpr float TRACK_WIDTH = 8.276;
 
-constexpr double IGWAN_COUNTS_PER_REV = 159;
+constexpr double IGWAN_COUNTS_PER_REV = 636;
 constexpr double WHEEL_DIA = 2.5;
 constexpr double INCHES_PER_REV = WHEEL_DIA * M_PI;
 constexpr auto INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
-constexpr float DRIVE_SLEW_RATE = 80; // Percent per m/s
+constexpr float DRIVE_SLEW_RATE = 200; // Percent per m/s
 constexpr float TURN_SLEW_RATE = 50; // Percent per radian/s
 constexpr float DRIVE_MIN_PERCENT = 0;
 constexpr float TURN_MIN_PERCENT = 0;
 constexpr float STOPPED_I = 10;
-constexpr float STOPPED_I_ACCUMULATE = 3;
-constexpr float STOPPED_I_HIGHPASS = 0.998;
+constexpr float STOPPED_I_ACCUMULATE = 6;
+constexpr float STOPPED_I_HIGHPASS = 0.999;
 
 constexpr float PROTEUS_SYSTEM_HZ = 88000000.0;
 constexpr float FORCE_START_HOLD_SEC = 0.5;
@@ -90,6 +90,10 @@ void robot_control_loop() {
 
     // Enable SysTick IRQ in NVIC
     NVIC_BASE_PTR->ISER[0] |= 1 << INT_SysTick;
+
+    // Set SysTick priority to 17 because DigitalEncoder PORT IRQs need the highest priority
+    SCB_SHPR3 &= ~0xFF000000;
+    SCB_SHPR3 |= 0x11000000;
 }
 
 void stop_robot_control_loop() {
@@ -238,12 +242,14 @@ struct Robot {
                 return "InitTask";
             case ControlMode::FORWARD:
                 return "Forward";
+            case ControlMode::FORWARD_UNTIL_SWITCH:
+                return "FwdTilSwitch";
             case ControlMode::TURNING:
                 return "Turning";
             case ControlMode::WAIT_FOR_LIGHT:
                 return "Wait4Light";
         }
-        return "";
+        return "?????";
     }
 
     void process_odometry() {
@@ -298,15 +304,16 @@ struct Robot {
     }
 
     void task_finished() {
-        // Stop the robot control loop once we've ifnished the last task
-        if (current_task == nullptr) {
+        if (current_task != nullptr) {
+            current_task->execute();
+            current_task = current_task->next_task;
+            task_number++;
+        } else {
+            // Stop the robot control loop once we've finished the last task
             ml.SetPercent(0);
             mr.SetPercent(0);
             stop_robot_control_loop();
         }
-        current_task->execute();
-        current_task = current_task->next_task;
-        task_number++;
     }
 
     void tick() {
@@ -831,7 +838,7 @@ void sleep(int ms) {
  * Static variables in the same .cpp file are initialized in order of declaration so this is fine.
  */
 
-Speed t0(100);
+Speed t0(50);
 
 // Wait for start light to turn on.
 WaitForStartLight t1(3000);
