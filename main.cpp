@@ -18,6 +18,7 @@
  *
  * */
 
+#include <FastLCD.h>
 #include <FEHLCD.h>
 #include <FEHMotor.h>
 #include <FEHServo.h>
@@ -706,7 +707,7 @@ void draw_vtx_list(Vec2 vtx_list[], int len, int offs_x, int offs_y, Mat2x2 mat)
     for (int i = 0; i < len - 1; i++) {
         Vec2 vtx1 = mat.multiply(vtx_list[i]);
         Vec2 vtx2 = mat.multiply(vtx_list[i + 1]);
-        LCD.DrawThickLine(
+        FastLCD::DrawThickLine(
                 (int) vtx1.x + offs_x,
                 (int) vtx1.y + offs_y,
                 (int) vtx2.x + offs_x,
@@ -715,7 +716,7 @@ void draw_vtx_list(Vec2 vtx_list[], int len, int offs_x, int offs_y, Mat2x2 mat)
 
     Vec2 vtx1 = mat.multiply(vtx_list[0]);
     Vec2 vtx2 = mat.multiply(vtx_list[len - 1]);
-    LCD.DrawThickLine(
+    FastLCD::DrawThickLine(
             (int) vtx1.x + offs_x,
             (int) vtx1.y + offs_y,
             (int) vtx2.x + offs_x,
@@ -738,65 +739,68 @@ extern "C" void PIT1_IRQHandler(void) {
     }
     prev_touching = touching;
 
-    LCD.Clear(BLACK);
+    FastLCD::Clear();
     if (display_compass) {
-        LCD.SetFontColor(WHITE);
-        LCD.DrawCircle(LCD_WIDTH / 2, LCD_HEIGHT / 2, 64);
+        FastLCD::SetFontPaletteIndex(2);
+        FastLCD::DrawCircle(LCD_WIDTH / 2, LCD_HEIGHT / 2, 64);
 
         Mat2x2 mat = Mat2x2::Rotation(-robot.angle + rad(180));
+        FastLCD::SetFontPaletteIndex(1);
         draw_vtx_list(arrow_vtx, arrow_vtx_len, LCD_WIDTH / 2, LCD_HEIGHT / 2, mat);
 
+        FastLCD::SetFontPaletteIndex(2);
         for (int i = 0; i < 4; i++) {
             Vec2 offs{LCD_WIDTH / 2.0 - 12.0 / 2, LCD_HEIGHT / 2.0 - 17.0 / 2};
             Vec2 pos = mat.multiply(nesw_poss[i]).add(offs);
-
-            LCD.WriteAt(deg(robot.angle), LCD_WIDTH / 2 - 42, 17);
-            LCD.WriteAt(nesw[i], (int) pos.x, (int) pos.y);
+            FastLCD::WriteAt(nesw[i], (int) pos.x, (int) pos.y);
         }
+
+        FastLCD::SetFontPaletteIndex(1);
+        FastLCD::WriteAt(deg(robot.angle), LCD_WIDTH / 2 - 42, 17);
     } else {
-        LCD.Clear(BLACK);
+        FastLCD::SetFontPaletteIndex(1);
         /*
-        LCD.Write("Tick CPU usage: ");
+        FastLCD::Write("Tick CPU usage: ");
 //         Add 1% to give a safety margin
-        LCD.Write((tick_cycles * 100) / (int) cyc(1.0 / TICK_RATE) + 1);
-        LCD.WriteLine("%");
-        LCD.Write("Tick count: ");
-        LCD.WriteLine((int) robot.tick_count);
+        FastLCD::Write((tick_cycles * 100) / (int) cyc(1.0 / TICK_RATE) + 1);
+        FastLCD::WriteLine("%");
+        FastLCD::Write("Tick count: ");
+        FastLCD::WriteLine((int) robot.tick_count);
          */
 
-        LCD.Write("X/Ymm: ");
-        LCD.Write(robot.pos.x * 1000);
-        LCD.Write(" ");
-        LCD.WriteLine(robot.pos.y * 1000);
+        FastLCD::Write("X/Ymm: ");
+        FastLCD::Write(robot.pos.x * 1000);
+        FastLCD::Write(" ");
+        FastLCD::WriteLine(robot.pos.y * 1000);
 
-        LCD.Write("Angle: ");
-        LCD.WriteLine(deg(robot.angle));
-        LCD.Write("TargetAngle: ");
-        LCD.WriteLine(deg(robot.target_angle));
+        FastLCD::Write("Angle: ");
+        FastLCD::WriteLine(deg(robot.angle));
+        FastLCD::Write("TargetAngle: ");
+        FastLCD::WriteLine(deg(robot.target_angle));
 
-        LCD.Write("L Motor Angle: ");
-        LCD.WriteLine((robot.total_counts_l / IGWAN_COUNTS_PER_REV) * 360);
-        LCD.Write("R Motor Angle: ");
-        LCD.WriteLine((robot.total_counts_r / IGWAN_COUNTS_PER_REV) * 360);
+        FastLCD::Write("L Motor Angle: ");
+        FastLCD::WriteLine((robot.total_counts_l / IGWAN_COUNTS_PER_REV) * 360);
+        FastLCD::Write("R Motor Angle: ");
+        FastLCD::WriteLine((robot.total_counts_r / IGWAN_COUNTS_PER_REV) * 360);
 
-        LCD.Write("Turn radius: ");
-        LCD.WriteLine(robot.R);
-        LCD.Write("ControlMode: ");
-        LCD.WriteLine(robot.control_mode_string());
+        FastLCD::Write("Turn radius: ");
+        FastLCD::WriteLine(robot.R);
+        FastLCD::Write("ControlMode: ");
+        FastLCD::WriteLine(robot.control_mode_string());
 
-        LCD.Write("ControlEffort: ");
-        LCD.WriteLine(robot.angle_controller.control_effort);
-        LCD.Write("Error: ");
-        LCD.WriteLine(robot.angle_controller.error);
-        LCD.Write("I: ");
-        LCD.WriteLine(robot.angle_controller.I);
-        LCD.Write("CDS Value: ");
-        LCD.WriteLine(robot.light_sensor_value);
+        FastLCD::Write("ControlEffort: ");
+        FastLCD::WriteLine(robot.angle_controller.control_effort);
+        FastLCD::Write("Error: ");
+        FastLCD::WriteLine(robot.angle_controller.error);
+        FastLCD::Write("I: ");
+        FastLCD::WriteLine(robot.angle_controller.I);
+        FastLCD::Write("CDS Value: ");
+        FastLCD::WriteLine(robot.light_sensor_value);
 
-        LCD.Write("Dist: ");
-        LCD.WriteLine(robot.dist);
-        LCD.Write("TargetDist: ");
-        LCD.WriteLine(robot.target_dist);
+        FastLCD::Write("Dist: ");
+        FastLCD::WriteLine(robot.dist);
+        FastLCD::Write("TargetDist: ");
+        FastLCD::WriteLine(robot.target_dist);
     }
 
     if (holding_sec < FORCE_START_HOLD_SEC) {
@@ -817,10 +821,11 @@ extern "C" void PIT1_IRQHandler(void) {
     if (holding_sec > 0) {
         float progress = holding_sec / FORCE_START_TOTAL_SEC;
         auto progress_bar_width = (int) (progress * LCD_WIDTH);
-        LCD.FillRectangle(0, 0, progress_bar_width, 32);
+        FastLCD::SetFontPaletteIndex(3);
+        FastLCD::FillRectangle(0, 0, progress_bar_width, 32);
     }
 
-    LCD.DrawScreen();
+    FastLCD::DrawScreen();
 }
 
 void sleep(int ms) {
@@ -934,6 +939,11 @@ Straight t44(-16.267); // Back into the course end button
  */
 
 int main() {
+    FastLCD::SetPaletteColor(0, FastLCD::Black);
+    FastLCD::SetPaletteColor(1, FastLCD::White);
+    FastLCD::SetPaletteColor(2, FastLCD::Gray);
+    FastLCD::SetPaletteColor(3, FastLCD::Red);
+
     /*
      * Begin the diagnostics printing timer at the lowest possible priority (15).
      * Calls PIT1_IRQHandler() every 0.05 seconds.
