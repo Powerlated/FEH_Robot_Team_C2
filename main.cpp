@@ -88,6 +88,14 @@ constexpr int BSP_BUS_DIV = 2;
 constexpr int LCD_WIDTH = 320;
 constexpr int LCD_HEIGHT = 240;
 
+enum {
+    Black = 0,
+    White,
+    Gray,
+    Red,
+    Yellow,
+} PaletteColors;
+
 struct Vec2 {
     float x, y;
 
@@ -741,24 +749,24 @@ extern "C" void PIT1_IRQHandler(void) {
 
     FastLCD::Clear();
     if (display_compass) {
-        FastLCD::SetFontPaletteIndex(2);
+        FastLCD::SetFontPaletteIndex(Gray);
         FastLCD::DrawCircle(LCD_WIDTH / 2, LCD_HEIGHT / 2, 64);
 
         Mat2x2 mat = Mat2x2::Rotation(-robot.angle + rad(180));
-        FastLCD::SetFontPaletteIndex(1);
+        FastLCD::SetFontPaletteIndex(Yellow);
         draw_vtx_list(arrow_vtx, arrow_vtx_len, LCD_WIDTH / 2, LCD_HEIGHT / 2, mat);
 
-        FastLCD::SetFontPaletteIndex(2);
+        FastLCD::SetFontPaletteIndex(Gray);
         for (int i = 0; i < 4; i++) {
             Vec2 offs{LCD_WIDTH / 2.0 - 12.0 / 2, LCD_HEIGHT / 2.0 - 17.0 / 2};
             Vec2 pos = mat.multiply(nesw_poss[i]).add(offs);
             FastLCD::WriteAt(nesw[i], (int) pos.x, (int) pos.y);
         }
 
-        FastLCD::SetFontPaletteIndex(1);
+        FastLCD::SetFontPaletteIndex(White);
         FastLCD::WriteAt(deg(robot.angle), LCD_WIDTH / 2 - 42, 17);
     } else {
-        FastLCD::SetFontPaletteIndex(1);
+        FastLCD::SetFontPaletteIndex(White);
         /*
         FastLCD::Write("Tick CPU usage: ");
 //         Add 1% to give a safety margin
@@ -939,10 +947,11 @@ Straight t44(-16.267); // Back into the course end button
  */
 
 int main() {
-    FastLCD::SetPaletteColor(0, FastLCD::Black);
-    FastLCD::SetPaletteColor(1, FastLCD::White);
-    FastLCD::SetPaletteColor(2, FastLCD::Gray);
-    FastLCD::SetPaletteColor(3, FastLCD::Red);
+    FastLCD::SetPaletteColor(Black, BLACK);
+    FastLCD::SetPaletteColor(White, WHITE);
+    FastLCD::SetPaletteColor(Gray, GRAY);
+    FastLCD::SetPaletteColor(Red, RED);
+    FastLCD::SetPaletteColor(Yellow, YELLOW);
 
     /*
      * Begin the diagnostics printing timer at the lowest possible priority (15).
