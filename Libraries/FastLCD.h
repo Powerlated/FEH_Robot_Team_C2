@@ -157,7 +157,6 @@ namespace FastLCD
 
     static void _Clear();
     static void _RepeatColor();
-    static void _BackPixel();
     static void _ForePixel();
     static void SetRegisterColorValues();
 

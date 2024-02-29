@@ -866,8 +866,8 @@ void FastLCD::WriteCharAt(int x, int y, char charNum) {
     // function when a pixel color is repeated.
     for (int row = 0; row < 7; row++) {
         // 2 pixels of left border
-        _BackPixel();
-        _BackPixel();
+        next_pixel();
+        next_pixel();
 
         // Loop through the columns of the character
         for (int col = 0; col < 5; col++) {
@@ -875,13 +875,12 @@ void FastLCD::WriteCharAt(int x, int y, char charNum) {
             // character data array
             bool pix = charData[col] & 0x01;
 
-            // Draw it efficently using repeat pixel if possible
             if (pix) {
                 _ForePixel();
                 _ForePixel();
             } else {
-                _BackPixel();
-                _BackPixel();
+                next_pixel();
+                next_pixel();
             }
             //charData[col] >>= 1;
             //WriteData1( n );
@@ -889,8 +888,8 @@ void FastLCD::WriteCharAt(int x, int y, char charNum) {
 
         // Now we're at the next line of the display
         // so we need two more pixels of border
-        _BackPixel();
-        _BackPixel();
+        next_pixel();
+        next_pixel();
 
         // Loop through the columns again
         for (int col = 0; col < 5; col++) {
@@ -899,8 +898,8 @@ void FastLCD::WriteCharAt(int x, int y, char charNum) {
                 _ForePixel();
                 _ForePixel();
             } else {
-                _BackPixel();
-                _BackPixel();
+                next_pixel();
+                next_pixel();
             }
             // Now we're done with this column of the character
             // so we bitshit to get the next pixel for this column
@@ -912,7 +911,7 @@ void FastLCD::WriteCharAt(int x, int y, char charNum) {
 
     // Draw the three rows of padding at the bottom
     for (int i = 0; i < CharWidth * 3; i++) {
-        _BackPixel();
+        next_pixel();
     }
 }
 
@@ -955,11 +954,6 @@ void FastLCD::LCDDrawPixel() {
 
 void FastLCD::_ForePixel() {
     set_pixel(draw_x, draw_y, _foreground_palette_index);
-    next_pixel();
-}
-
-void FastLCD::_BackPixel() {
-    set_pixel(draw_x, draw_y, _background_palette_index);
     next_pixel();
 }
 
