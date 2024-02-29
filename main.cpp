@@ -18,13 +18,13 @@
  *
  * */
 
+#include "CMSIS/MK60D10.h"
 #include <FastLCD.h>
 #include <FEHLCD.h>
 #include <FEHMotor.h>
 #include <FEHServo.h>
 #include <FEHIO.h>
 #include <cmath>
-#include <Startup/MK60DZ10.h>
 
 using namespace std;
 
@@ -134,25 +134,6 @@ struct Mat2x2 {
         };
     }
 };
-
-void robot_control_loop() {
-    // Make sure SYSTICK_INTERVAL_CYCLES fits into 24 bits for SYSTICK_RVR
-    static_assert(!(SYSTICK_INTERVAL_CYCLES & 0xFF000000));
-    SysTick_BASE_PTR->RVR = SYSTICK_INTERVAL_CYCLES;
-
-    // Register SYST_CSR
-    // CLKSOURCE - bit 2 - use processor clock
-    // TICKINT - bit 1 - enable SysTick interrupt
-    // ENABLE - bit 0 - enable SysTick
-    SysTick_BASE_PTR->CSR |= 0b111;
-
-    // Enable SysTick IRQ in NVIC
-    NVIC_BASE_PTR->ISER[0] |= 1 << INT_SysTick;
-
-    // Set SysTick priority to 17 because DigitalEncoder PORT IRQs need the highest priority
-    SCB_SHPR3 &= ~0xFF000000;
-    SCB_SHPR3 |= 0x11000000;
-}
 
 void stop_robot_control_loop() {
     SysTick_BASE_PTR->CSR = 0;
@@ -663,7 +644,7 @@ void init_PIT(uint32_t cyc_interval) {
     static_assert(pit_num < 4);
 
     // Set priority
-    NVIC_BASE_PTR->IP[(INT_PIT0 - 16) + pit_num] = irq_priority;
+    NVIC_SetPriority((IRQn)(PIT0_IRQn + pit_num), irq_priority);
 
     // Enable PIT clock
     PIT_BASE_PTR->MCR = 0;
@@ -673,7 +654,7 @@ void init_PIT(uint32_t cyc_interval) {
     PIT_BASE_PTR->CHANNEL[pit_num].TCTRL = PIT_TCTRL_TEN_MASK | PIT_TCTRL_TIE_MASK;
 
     // Enable interrupt in NVIC
-    NVICISER2 |= 1 << ((INT_PIT0 + pit_num) % 16);
+    NVIC_EnableIRQ((IRQn) (PIT0_IRQn + pit_num));
 }
 
 template<int pit_num>
@@ -957,13 +938,16 @@ int main() {
      * Begin the diagnostics printing timer at the lowest possible priority (15).
      * Calls PIT1_IRQHandler() every 0.05 seconds.
      */
-    init_PIT<1, 255>(cyc(1.0 / DIAGNOSTICS_HZ));
+    init_PIT<1, 15>(cyc(1.0 / DIAGNOSTICS_HZ));
 
     /*
      * Initialize the robot control loop by setting up the SysTick timer.
      * Calls SysTick_Handler() at TICK_RATE hz.
+     *
+     * Priority is 1 because DigitalEncoder PORT IRQs need higher priority.
      */
-    robot_control_loop();
+    SysTick_Config(SYSTICK_INTERVAL_CYCLES);
+    NVIC_SetPriority(SysTick_IRQn, 1);
 
     return 0;
 }
