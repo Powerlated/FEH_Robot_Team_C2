@@ -5,18 +5,6 @@
 
 namespace FastLCD
 {
-    // Create color states
-    typedef enum
-    {
-        Black = 0,
-        White,
-        Red,
-        Green,
-        Blue,
-		Scarlet,
-		Gray
-    } FEHLCDColor;
-
     // Create directional states
     typedef enum
     {
@@ -28,26 +16,9 @@ namespace FastLCD
 
     void DrawScreen();
 
-    /**
-     * @brief Clears LCD screen and sets background color
-     * 
-     * @param color
-     *      Color that the LCD background is set to after being cleared
-     * 
-     * Note: This comment applies to all public member variations of
-     * {@code} Clear()
-     * 
-     * Accesses private member {@code} _Clear() to clear screen.
-     * If an argument is provided, the function also clears the 
-     * screen either by converting 24 bit enum type color
-     * to 16 bits or by converting an unsigned int to 16 bits,
-     * then accessing {@code} _Clear()
-     */
     void Clear();
 
     void SetFontPaletteIndex(uint8_t index);
-    void SetBackgroundPaletteIndex(uint8_t index);
-    void SetPaletteColor(uint8_t index, FEHLCDColor color);
     void SetPaletteColor(uint8_t index, unsigned int color);
 
     /**
@@ -147,42 +118,17 @@ namespace FastLCD
     void WriteLine( bool b );
 	void WriteLine( char c );
 
-    typedef struct regColVal {
-        uint32_t BVal;
-        uint32_t CVal;
-        uint32_t DVal;
-    } RegisterColorValues;
-	
-	int abs(int);
-
-    static void _Clear();
-    static void _RepeatColor();
-    static void _ForePixel();
-    static void SetRegisterColorValues();
-
     static void WriteChar(int row, int col, char c);
     static void WriteCharAt(int x, int y, char c);
-
-    static void WriteIndex( unsigned char index );
-    static void WriteParameter( unsigned char param );
-
-    static unsigned int ConvertFEHColorTo24Bit(FEHLCDColor color);
-    static unsigned int Convert24BitColorTo18Bit(unsigned int color);
-    static unsigned int ConvertRGBColorTo18Bit(unsigned char r,unsigned char g,unsigned char b);
 
     static void NextLine();
     static void CheckLine();
     static void NextChar();
-    static void SetDrawRegion(int x, int y, int width, int height);
-    static void LCDDrawRegion(int x, int y, int width, int height);
 
     static int current_line;
     static int current_char;
-	static RegisterColorValues palette[4];
-    static int lastx;
-    static int lasty;
 
-    static int _foreground_palette_index, _background_palette_index;
+    static int foreground_palette_index;
 
     void LCDSetColor(uint8_t palette_index);
 

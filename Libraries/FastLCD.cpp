@@ -4,6 +4,8 @@
 #include <cstring>
 #include <cmath>
 
+using namespace FastLCD;
+
 #define CLR_CS GPIOC_PCOR = ( 1 << 3 )
 #define SET_CS GPIOC_PSOR = ( 1 << 3 )
 
@@ -129,23 +131,32 @@ unsigned char fontData[] = {
 #define LCD_WIDTH           320
 #define LCD_HEIGHT          240
 
-// 2-bit LCD buffer
-uint32_t LCDBuffer[LCD_WIDTH * LCD_HEIGHT / 16];
+typedef struct regColVal {
+    uint32_t BVal;
+    uint32_t CVal;
+    uint32_t DVal;
+} RegisterColorValues;
+
+// 4-bit LCD buffer
+static RegisterColorValues palette[16];
+uint32_t LCDBuffer[LCD_WIDTH * LCD_HEIGHT / 8];
 int region_x, region_y, region_width, region_height;
 int draw_x, draw_y;
 
 uint8_t get_pixel(int x, int y) {
     int pixel_number = LCD_WIDTH * y + x;
-    int index = pixel_number / 16;
-    int bit_number = (pixel_number % 16) * 2;
-    return (LCDBuffer[index] >> bit_number) & 0b11;
+    int index = pixel_number / 8;
+    int bit_number = (pixel_number % 8) * 4;
+    return (LCDBuffer[index] >> bit_number) & 0b1111;
 }
 
 void set_pixel(int x, int y, uint8_t val) {
+    if ((unsigned int)x >= LCD_WIDTH) return;
+    if ((unsigned int)y >= LCD_HEIGHT) return;
     int pixel_number = LCD_WIDTH * y + x;
-    int index = pixel_number / 16;
-    int bit_number = (pixel_number % 16) * 2;
-    LCDBuffer[index] &= ~(0b11 << bit_number);
+    int index = pixel_number / 8;
+    int bit_number = (pixel_number % 8) * 4;
+    LCDBuffer[index] &= ~(0b1111 << bit_number);
     LCDBuffer[index] |= (val << bit_number);
 }
 
@@ -155,65 +166,29 @@ void next_pixel() {
     if (draw_x >= region_x + region_width) {
         draw_x = region_x;
         draw_y++;
+
+        if (draw_y >= region_y + region_height) {
+            draw_y = region_y;
+        }
     }
 }
 
-unsigned int FastLCD::ConvertFEHColorTo24Bit(FEHLCDColor color) {
-    unsigned int htmlColor;
-    switch (color) {
-        case White:
-            htmlColor = 0xFFFFFFu;
-            break;
-        case Black:
-            htmlColor = 0x000000u;
-            break;
-        case Red:
-            htmlColor = 0xFF0000u;
-            break;
-        case Green:
-            htmlColor = 0x00FF00u;
-            break;
-        case Blue:
-            htmlColor = 0x0000FFu;
-            break;
-        case Scarlet:
-            htmlColor = 0x990000u;
-            break;
-        case Gray:
-            htmlColor = 0x999999u;
-            break;
-    }
-    return htmlColor;
-}
-
-unsigned int FastLCD::Convert24BitColorTo18Bit(unsigned int color) {
-    unsigned char r = (color & 0xFF0000u) >> 16;
-    unsigned char g = (color & 0x00FF00u) >> 8;
-    unsigned char b = (color & 0x0000FFu);
-    return ConvertRGBColorTo18Bit(r, g, b);
-}
-
-unsigned int FastLCD::ConvertRGBColorTo18Bit(unsigned char r, unsigned char g, unsigned char b) {
+int ConvertRGBColorTo18Bit(unsigned char r, unsigned char g, unsigned char b) {
     unsigned int ru = r >> 2;
     unsigned int gu = g >> 2;
     unsigned int bu = b >> 2;
     return (ru << 12) | (gu << 6) | bu;
 }
 
-void FastLCD::Clear() {
-    _Clear();
-}
-
-void FastLCD::SetBackgroundPaletteIndex(uint8_t index) {
-    _background_palette_index = index;
+int Convert24BitColorTo18Bit(unsigned int color) {
+    unsigned char r = (color & 0xFF0000u) >> 16;
+    unsigned char g = (color & 0x00FF00u) >> 8;
+    unsigned char b = (color & 0x0000FFu);
+    return ConvertRGBColorTo18Bit(r, g, b);
 }
 
 void FastLCD::SetFontPaletteIndex(uint8_t index) {
-    _foreground_palette_index = index;
-}
-
-void FastLCD::SetPaletteColor(uint8_t index, FastLCD::FEHLCDColor color) {
-    SetPaletteColor(index, ConvertFEHColorTo24Bit(color));
+    foreground_palette_index = index;
 }
 
 void FastLCD::SetPaletteColor(uint8_t index, unsigned int color) {
@@ -245,6 +220,15 @@ void FastLCD::SetPaletteColor(uint8_t index, unsigned int color) {
     palette[index].DVal |= GPIO_PDOR_PDO( ( ( ( c2 & ( 1 << 7 ) ) ? ( 1 ) : ( 0 ) ) << 2 ) );
     palette[index].DVal |= GPIO_PDOR_PDO( ( ( ( c3 & ( 1 << 0 ) ) ? ( 1 ) : ( 0 ) ) << 3 ) );
     palette[index].DVal |= GPIO_PDOR_PDO( ( ( ( c3 & ( 1 << 1 ) ) ? ( 1 ) : ( 0 ) ) << 4 ) );
+}
+
+void SetDrawRegion(int x, int y, int width, int height) {
+    draw_x = x;
+    draw_y = y;
+    region_x = x;
+    region_y = y;
+    region_width = width;
+    region_height = height;
 }
 
 void FastLCD::WriteAt(const char *str, int x, int y) {
@@ -293,7 +277,7 @@ void FastLCD::WriteAt(char c, int x, int y) {
     WriteAt(str, x, y);
 }
 
-int FastLCD::abs(int no) {
+int abs(int no) {
     if (no < 0) {
         no *= -1;
     }
@@ -434,7 +418,7 @@ void FastLCD::WriteLine(char c) {
     NextLine();
 }
 
-void FastLCD::WriteIndex(unsigned char index) {
+void WriteIndex(unsigned char index) {
     // CS = 0;
     CLR_CS;
 
@@ -480,7 +464,7 @@ void FastLCD::WriteIndex(unsigned char index) {
     // delay2( 1 );
 }
 
-void FastLCD::WriteParameter(unsigned char param) {
+void WriteParameter(unsigned char param) {
     // CS = 0;
     CLR_CS;
 
@@ -524,7 +508,7 @@ void FastLCD::WriteParameter(unsigned char param) {
     // delay2( 1 );
 }
 
-void FastLCD::_Clear() {
+void FastLCD::Clear() {
     current_line = 0;
     current_char = 0;
 
@@ -541,7 +525,7 @@ void FastLCD::NextLine() {
 void FastLCD::CheckLine() {
     if (current_line >= MAX_LINES) {
         current_line = 0;
-        _Clear();
+        Clear();
     }
 }
 
@@ -551,6 +535,11 @@ void FastLCD::NextChar() {
         NextLine();
         CheckLine();
     }
+}
+
+void _ForePixel() {
+    set_pixel(draw_x, draw_y, foreground_palette_index);
+    next_pixel();
 }
 
 void FastLCD::DrawPixel(int x, int y) {
@@ -563,14 +552,6 @@ static void Swap(int &a, int &b) {
     a = b;
     b = c;
 }
-
-int abs(int z) {
-    if (z < 0)
-        return -z;
-    else
-        return z;
-}
-
 
 void FastLCD::DrawHorizontalLine(int y, int x1, int x2) {
     if (x2 < x1)
@@ -600,7 +581,7 @@ void FastLCD::DrawRectangle(int x, int y, int width, int height) {
     DrawLine(x, y + height, x, y);
 }
 
-void FastLCD::LCDDrawRegion(int x, int y, int width, int height) {
+void LCDDrawRegion(int x, int y, int width, int height) {
     unsigned int pixStartCol, pixEndCol, pixStartRow, pixEndRow;
 
     pixStartCol = x;
@@ -642,15 +623,6 @@ void FastLCD::LCDDrawRegion(int x, int y, int width, int height) {
 
     // widx( 0x2c );       //enter write mode
     WriteIndex(0x2C);
-}
-
-void FastLCD::SetDrawRegion(int x, int y, int width, int height) {
-    draw_x = x;
-    draw_y = y;
-    region_x = x;
-    region_y = y;
-    region_width = width;
-    region_height = height;
 }
 
 void FastLCD::FillRectangle(int x, int y, int width, int height) {
@@ -950,11 +922,6 @@ void FastLCD::LCDDrawPixel() {
 
     // WR=1;
     SET_WR;
-}
-
-void FastLCD::_ForePixel() {
-    set_pixel(draw_x, draw_y, _foreground_palette_index);
-    next_pixel();
 }
 
 void FastLCD::DrawScreen() {
