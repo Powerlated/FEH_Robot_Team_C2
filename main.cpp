@@ -96,41 +96,55 @@ enum {
     Yellow,
 } PaletteColors;
 
-struct Vec2 {
-    float x, y;
+template<int m>
+struct Vec {
+    float vec[m];
 
-    Vec2 add(Vec2 &b) const {
-        return Vec2{
-                x + b.x,
-                y + b.y
-        };
-    }
+    Vec add(Vec &b) const {
+        Vec<m> sum{};
 
-    [[nodiscard]] Vec2 add(float bx, float by) const {
-        return Vec2{
-                x + bx,
-                y + by
-        };
+        for (int i = 0; i < m; i++) {
+            sum.vec[i] = vec[i] + b.vec[i];
+        }
+
+        return sum;
     }
 };
 
-struct Mat2x2 {
-    float mat[4];
+template<int m, int n>
+struct Mat {
+    static_assert(m == n);
+    float mat[m * n];
 
-    Vec2 multiply(Vec2 &b) const {
-        return Vec2{
-                mat[0] * b.x + mat[1] * b.y,
-                mat[2] * b.x + mat[3] * b.y,
-        };
+    Vec<m> multiply(Vec<m> &b) const {
+        Vec<m> result{};
+
+        int mat_pos = 0;
+        for (int r = 0; r < m; r++) {
+            for (int c = 0; c < n; c++) {
+                result.vec[r] += mat[mat_pos++] * b.vec[c];
+            }
+        }
+
+        return result;
     }
 
-    static Mat2x2 Rotation(float angle) {
+    static Mat<3, 3> RotationTranslation(float angle, float dx, float dy) {
         float cos = cosf(angle);
         float sin = sinf(angle);
 
-        return Mat2x2{
-                cos, -sin,
-                sin, cos
+        return Mat<3, 3>{
+                cos, -sin, dx,
+                sin, cos, dy,
+                0, 0, 1
+        };
+    }
+
+    static Mat<3, 3> Translation(float dx, float dy) {
+        return Mat<3, 3>{
+                1, 0, dx,
+                0, 1, dy,
+                0, 0, 1
         };
     }
 };
@@ -220,12 +234,6 @@ struct RobotTask {
     virtual void execute() = 0;
 };
 
-float slew(float rate, float min, float max, float dist_from_start, float dist_to_end) {
-    float slewed_start = sqrtf(rate * fabs(dist_from_start));
-    float slewed_end = sqrtf(rate * fabs(dist_to_end));
-    return fmin(max, fmin(slewed_start, slewed_end) + min);
-}
-
 struct Robot {
     /*
     * Because my modified DigitalEncoder code obtains a pointer to itself using the “this” keyword so that the port
@@ -260,7 +268,7 @@ struct Robot {
     PIController angle_controller = PIController(TICK_RATE, 100, 50, 30);
 
     // Position is in inches
-    Vec2 pos{}, pos0{};
+    Vec<2> pos{}, pos0{};
     // Angle in radians
     Radian angle{};
     Radian target_angle{};
@@ -335,7 +343,8 @@ struct Robot {
 
         dist += (arclength_l + arclength_r) / 2;
 
-        pos = pos.add(dx, dy);
+        pos.vec[0] += dx;
+        pos.vec[1] += dy;
         angle += dAngle;
     }
 
@@ -358,6 +367,12 @@ struct Robot {
 
         ml.SetPercent(pct_l);
         ml.SetPercent(pct_r);
+    }
+
+    static float slew(float rate, float min, float max, float dist_from_start, float dist_to_end) {
+        float slewed_start = sqrtf(rate * fabs(dist_from_start));
+        float slewed_end = sqrtf(rate * fabs(dist_to_end));
+        return fmin(max, fmin(slewed_start, slewed_end) + min);
     }
 
     void tick() {
@@ -527,7 +542,6 @@ struct StraightUntilSwitch : RobotTask {
     }
 };
 
-
 struct Speed : RobotTask {
     float percent;
 
@@ -644,7 +658,7 @@ void init_PIT(uint32_t cyc_interval) {
     static_assert(pit_num < 4);
 
     // Set priority
-    NVIC_SetPriority((IRQn)(PIT0_IRQn + pit_num), irq_priority);
+    NVIC_SetPriority((IRQn) (PIT0_IRQn + pit_num), irq_priority);
 
     // Enable PIT clock
     PIT_BASE_PTR->MCR = 0;
@@ -674,62 +688,69 @@ extern "C" void SysTick_Handler(void) {
 namespace visualization {
     const char *nesw[4] = {"N", "W", "S", "E"};
 
-    Vec2 nesw_poss[] = {
-            Vec2{0, 80},
-            Vec2{80, 0},
-            Vec2{0, -80},
-            Vec2{-80, 0},
+    Vec<3> nesw_poss[] = {
+            Vec<3>{0, 80, 1},
+            Vec<3>{80, 0, 1},
+            Vec<3>{0, -80, 1},
+            Vec<3>{-80, 0, 1},
     };
 
-    Vec2 arrow_vtx[] = {
-            Vec2{-10, 0},
-            Vec2{10, 0},
-            Vec2{10, 45},
-            Vec2{14, 45},
-            Vec2{0, 64},
-            Vec2{-14, 45},
-            Vec2{-10, 45},
+    Vec<3> arrow_vtx[] = {
+            Vec<3>{-10, 0, 1},
+            Vec<3>{10, 0, 1},
+            Vec<3>{10, 45, 1},
+            Vec<3>{14, 45, 1},
+            Vec<3>{0, 64, 1},
+            Vec<3>{-14, 45, 1},
+            Vec<3>{-10, 45, 1},
     };
 
-    const int arrow_vtx_len = sizeof(arrow_vtx) / sizeof(Vec2);
+    const int arrow_vtx_len = sizeof(arrow_vtx) / sizeof(Vec<3>);
 
-    void draw_vtx_list(Vec2 vtx_list[], int len, int offs_x, int offs_y, Mat2x2 mat) {
+    void draw_vtx_list(Vec<3> vtx_list[], int len, Mat<3, 3> mat, bool thick) {
         for (int i = 0; i < len - 1; i++) {
-            Vec2 vtx1 = mat.multiply(vtx_list[i]);
-            Vec2 vtx2 = mat.multiply(vtx_list[i + 1]);
+            Vec<3> vtx1 = mat.multiply(vtx_list[i]);
+            Vec<3> vtx2 = mat.multiply(vtx_list[i + 1]);
             FastLCD::DrawThickLine(
-                    (int) vtx1.x + offs_x,
-                    (int) vtx1.y + offs_y,
-                    (int) vtx2.x + offs_x,
-                    (int) vtx2.y + offs_y);
+                    (int) vtx1.vec[0],
+                    (int) vtx1.vec[1],
+                    (int) vtx2.vec[0],
+                    (int) vtx2.vec[1]);
         }
 
-        Vec2 vtx1 = mat.multiply(vtx_list[0]);
-        Vec2 vtx2 = mat.multiply(vtx_list[len - 1]);
-        FastLCD::DrawThickLine(
-                (int) vtx1.x + offs_x,
-                (int) vtx1.y + offs_y,
-                (int) vtx2.x + offs_x,
-                (int) vtx2.y + offs_y);
+        Vec<3> vtx1 = mat.multiply(vtx_list[0]);
+        Vec<3> vtx2 = mat.multiply(vtx_list[len - 1]);
+
+        if (thick) {
+            FastLCD::DrawThickLine(
+                    (int) vtx1.vec[0],
+                    (int) vtx1.vec[1],
+                    (int) vtx2.vec[0],
+                    (int) vtx2.vec[1]);
+        } else {
+            FastLCD::DrawLine(
+                    (int) vtx1.vec[0],
+                    (int) vtx1.vec[1],
+                    (int) vtx2.vec[0],
+                    (int) vtx2.vec[1]);
+        }
     }
 
     void draw_compass() {
-        FastLCD::SetFontPaletteIndex(Gray);
-        FastLCD::DrawCircle(LCD_WIDTH / 2, LCD_HEIGHT / 2, 64);
-
-        Mat2x2 mat = Mat2x2::Rotation(-robot.angle + rad(180));
-        FastLCD::SetFontPaletteIndex(Yellow);
-        draw_vtx_list(arrow_vtx, arrow_vtx_len, LCD_WIDTH / 2, LCD_HEIGHT / 2, mat);
-
-        FastLCD::SetFontPaletteIndex(Gray);
-        for (int i = 0; i < 4; i++) {
-            Vec2 offs{LCD_WIDTH / 2.0 - 12.0 / 2, LCD_HEIGHT / 2.0 - 17.0 / 2};
-            Vec2 pos = mat.multiply(nesw_poss[i]).add(offs);
-            FastLCD::WriteAt(nesw[i], (int) pos.x, (int) pos.y);
-        }
+        Mat mat = Mat<3, 3>::RotationTranslation(-robot.angle + rad(180), LCD_WIDTH / 2.0, LCD_HEIGHT / 2.0);
 
         FastLCD::SetFontPaletteIndex(White);
+        for (int i = 0; i < 4; i++) {
+            Vec<3> offs{-12.0 / 2, -17.0 / 2, 1};
+            Vec<3> pos = mat.multiply(nesw_poss[i]).add(offs);
+            FastLCD::WriteAt(nesw[i], (int) pos.vec[0], (int) pos.vec[1]);
+        }
+
+        FastLCD::DrawCircle(LCD_WIDTH / 2, LCD_HEIGHT / 2, 64);
         FastLCD::WriteAt(deg(robot.angle), LCD_WIDTH / 2 - 42, 17);
+
+        FastLCD::SetFontPaletteIndex(Yellow);
+        draw_vtx_list(arrow_vtx, arrow_vtx_len, mat, true);
     }
 
 
@@ -764,9 +785,9 @@ namespace visualization {
              */
 
             FastLCD::Write("X/Ymm: ");
-            FastLCD::Write(robot.pos.x * 1000);
+            FastLCD::Write(robot.pos.vec[0] * 1000);
             FastLCD::Write(" ");
-            FastLCD::WriteLine(robot.pos.y * 1000);
+            FastLCD::WriteLine(robot.pos.vec[1] * 1000);
 
             FastLCD::Write("Angle: ");
             FastLCD::WriteLine(deg(robot.angle));
@@ -932,6 +953,18 @@ Turn t41(-72.5);
 Straight t42(-14.517);
 Turn t43(-45);
 Straight t44(-16.267); // Back into the course end button
+ */
+
+/*
+ * EXCEPTION PRIORITY LEVELS - FROM HIGHEST TO LOWEST
+ *
+ * The K60 has priority levels ranging from 0 to 15, where 0 is highest and 15 is lowest.
+ * When an exception becomes pending and another exception with the same priority is running,
+ * the pending exception waits for the running exception to end.
+ *
+ * 0 - PORT{A,B,C,D,E} - DigitalEncoder IRQs
+ * 1 - SysTick - Robot Control Loop
+ * 15 - PIT1 - Diagnostics/visualization printing
  */
 
 int main() {
