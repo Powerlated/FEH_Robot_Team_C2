@@ -708,31 +708,23 @@ namespace visualization {
     const int arrow_vtx_len = sizeof(arrow_vtx) / sizeof(Vec<3>);
 
     void draw_vtx_list(Vec<3> vtx_list[], int len, Mat<3, 3> mat, bool thick) {
-        for (int i = 0; i < len - 1; i++) {
-            Vec<3> vtx1 = mat.multiply(vtx_list[i]);
-            Vec<3> vtx2 = mat.multiply(vtx_list[i + 1]);
-            FastLCD::DrawThickLine(
-                    (int) vtx1.vec[0],
-                    (int) vtx1.vec[1],
-                    (int) vtx2.vec[0],
-                    (int) vtx2.vec[1]);
-        }
-
-        Vec<3> vtx1 = mat.multiply(vtx_list[0]);
-        Vec<3> vtx2 = mat.multiply(vtx_list[len - 1]);
-
-        if (thick) {
-            FastLCD::DrawThickLine(
-                    (int) vtx1.vec[0],
-                    (int) vtx1.vec[1],
-                    (int) vtx2.vec[0],
-                    (int) vtx2.vec[1]);
-        } else {
-            FastLCD::DrawLine(
-                    (int) vtx1.vec[0],
-                    (int) vtx1.vec[1],
-                    (int) vtx2.vec[0],
-                    (int) vtx2.vec[1]);
+        Vec<3> vtx1 = mat.multiply(vtx_list[len - 1]);
+        for (int i = 0; i < len; i++) {
+            Vec<3> vtx2 = mat.multiply(vtx_list[i]);
+            if (thick) {
+                FastLCD::DrawThickLine(
+                        (int) vtx1.vec[0],
+                        (int) vtx1.vec[1],
+                        (int) vtx2.vec[0],
+                        (int) vtx2.vec[1]);
+            } else {
+                FastLCD::DrawLine(
+                        (int) vtx1.vec[0],
+                        (int) vtx1.vec[1],
+                        (int) vtx2.vec[0],
+                        (int) vtx2.vec[1]);
+            }
+            vtx1 = vtx2;
         }
     }
 
@@ -752,7 +744,6 @@ namespace visualization {
         FastLCD::SetFontPaletteIndex(Yellow);
         draw_vtx_list(arrow_vtx, arrow_vtx_len, mat, true);
     }
-
 
     extern "C" void PIT1_IRQHandler(void) {
         clear_PIT_irq_flag<1>();
