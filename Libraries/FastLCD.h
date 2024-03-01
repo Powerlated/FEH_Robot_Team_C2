@@ -33,8 +33,7 @@ namespace FastLCD
     void DrawPixel(int x, int y);
     void DrawHorizontalLine(int y,int x1, int x2);
     void DrawVerticalLine(int x, int y1, int y2);
-    void DrawLine(int x1, int y1, int x2, int y2);
-    void DrawThickLine(int x1, int y1, int x2, int y2);
+    void DrawLine(int x1, int y1, int x2, int y2, bool thick);
     void DrawRectangle(int x, int y, int width, int height);
     void FillRectangle(int x, int y, int width, int height);
     void DrawCircle(int x0, int y0, int r);

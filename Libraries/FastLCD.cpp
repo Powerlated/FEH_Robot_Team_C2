@@ -151,8 +151,8 @@ uint8_t get_pixel(int x, int y) {
 }
 
 void set_pixel(int x, int y, uint8_t val) {
-    if ((unsigned int)x >= LCD_WIDTH) return;
-    if ((unsigned int)y >= LCD_HEIGHT) return;
+    if ((unsigned int) x >= LCD_WIDTH) return;
+    if ((unsigned int) y >= LCD_HEIGHT) return;
     int pixel_number = LCD_WIDTH * y + x;
     int index = pixel_number / 8;
     int bit_number = (pixel_number % 8) * 4;
@@ -194,32 +194,32 @@ void FastLCD::SetFontPaletteIndex(uint8_t index) {
 void FastLCD::SetPaletteColor(uint8_t index, unsigned int color) {
     uint32_t rgb18 = Convert24BitColorTo18Bit(color);
 
-    auto c1 = (unsigned char)( rgb18 & 0xFF );
-    auto c2 = (unsigned char)( ( rgb18 >> 8 ) & 0xFF );
-    auto c3 = (unsigned char)( ( rgb18 >> 16 ) & 0x03 );
+    auto c1 = (unsigned char) (rgb18 & 0xFF);
+    auto c2 = (unsigned char) ((rgb18 >> 8) & 0xFF);
+    auto c3 = (unsigned char) ((rgb18 >> 16) & 0x03);
 
     palette[index].BVal = 0;
     palette[index].CVal = 0;
     palette[index].DVal = 0;
 
-    palette[index].BVal |= GPIO_PDOR_PDO( ( ( ( c1 & ( 1 << 0 ) ) ? ( 1 ) : ( 0 ) ) << 9 ) );
-    palette[index].BVal |= GPIO_PDOR_PDO( ( ( ( c1 & ( 1 << 1 ) ) ? ( 1 ) : ( 0 ) ) << 8 ) );
-    palette[index].CVal |= GPIO_PDOR_PDO( ( ( ( c1 & ( 1 << 2 ) ) ? ( 1 ) : ( 0 ) ) << 4 ) );
-    palette[index].CVal |= GPIO_PDOR_PDO( ( ( ( c1 & ( 1 << 3 ) ) ? ( 1 ) : ( 0 ) ) << 5 ) );
-    palette[index].CVal |= GPIO_PDOR_PDO( ( ( ( c1 & ( 1 << 4 ) ) ? ( 1 ) : ( 0 ) ) << 6 ) );
-    palette[index].CVal |= GPIO_PDOR_PDO( ( ( ( c1 & ( 1 << 5 ) ) ? ( 1 ) : ( 0 ) ) << 7 ) );
-    palette[index].CVal |= GPIO_PDOR_PDO( ( ( ( c1 & ( 1 << 6 ) ) ? ( 1 ) : ( 0 ) ) << 12 ) );
-    palette[index].CVal |= GPIO_PDOR_PDO( ( ( ( c1 & ( 1 << 7 ) ) ? ( 1 ) : ( 0 ) ) << 13 ) );
-    palette[index].CVal |= GPIO_PDOR_PDO( ( ( ( c2 & ( 1 << 0 ) ) ? ( 1 ) : ( 0 ) ) << 14 ) );
-    palette[index].CVal |= GPIO_PDOR_PDO( ( ( ( c2 & ( 1 << 1 ) ) ? ( 1 ) : ( 0 ) ) << 15 ) );
-    palette[index].CVal |= GPIO_PDOR_PDO( ( ( ( c2 & ( 1 << 2 ) ) ? ( 1 ) : ( 0 ) ) << 16 ) );
-    palette[index].CVal |= GPIO_PDOR_PDO( ( ( ( c2 & ( 1 << 3 ) ) ? ( 1 ) : ( 0 ) ) << 17 ) );
-    palette[index].CVal |= GPIO_PDOR_PDO( ( ( ( c2 & ( 1 << 4 ) ) ? ( 1 ) : ( 0 ) ) << 18 ) );
-    palette[index].CVal |= GPIO_PDOR_PDO( ( ( ( c2 & ( 1 << 5 ) ) ? ( 1 ) : ( 0 ) ) << 19 ) );
-    palette[index].DVal |= GPIO_PDOR_PDO( ( ( ( c2 & ( 1 << 6 ) ) ? ( 1 ) : ( 0 ) ) << 0 ) );
-    palette[index].DVal |= GPIO_PDOR_PDO( ( ( ( c2 & ( 1 << 7 ) ) ? ( 1 ) : ( 0 ) ) << 2 ) );
-    palette[index].DVal |= GPIO_PDOR_PDO( ( ( ( c3 & ( 1 << 0 ) ) ? ( 1 ) : ( 0 ) ) << 3 ) );
-    palette[index].DVal |= GPIO_PDOR_PDO( ( ( ( c3 & ( 1 << 1 ) ) ? ( 1 ) : ( 0 ) ) << 4 ) );
+    palette[index].BVal |= GPIO_PDOR_PDO((((c1 & (1 << 0)) ? (1) : (0)) << 9));
+    palette[index].BVal |= GPIO_PDOR_PDO((((c1 & (1 << 1)) ? (1) : (0)) << 8));
+    palette[index].CVal |= GPIO_PDOR_PDO((((c1 & (1 << 2)) ? (1) : (0)) << 4));
+    palette[index].CVal |= GPIO_PDOR_PDO((((c1 & (1 << 3)) ? (1) : (0)) << 5));
+    palette[index].CVal |= GPIO_PDOR_PDO((((c1 & (1 << 4)) ? (1) : (0)) << 6));
+    palette[index].CVal |= GPIO_PDOR_PDO((((c1 & (1 << 5)) ? (1) : (0)) << 7));
+    palette[index].CVal |= GPIO_PDOR_PDO((((c1 & (1 << 6)) ? (1) : (0)) << 12));
+    palette[index].CVal |= GPIO_PDOR_PDO((((c1 & (1 << 7)) ? (1) : (0)) << 13));
+    palette[index].CVal |= GPIO_PDOR_PDO((((c2 & (1 << 0)) ? (1) : (0)) << 14));
+    palette[index].CVal |= GPIO_PDOR_PDO((((c2 & (1 << 1)) ? (1) : (0)) << 15));
+    palette[index].CVal |= GPIO_PDOR_PDO((((c2 & (1 << 2)) ? (1) : (0)) << 16));
+    palette[index].CVal |= GPIO_PDOR_PDO((((c2 & (1 << 3)) ? (1) : (0)) << 17));
+    palette[index].CVal |= GPIO_PDOR_PDO((((c2 & (1 << 4)) ? (1) : (0)) << 18));
+    palette[index].CVal |= GPIO_PDOR_PDO((((c2 & (1 << 5)) ? (1) : (0)) << 19));
+    palette[index].DVal |= GPIO_PDOR_PDO((((c2 & (1 << 6)) ? (1) : (0)) << 0));
+    palette[index].DVal |= GPIO_PDOR_PDO((((c2 & (1 << 7)) ? (1) : (0)) << 2));
+    palette[index].DVal |= GPIO_PDOR_PDO((((c3 & (1 << 0)) ? (1) : (0)) << 3));
+    palette[index].DVal |= GPIO_PDOR_PDO((((c3 & (1 << 1)) ? (1) : (0)) << 4));
 }
 
 void SetDrawRegion(int x, int y, int width, int height) {
@@ -575,10 +575,10 @@ void FastLCD::DrawVerticalLine(int x, int y1, int y2) {
 
 
 void FastLCD::DrawRectangle(int x, int y, int width, int height) {
-    DrawLine(x, y, x + width, y);
-    DrawLine(x + width, y, x + width, y + height);
-    DrawLine(x + width, y + height, x, y + height);
-    DrawLine(x, y + height, x, y);
+    DrawLine(x, y, x + width, y, false);
+    DrawLine(x + width, y, x + width, y + height, false);
+    DrawLine(x + width, y + height, x, y + height, false);
+    DrawLine(x, y + height, x, y, false);
 }
 
 void LCDDrawRegion(int x, int y, int width, int height) {
@@ -631,96 +631,59 @@ void FastLCD::FillRectangle(int x, int y, int width, int height) {
         _ForePixel();
 }
 
-void FastLCD::DrawLine(int x1, int y1, int x2, int y2) {
-    int dx = abs(x2 - x1);
-    int dy = abs(y2 - y1);
-    bool steep = (dy > dx);
+/*
+ * plotLine(x0, y0, x1, y1)
+    dx = abs(x1 - x0)
+    sx = x0 < x1 ? 1 : -1
+    dy = -abs(y1 - y0)
+    sy = y0 < y1 ? 1 : -1
+    error = dx + dy
 
-    // If the line is steep, we'll iterate over y
-    // instead of x. To keep code simple, I just
-    // swap and always iterate over x
-    if (steep) {
-        Swap(x1, y1);
-        Swap(x2, y2);
-    }
+    while true
+        plot(x0, y0)
+        if x0 == x1 && y0 == y1 break
+        e2 = 2 * error
+        if e2 >= dy
+            if x0 == x1 break
+            error = error + dy
+            x0 = x0 + sx
+        end if
+        if e2 <= dx
+            if y0 == y1 break
+            error = error + dx
+            y0 = y0 + sy
+        end if
+    end while
+ */
 
-    // Alwasy iterate from low x to high x
-    if (x1 > x2) {
-        Swap(x1, x2);
-        Swap(y1, y2);
-    }
+// Those goobers used float math for line drawing 🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣
+void FastLCD::DrawLine(int x0, int y0, int x1, int y1, bool thick) {
+    int dx = abs(x1 - x0);
+    int sx = x0 < x1 ? 1 : -1;
+    int dy = -abs(y1 - y0);
+    int sy = y0 < y1 ? 1 : -1;
+    int error = dx + dy;
 
-    // If x2==x1, then the line is just a pixel
-    if (x2 == x1) {
-        DrawPixel(x1, y1);
-        return;
-    }
-
-    float slope = (y2 - y1) / ((float) (x2 - x1));
-    float y = y1;
-
-    // Iterate over x
-    for (int x = x1; x <= x2; x++) {
-        // Round the y coordinate, and draw
-        // swap back x and y if we swapped them initially
-        if (steep)
-            DrawPixel((int) (y + .5), x);
-        else
-            DrawPixel(x, (int) (y + .5));
-
-        y += slope;
-    }
-}
-
-void FastLCD::DrawThickLine(int x1, int y1, int x2, int y2) {
-    int dx = abs(x2 - x1);
-    int dy = abs(y2 - y1);
-    bool steep = (dy > dx);
-
-    // If the line is steep, we'll iterate over y
-    // instead of x. To keep code simple, I just
-    // swap and always iterate over x
-    if (steep) {
-        Swap(x1, y1);
-        Swap(x2, y2);
-    }
-
-    // Alwasy iterate from low x to high x
-    if (x1 > x2) {
-        Swap(x1, x2);
-        Swap(y1, y2);
-    }
-
-    // If x2==x1, then the line is just a pixel
-    if (x2 == x1) {
-        DrawPixel(x1, y1);
-        return;
-    }
-
-    float slope = (y2 - y1) / ((float) (x2 - x1));
-    float y = y1;
-
-    // Iterate over x
-    for (int x = x1; x <= x2; x++) {
-        // Round the y coordinate, and draw
-        // swap back x and y if we swapped them initially
-        if (steep) {
-            int pxy = lround(y + .5);
-            DrawPixel(pxy, x);
-            DrawPixel(pxy + 1, x);
-            DrawPixel(pxy - 1, x);
-            DrawPixel(pxy, x + 1);
-            DrawPixel(pxy, x - 1);
-        } else {
-            int pxy = lround(y + .5);
-            DrawPixel(x, pxy);
-            DrawPixel(x + 1, pxy);
-            DrawPixel(x - 1, pxy);
-            DrawPixel(x, pxy + 1);
-            DrawPixel(x, pxy - 1);
+    while (true) {
+        set_pixel(x0, y0, foreground_palette_index);
+        if (thick) {
+            set_pixel(x0 + 1, y0, foreground_palette_index);
+            set_pixel(x0 - 1, y0, foreground_palette_index);
+            set_pixel(x0, y0 + 1, foreground_palette_index);
+            set_pixel(x0, y0 - 1, foreground_palette_index);
         }
-
-        y += slope;
+        if (x0 == x1 && y0 == y1) break;
+        int e2 = 2 * error;
+        if (e2 >= dy) {
+            if (x0 == x1) break;
+            error += dy;
+            x0 += sx;
+        }
+        if (e2 <= dx) {
+            if (y0 == y1) break;
+            error += dx;
+            y0 += sy;
+        }
     }
 }
 
@@ -888,9 +851,10 @@ void FastLCD::WriteCharAt(int x, int y, char charNum) {
 }
 
 void FastLCD::LCDSetColor(uint8_t palette_index) {
-    GPIOB_PCOR = ( 1 << 9 ) | ( 1 << 8 );
-    GPIOC_PCOR = ( 1 << 4 ) | ( 1 << 5 ) | ( 1 << 6 ) | ( 1 << 7 ) | ( 1 << 12 ) | ( 1 << 13 ) | ( 1 << 14 ) | ( 1 << 15 ) | ( 1 << 16 ) | ( 1 << 17 ) | ( 1 << 18 ) | ( 1 << 19 );
-    GPIOD_PCOR = ( 1 << 0 ) | ( 1 << 2 ) | ( 1 << 3 ) | ( 1 << 4 );
+    GPIOB_PCOR = (1 << 9) | (1 << 8);
+    GPIOC_PCOR = (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7) | (1 << 12) | (1 << 13) | (1 << 14) | (1 << 15) | (1 << 16) |
+                 (1 << 17) | (1 << 18) | (1 << 19);
+    GPIOD_PCOR = (1 << 0) | (1 << 2) | (1 << 3) | (1 << 4);
 
     GPIOB_PSOR = palette[palette_index].BVal;
     GPIOC_PSOR = palette[palette_index].CVal;
