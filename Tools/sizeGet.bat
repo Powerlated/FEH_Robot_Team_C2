@@ -1,6 +1,6 @@
-@for /f "tokens=1" %%a in (../size.txt) do @set text=%%a
-@for /f "tokens=2" %%a in (../size.txt) do @set data=%%a
-@for /f "tokens=3" %%a in (../size.txt) do @set bss=%%a
+@for /f "tokens=1" %%a in (./size.txt) do @set text=%%a
+@for /f "tokens=2" %%a in (./size.txt) do @set data=%%a
+@for /f "tokens=3" %%a in (./size.txt) do @set bss=%%a
 
 @set /a flash=%text%+%data%
 @set /a ram=%data%+%bss%

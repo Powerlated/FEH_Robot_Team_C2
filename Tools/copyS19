@@ -10,7 +10,7 @@ else
 	echo "S19 file didn't exist on SD card, therefore wasn't deleted." >&2
 fi
 
-if cp ../*.s19 /Volumes/FEHSD/CODE.S19; then
+if cp ./*.s19 /Volumes/FEHSD/CODE.S19; then
 	echo "S19 file copied from project to SD card and renamed to CODE.S19."
 	echo "----------------------------------------------"
 	echo "Download Successful. Please eject the SD card."

@@ -1,7 +1,7 @@
 #ifndef SPI_H
 #define SPI_H
 
-#include "fehproteusfirmware/Startup/derivative.h"
+#include "Startup/derivative.h"
 #include "FEHUtility.h"
 
 void SPI_Init();

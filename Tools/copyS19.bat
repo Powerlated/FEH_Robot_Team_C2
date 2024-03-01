@@ -7,7 +7,7 @@ if [%usb%] == [] goto ERROR2
 if not exist %usb%\ goto ERROR2
 del %usb%\*.S19
 
-xcopy ..\*.s19 %usb%\
+xcopy .\*.s19 %usb%\
 IF %ERRORLEVEL% NEQ 0 GOTO COPY_ERROR
 echo S19 succesfully copied
 

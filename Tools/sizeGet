@@ -1,4 +1,4 @@
-IFS=$' ' read -d '' -r -a lines < ../size.txt
+IFS=$' ' read -d '' -r -a lines < ./size.txt
 
 
 let text="${lines[5]}"

@@ -11,3 +11,13 @@
 .DS_Store
 
 doc_out/
+
+*.d
+*.o
+*.elf
+*.s19
+*.map
+.idea/
+.vscode/
+*.objdump
+size.txt
