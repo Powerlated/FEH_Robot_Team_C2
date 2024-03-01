@@ -728,9 +728,7 @@ namespace visualization {
         }
     }
 
-    void draw_compass() {
-        Mat mat = Mat<3, 3>::RotationTranslation(-robot.angle + rad(180), LCD_WIDTH / 2.0, LCD_HEIGHT / 2.0);
-
+    void draw_compass(Mat<3, 3> mat) {
         FastLCD::SetFontPaletteIndex(White);
         for (int i = 0; i < 4; i++) {
             Vec<3> offs{-12.0 / 2, -17.0 / 2, 1};
@@ -743,6 +741,30 @@ namespace visualization {
 
         FastLCD::SetFontPaletteIndex(Yellow);
         draw_vtx_list(arrow_vtx, arrow_vtx_len, mat, true);
+    }
+
+    void draw_grid_lines(Mat<3, 3> mat) {
+        FastLCD::SetFontPaletteIndex(Gray);
+        constexpr int HALF_GRID_WIDTH = 208;
+        constexpr int GRID_SIZE = 32;
+        static_assert((HALF_GRID_WIDTH * 2) % GRID_SIZE == 0);
+        for (int s = -HALF_GRID_WIDTH; s < HALF_GRID_WIDTH; s += GRID_SIZE) {
+            Vec<3> v1{(float) s, (float) -HALF_GRID_WIDTH, 1};
+            Vec<3> v2{(float) s, (float) HALF_GRID_WIDTH, 1};
+            v1 = mat.multiply(v1);
+            v2 = mat.multiply(v2);
+            FastLCD::DrawLine(
+                    (int) v1.vec[0], (int) v1.vec[1],
+                    (int) v2.vec[0], (int) v2.vec[1]);
+
+            Vec<3> h1{(float) -HALF_GRID_WIDTH, (float) s, 1};
+            Vec<3> h2{(float) HALF_GRID_WIDTH, (float) s, 1};
+            h1 = mat.multiply(h1);
+            h2 = mat.multiply(h2);
+            FastLCD::DrawLine(
+                    (int) h1.vec[0], (int) h1.vec[1],
+                    (int) h2.vec[0], (int) h2.vec[1]);
+        }
     }
 
     extern "C" void PIT1_IRQHandler(void) {
@@ -763,7 +785,9 @@ namespace visualization {
 
         FastLCD::Clear();
         if (display_compass) {
-            draw_compass();
+            Mat mat = Mat<3, 3>::RotationTranslation(-robot.angle + rad(180), LCD_WIDTH / 2.0, LCD_HEIGHT / 2.0);
+            draw_grid_lines(mat);
+            draw_compass(mat);
         } else {
             FastLCD::SetFontPaletteIndex(White);
             /*
