@@ -1,3 +1,4 @@
+#include "CMSIS/ARMCM4.h"
 #include "FEHIO.h"
 #include <optional>
 #include "FEHLCD.h"
@@ -178,27 +179,11 @@ void DigitalEncoder::ChannelBEdge(bool is_high) {
 
 int DigitalEncoder::Counts() const { return counts; }
 
-void DigitalEncoder::ResetCounts() { counts = 0; }
-
-// Function used to enable interrupt register
-void enable_port_irq(int irq) {
-    int div;
-    div = (irq - 16) / 32;
-
-    switch (div) {
-        case 0x0:
-            NVICICPR0 |= 1 << ((irq - 16) % 32);
-            NVICISER0 |= 1 << ((irq - 16) % 32);
-            break;
-        case 0x1:
-            NVICICPR1 |= 1 << ((irq - 16) % 32);
-            NVICISER1 |= 1 << ((irq - 16) % 32);
-            break;
-        case 0x2:
-            NVICICPR2 |= 1 << ((irq - 16) % 32);
-            NVICISER2 |= 1 << ((irq - 16) % 32);
-            break;
-    }
+void DigitalEncoder::ResetCounts() {
+	// Block interrupts during DigitalEncoder::ResetCounts to prevent race condition
+	__set_PRIMASK(1);
+	counts = 0;
+	__set_PRIMASK(0);
 }
 
 constexpr void DigitalEncoder::SetupGPIO(FEHIO::FEHIOPin pin) {
@@ -209,19 +194,19 @@ constexpr void DigitalEncoder::SetupGPIO(FEHIO::FEHIOPin pin) {
         case PortA: {
             PORTA_BASE_PTR->PCR[gpio_pin_number] = pcr;
             GPIOA_PDDR &= ~GPIO_PDDR_PDD(GPIO_PIN(gpio_pin_number));
-            enable_port_irq(INT_PORTA);
+            NVIC_EnableIRQ((IRQn_Type)(INT_PORTA - 16));
             break;
         }
         case PortB: {
             PORTB_BASE_PTR->PCR[gpio_pin_number] = pcr;
             GPIOB_PDDR &= ~GPIO_PDDR_PDD(GPIO_PIN(gpio_pin_number));
-            enable_port_irq(INT_PORTB);
+			NVIC_EnableIRQ((IRQn_Type)(INT_PORTB - 16));
             break;
         }
         case PortC: {
             PORTC_BASE_PTR->PCR[gpio_pin_number] = pcr;
             GPIOC_PDDR &= ~GPIO_PDDR_PDD(GPIO_PIN(gpio_pin_number));
-            enable_port_irq(INT_PORTC);
+			NVIC_EnableIRQ((IRQn_Type)(INT_PORTC - 16));
             break;
         }
         case PortD: {
@@ -231,7 +216,7 @@ constexpr void DigitalEncoder::SetupGPIO(FEHIO::FEHIOPin pin) {
         case PortE: {
             PORTE_BASE_PTR->PCR[gpio_pin_number] = pcr;
             GPIOE_PDDR &= ~GPIO_PDDR_PDD(GPIO_PIN(gpio_pin_number));
-            enable_port_irq(INT_PORTE);
+			NVIC_EnableIRQ((IRQn_Type)(INT_PORTE - 16));
             break;
         }
     }
@@ -347,14 +332,14 @@ AnalogInputPin::AnalogInputPin(FEHIO::FEHIOPin _pin) {
 //Analog read function causes digital output to behave strangely????????
 float AnalogInputPin::Value() {
     int analogPin = AnalogPinNumbers[pin];
-    ADCNumber adcNum = ADCNumbers[pin];
+    int adcNum = ADCNumbers[pin];
 
     Master_Adc_Config.STATUS1A = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(analogPin);
     Master_Adc_Config.STATUS1B = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(analogPin);
 
     unsigned int result;
 
-    if (adcNum == ADC0) {
+    if (adcNum == 0) {
         ADC_Config_Alt(ADC0_BASE_PTR, &Master_Adc_Config);  // config ADC0
 
         // Check the status control register to see is the COnversion is COmplete
@@ -376,14 +361,14 @@ float AnalogInputPin::Value() {
 
 int AnalogEncoder::EncoderValue() {
     int analogPin = AnalogPinNumbers[pin];
-    ADCNumber adcNum = ADCNumbers[pin];
+    int adcNum = ADCNumbers[pin];
 
     Encoder_Adc_Config.STATUS1A = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(analogPin);
     Encoder_Adc_Config.STATUS1B = AIEN_OFF | DIFF_SINGLE | ADC_SC1_ADCH(analogPin);
 
     int result;
 
-    if (adcNum == ADC0) {
+    if (adcNum == 0) {
         ADC_Config_Alt(ADC0_BASE_PTR, &Encoder_Adc_Config);  // config ADC0
 
         // Check the status control register to see is the COnversion is COmplete
