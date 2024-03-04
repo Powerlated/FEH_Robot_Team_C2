@@ -98,46 +98,58 @@ AnalogInputPin right_opto(FEHIO::P0_0);
 AnalogInputPin middle_opto(FEHIO::P0_1);
 AnalogInputPin left_opto(FEHIO::P0_2);
 
-int main() {
-	float x, y;
+FEHMotor ml(FEHMotor::FEHMotorPort::Motor0,
 
+4);
+
+FEHMotor mr(FEHMotor::FEHMotorPort::Motor1,
+
+4);
+
+void left() {
+	ml.SetPercent(50);
+	mr.SetPercent(100);
+	FastLCD::WriteLine("Left");
+}
+
+void fwd() {
+	ml.SetPercent(100);
+	mr.SetPercent(100);
+	FastLCD::WriteLine("Forward");
+}
+
+void right() {
+	ml.SetPercent(100);
+	mr.SetPercent(50);
+	FastLCD::WriteLine("Right");
+}
+
+int main() {
 	FastLCD::SetPaletteColor(Black, BLACK);
 	FastLCD::SetPaletteColor(White, WHITE);
-
 	FastLCD::SetFontPaletteIndex(White);
-	FastLCD::Clear();
-	while (true) {
-		FastLCD::WriteLine(" ");
-		FastLCD::WriteLine("Press screen to gather");
-		FastLCD::WriteLine("optosensor data. (1000");
-		FastLCD::WriteLine("samples)");
-		FastLCD::DrawScreen();
 
+	constexpr float LEFT_THRESHOLD = 2;
+	constexpr float MIDDLE_THRESHOLD = 1.5;
+	constexpr float RIGHT_THRESHOLD = 2.2;
+
+	while (true) {
 		FastLCD::Clear();
 
-		while (!LCD.Touch(&x, &y)); //Wait for screen to be pressed
-		while (LCD.Touch(&x, &y)); //Wait for screen to be unpressed
+		float s_right = right_opto.Value();
+		float s_middle = middle_opto.Value();
+		float s_left = left_opto.Value();
 
-		float s_right = 0;
-		float s_middle = 0;
-		float s_left = 0;
-
-		constexpr int SAMPLES = 1000;
-		for (int i = 0; i < SAMPLES; i++) {
-			s_right += right_opto.Value();
-			s_middle += middle_opto.Value();
-			s_left += left_opto.Value();
+		if (s_middle > MIDDLE_THRESHOLD) {
+			fwd();
+		} else {
+			if (s_left > s_right) {
+				left();
+			} else {
+				right();
+			}
 		}
 
-		s_right /= SAMPLES;
-		s_middle /= SAMPLES;
-		s_left /= SAMPLES;
-
-		FastLCD::Write(" Right: ");
-		FastLCD::WriteLine(s_right);
-		FastLCD::Write("Middle: ");
-		FastLCD::WriteLine(s_middle);
-		FastLCD::Write("  Left: ");
-		FastLCD::WriteLine(s_left);
+		FastLCD::DrawScreen();
 	}
 }
