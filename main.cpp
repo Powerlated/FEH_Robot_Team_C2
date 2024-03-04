@@ -140,14 +140,6 @@ struct Mat {
 				0, 0, 1
 		};
 	}
-
-	static Mat<3, 3> Translation(float dx, float dy) {
-		return Mat<3, 3>{
-				1, 0, dx,
-				0, 1, dy,
-				0, 0, 1
-		};
-	}
 };
 
 void stop_robot_control_loop() {
@@ -328,26 +320,36 @@ struct Robot {
 		Inch arclength_r = DRIVE_INCHES_PER_COUNT_R * (float) counts_r;
 
 		Inch arclength_inner;
-		if (arclength_l > arclength_r) {
+		if (abs(arclength_l) > abs(arclength_r)) {
 			arclength_inner = arclength_r;
 		} else {
 			arclength_inner = arclength_l;
 		}
 
 		Radian dAngle = (arclength_l - arclength_r) / TRACK_WIDTH;
-		Inch radius_inner = fabsf(arclength_inner / dAngle);
+		if (dAngle != 0) {
+			Inch radius_inner = fabsf(arclength_inner / dAngle);
 
-		// Let R be the distance from the arc center to the point between the wheels
-		R = radius_inner + TRACK_WIDTH / 2;
+			// Let R be the distance from the arc center to the point between the wheels
+			R = radius_inner + TRACK_WIDTH / 2;
 
-		Inch dx = R * (cosf(angle + dAngle) - cosf(angle));
-		Inch dy = R * (sinf(angle + dAngle) - sinf(angle));
+			Inch dx = R * (cos(angle + dAngle) - cos(angle));
+			Inch dy = -R * (sin(angle + dAngle) - sin(angle));
+
+			if (abs(arclength_l) > abs(arclength_r)) {
+				dx *= -1;
+				dy *= -1;
+			}
+
+			pos.vec[0] += dx;
+			pos.vec[1] += dy;
+			angle += dAngle;
+		} else {
+			pos.vec[0] += arclength_l * sin(angle);
+			pos.vec[1] += arclength_l * cos(angle);
+		}
 
 		dist += (arclength_l + arclength_r) / 2;
-
-		pos.vec[0] += dx;
-		pos.vec[1] += dy;
-		angle += dAngle;
 	}
 
 	void task_finished() {
@@ -738,16 +740,23 @@ namespace visualization {
 		draw_vtx_list(arrow_vtx, arrow_vtx_len, mat, true);
 	}
 
-	constexpr int HALF_GRID_WIDTH = 208;
+	constexpr int HALF_GRID_WIDTH = 240;
 	constexpr float GRID_SQUARE_INCHES = 3.0;
 	constexpr int GRID_SIZE = 32;
+	constexpr float INCH_TO_PIXEL = GRID_SIZE / GRID_SQUARE_INCHES;
 
 	void draw_grid_lines(Mat<3, 3> mat) {
+		Vec<3> robot_offset{
+				(float) fmod(robot.pos.vec[0] * INCH_TO_PIXEL, GRID_SIZE),
+				(float) fmod(-robot.pos.vec[1] * INCH_TO_PIXEL, GRID_SIZE),
+				0};
 		FastLCD::SetFontPaletteIndex(Gray);
 		static_assert((HALF_GRID_WIDTH * 2) % GRID_SIZE == 0);
 		for (int s = -HALF_GRID_WIDTH; s < HALF_GRID_WIDTH; s += GRID_SIZE) {
 			Vec<3> v1{(float) s, (float) -HALF_GRID_WIDTH, 1};
 			Vec<3> v2{(float) s, (float) HALF_GRID_WIDTH, 1};
+			v1 = v1.add(robot_offset);
+			v2 = v2.add(robot_offset);
 			v1 = mat.multiply(v1);
 			v2 = mat.multiply(v2);
 			FastLCD::DrawLine(
@@ -756,6 +765,8 @@ namespace visualization {
 
 			Vec<3> h1{(float) -HALF_GRID_WIDTH, (float) s, 1};
 			Vec<3> h2{(float) HALF_GRID_WIDTH, (float) s, 1};
+			h1 = h1.add(robot_offset);
+			h2 = h2.add(robot_offset);
 			h1 = mat.multiply(h1);
 			h2 = mat.multiply(h2);
 			FastLCD::DrawLine(
@@ -765,21 +776,29 @@ namespace visualization {
 	}
 
 	void draw_task_visualizer(Mat<3, 3> mat) {
+		Vec<3> robot_offset{robot.pos.vec[0] * INCH_TO_PIXEL, -robot.pos.vec[1] * INCH_TO_PIXEL, 0};
 		FastLCD::SetFontPaletteIndex(Red);
 		RobotTask *head = robot.task_list;
 		Radian angle = rad(-45);
 		Vec<3> pos{0, 0, 1};
 		while (head != nullptr) {
 			auto straight = dynamic_cast<Straight *>(head);
-			if (straight != nullptr) {
-				// put 12 inches in a grid square
-				float grid_size_mul = GRID_SIZE / GRID_SQUARE_INCHES;
-				float dx = straight->inches * cosf(angle + rad(90)) * grid_size_mul;
-				float dy = straight->inches * sinf(angle + rad(90)) * grid_size_mul;
+			auto straight_until_switch = dynamic_cast<StraightUntilSwitch *>(head);
 
-				Vec<3> p1 = mat.multiply(pos);
+			if (straight != nullptr || straight_until_switch != nullptr) {
+				float inches;
+
+				if (straight != nullptr) inches = straight->inches;
+				if (straight_until_switch != nullptr) inches = straight_until_switch->inches;
+
+				float grid_size_mul = GRID_SIZE / GRID_SQUARE_INCHES;
+				float dx = inches * cosf(angle + rad(90)) * grid_size_mul;
+				float dy = inches * sinf(angle + rad(90)) * grid_size_mul;
+
+				Vec<3> offset_pos = pos.add(robot_offset);
+				Vec<3> p1 = mat.multiply(offset_pos);
 				Vec<3> p2{dx, dy, 0};
-				p2 = p2.add(pos);
+				p2 = p2.add(offset_pos);
 				p2 = mat.multiply(p2);
 
 				FastLCD::DrawLine(
@@ -800,7 +819,6 @@ namespace visualization {
 			head = head->next_task;
 		}
 	}
-
 
 	extern "C" void PIT1_IRQHandler(void) {
 		clear_PIT_irq_flag<1>();
@@ -826,16 +844,19 @@ namespace visualization {
 			draw_compass(mat);
 		} else {
 			FastLCD::SetFontPaletteIndex(White);
-			FastLCD::Write("Tick CPU usage: ");
-			FastLCD::Write((tick_cycles * 100) / (int) cyc(1.0 / TICK_RATE) + 1); // add 1% safety margin
-			FastLCD::WriteLine("%");
-			FastLCD::Write("Tick count: ");
-			FastLCD::WriteLine((int) robot.tick_count);
+//			FastLCD::Write("Tick CPU usage: ");
+//			FastLCD::Write((tick_cycles * 100) / (int) cyc(1.0 / TICK_RATE) + 1); // add 1% safety margin
+//			FastLCD::WriteLine("%");
+//			FastLCD::Write("Tick count: ");
+//			FastLCD::WriteLine((int) robot.tick_count);
 
-			//            FastLCD::Write("X/Ymm: ");
-			//            FastLCD::Write(robot.pos.vec[0] * 1000);
-			//            FastLCD::Write(" ");
-			//            FastLCD::WriteLine(robot.pos.vec[1] * 1000);
+			FastLCD::Write("X/Yin: ");
+			FastLCD::Write(robot.pos.vec[0]);
+			FastLCD::Write(" ");
+			FastLCD::WriteLine(robot.pos.vec[1]);
+
+			FastLCD::Write("Turn radius: ");
+			FastLCD::WriteLine(robot.R);
 
 			FastLCD::Write("Angle: ");
 			FastLCD::WriteLine(deg(robot.angle));
@@ -847,8 +868,6 @@ namespace visualization {
 			FastLCD::Write("R Motor Angle: ");
 			FastLCD::WriteLine((robot.total_counts_r / IGWAN_COUNTS_PER_REV) * 360);
 
-			FastLCD::Write("Turn radius: ");
-			FastLCD::WriteLine(robot.R);
 			FastLCD::Write("ControlMode: ");
 			FastLCD::WriteLine(robot.control_mode_string());
 
