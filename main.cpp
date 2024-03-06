@@ -37,65 +37,13 @@ using Second = float;
 using Inch = float;
 using Hertz = int;
 
-constexpr Hertz PROTEUS_SYSTEM_HZ = 88000000.0;
-
-constexpr uint32_t cyc(const double sec) {
-	return (uint32_t) (sec * PROTEUS_SYSTEM_HZ);
+constexpr Radian rad(Degree deg) {
+	return (float) (deg * (M_PI / 180));
 }
 
-constexpr Hertz TICK_RATE = 1000;
-constexpr int SYSTICK_INTERVAL_CYCLES = cyc(1.0 / TICK_RATE);
-
-constexpr uint32_t ticks(const double sec) {
-	return (uint32_t) (sec * TICK_RATE);
+constexpr Degree deg(Radian rad) {
+	return (float) (rad * (180 / M_PI));
 }
-
-constexpr Hertz DIAGNOSTICS_HZ = 20;
-constexpr Microsecond TICK_INTERVAL_MICROSECONDS = (1.0 / TICK_RATE) * 1000000;
-constexpr Inch TRACK_WIDTH = 8.276;
-
-constexpr float IGWAN_COUNTS_PER_REV = 636;
-constexpr Inch WHEEL_DIA = 2.5;
-constexpr Inch INCHES_PER_REV = WHEEL_DIA * M_PI;
-constexpr Inch INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
-constexpr float DRIVE_SLEW_RATE = 200; // Percent per m/s
-constexpr float TURN_SLEW_RATE = 50; // Percent per radian/s
-constexpr float DRIVE_MIN_PERCENT = 0;
-constexpr float TURN_MIN_PERCENT = 0;
-constexpr float STOPPED_I = 10;
-constexpr float STOPPED_I_ACCUMULATE = 6;
-constexpr float STOPPED_I_HIGHPASS = 0.999;
-constexpr float WAIT_FOR_LIGHT_THRESHOLD_VOLTAGE = 0.5;
-constexpr int WAIT_FOR_LIGHT_CONFIRM_TICKS = ticks(0.1);
-
-constexpr Second FORCE_START_HOLD_SEC = 0.5;
-constexpr Second FORCE_START_TOTAL_SEC = 1;
-
-constexpr Volt DRIVE_MOTOR_MAX_VOLTAGE = 9.0;
-constexpr auto DRIVE_MOTOR_L_PORT = FEHMotor::Motor0;
-constexpr auto DRIVE_MOTOR_R_PORT = FEHMotor::Motor1;
-constexpr auto ENCODER_L_PIN_0 = FEHIO::FEHIOPin::P3_0;
-constexpr auto ENCODER_L_PIN_1 = FEHIO::FEHIOPin::P3_1;
-constexpr auto ENCODER_R_PIN_0 = FEHIO::FEHIOPin::P0_0;
-constexpr auto ENCODER_R_PIN_1 = FEHIO::FEHIOPin::P0_1;
-constexpr auto LIGHT_SENSOR_PIN = FEHIO::FEHIOPin::P2_0;
-constexpr auto BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_7;
-constexpr Inch DRIVE_INCHES_PER_COUNT_L = INCHES_PER_COUNT;
-constexpr Inch DRIVE_INCHES_PER_COUNT_R = INCHES_PER_COUNT;
-
-// Declared in startup_mk60d10.cpp
-constexpr int BSP_BUS_DIV = 2;
-
-constexpr int LCD_WIDTH = 320;
-constexpr int LCD_HEIGHT = 240;
-
-enum {
-	Black = 0,
-	White,
-	Gray,
-	Red,
-	Yellow,
-} PaletteColors;
 
 template<int m>
 struct Vec {
@@ -109,6 +57,11 @@ struct Vec {
 		}
 
 		return sum;
+	}
+
+	float dist(Vec<m> &b) const {
+		static_assert(m >= 2);
+		return sqrt(pow(b.vec[0] - vec[0], 2) + pow(b.vec[1] - vec[1], 2));
 	}
 };
 
@@ -142,16 +95,74 @@ struct Mat {
 	}
 };
 
+constexpr Hertz PROTEUS_SYSTEM_HZ = 88000000.0;
+
+constexpr uint32_t cyc(const double sec) {
+	return (uint32_t) (sec * PROTEUS_SYSTEM_HZ);
+}
+
+constexpr Hertz TICK_RATE = 1000;
+constexpr int SYSTICK_INTERVAL_CYCLES = cyc(1.0 / TICK_RATE);
+
+constexpr uint32_t ticks(const double sec) {
+	return (uint32_t) (sec * TICK_RATE);
+}
+
+constexpr Hertz DIAGNOSTICS_HZ = 20;
+constexpr Microsecond TICK_INTERVAL_MICROSECONDS = (1.0 / TICK_RATE) * 1000000;
+constexpr Inch TRACK_WIDTH = 8.276;
+
+constexpr float IGWAN_COUNTS_PER_REV = 636;
+constexpr Inch WHEEL_DIA = 2.5;
+constexpr Inch INCHES_PER_REV = WHEEL_DIA * M_PI;
+constexpr Inch INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
+constexpr float DRIVE_SLEW_RATE = 200; // Percent per m/s
+constexpr float TURN_SLEW_RATE = 200; // Percent per radian/s
+constexpr float DRIVE_MIN_PERCENT = 0;
+constexpr float TURN_MIN_PERCENT = 0;
+constexpr float STOPPED_I = 10;
+constexpr float STOPPED_I_ACCUMULATE = 3;
+constexpr float STOPPED_I_HIGHPASS = 0.999;
+constexpr float START_LIGHT_THRESHOLD_VOLTAGE = 0.5;
+constexpr float TICKET_LIGHT_THRESHOLD_VOLTAGE = 2.2;
+constexpr float RED_LIGHT_VOLTAGE = 0.35;
+constexpr float BLUE_LIGHT_VOLTAGE = 1.5;
+constexpr int WAIT_FOR_LIGHT_CONFIRM_TICKS = ticks(0.5);
+
+constexpr Second FORCE_START_HOLD_SEC = 0.5;
+constexpr Second FORCE_START_TOTAL_SEC = 1;
+
+constexpr Volt DRIVE_MOTOR_MAX_VOLTAGE = 9.0;
+constexpr auto DRIVE_MOTOR_L_PORT = FEHMotor::Motor0;
+constexpr auto DRIVE_MOTOR_R_PORT = FEHMotor::Motor1;
+constexpr auto ENCODER_L_PIN_0 = FEHIO::FEHIOPin::P3_0;
+constexpr auto ENCODER_L_PIN_1 = FEHIO::FEHIOPin::P3_1;
+constexpr auto ENCODER_R_PIN_0 = FEHIO::FEHIOPin::P0_0;
+constexpr auto ENCODER_R_PIN_1 = FEHIO::FEHIOPin::P0_1;
+constexpr auto LIGHT_SENSOR_PIN = FEHIO::FEHIOPin::P2_0;
+constexpr auto BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_7;
+constexpr Inch DRIVE_INCHES_PER_COUNT_L = INCHES_PER_COUNT;
+constexpr Inch DRIVE_INCHES_PER_COUNT_R = INCHES_PER_COUNT;
+
+constexpr Vec<2> INITIAL_POS{0, 0};
+constexpr Radian INITIAL_ANGLE = rad(-45);
+
+// Declared in startup_mk60d10.cpp
+constexpr int BSP_BUS_DIV = 2;
+
+constexpr int LCD_WIDTH = 320;
+constexpr int LCD_HEIGHT = 240;
+
+enum {
+	Clear = 0,
+	White,
+	Gray,
+	Red,
+	Yellow,
+} PaletteColors;
+
 void stop_robot_control_loop() {
 	SysTick_BASE_PTR->CSR = 0;
-}
-
-constexpr Radian rad(Degree deg) {
-	return (float) (deg * (M_PI / 180));
-}
-
-constexpr Degree deg(Radian rad) {
-	return (float) (rad * (180 / M_PI));
 }
 
 struct CycTimer {
@@ -211,12 +222,19 @@ struct PIController {
 * V_max = (-at+sqrt((a^2)(t^2) + 4da)) / 2
 */
 
+enum TicketLightColor {
+	TICKET_LIGHT_NONE,
+	TICKET_LIGHT_RED,
+	TICKET_LIGHT_BLUE
+};
+
 enum class ControlMode {
 	INIT_TASK,
 	TURNING,
-	FORWARD,
-	FORWARD_UNTIL_SWITCH,
-	WAIT_FOR_LIGHT
+	STRAIGHT,
+	STRAIGHT_UNTIL_SWITCH,
+	WAIT_FOR_START_LIGHT,
+	WAIT_FOR_TICKET_LIGHT
 };
 
 struct RobotTask {
@@ -241,24 +259,26 @@ struct Robot {
 	DigitalEncoder er{ENCODER_R_PIN_0, ENCODER_R_PIN_1};
 	DigitalInputPin bump_switch{BUMP_SWITCH_PIN};
 	AnalogInputPin light_sensor{LIGHT_SENSOR_PIN};
-	Volt light_sensor_value{};
 	FEHServo servo{FEHServo::FEHServoPort::Servo0};
 
 	RobotTask *current_task{};
 	RobotTask *task_list{};
 	ControlMode control_mode = ControlMode::INIT_TASK;
 
+	// Start Light / Ticket Light variables
 	bool force_start{};
+	Volt light_sensor_value{};
 	int last_nonconfident_wait_for_light_tick{};
+	float light_sensor_average_value{};
+	TicketLightColor ticket_light_color = TICKET_LIGHT_NONE;
 
 	volatile int tick_count{}, task_tick_count{}, task_number{};
 
+	// Drivetrain variables
 	float pct_l{}, pct_r{};
 	float target_pct{};
 	Inch target_dist{};
-
 	int total_counts_l{}, total_counts_r{};
-
 	PIController angle_controller = PIController(TICK_RATE, 100, 50, 30);
 
 	// Position is in inches
@@ -268,7 +288,6 @@ struct Robot {
 	Radian target_angle{};
 	Radian turn_start_angle{};
 	bool turning_right{};
-	Inch dist{};
 	float R{};
 
 	int last_encoder_l_tick_at = 0;
@@ -279,14 +298,16 @@ struct Robot {
 		switch (control_mode) {
 			case ControlMode::INIT_TASK:
 				return "InitTask";
-			case ControlMode::FORWARD:
+			case ControlMode::STRAIGHT:
 				return "Forward";
-			case ControlMode::FORWARD_UNTIL_SWITCH:
+			case ControlMode::STRAIGHT_UNTIL_SWITCH:
 				return "FwdTilSwitch";
 			case ControlMode::TURNING:
 				return "Turning";
-			case ControlMode::WAIT_FOR_LIGHT:
-				return "Wait4Light";
+			case ControlMode::WAIT_FOR_START_LIGHT:
+				return "WaitStartLight";
+			case ControlMode::WAIT_FOR_TICKET_LIGHT:
+				return "WaitTicketLight";
 		}
 		return "?????";
 	}
@@ -305,10 +326,10 @@ struct Robot {
 			last_encoder_r_tick_at = tick_count;
 		}
 
-		if (last_encoder_l_tick_at + ticks(0.05) < tick_count) {
+		if (last_encoder_l_tick_at + ticks(0.025) < tick_count) {
 			stopped_i += STOPPED_I_ACCUMULATE / TICK_RATE;
 		}
-		if (last_encoder_r_tick_at + ticks(0.05) < tick_count) {
+		if (last_encoder_r_tick_at + ticks(0.025) < tick_count) {
 			stopped_i += STOPPED_I_ACCUMULATE / TICK_RATE;
 		}
 		stopped_i *= STOPPED_I_HIGHPASS;
@@ -337,7 +358,7 @@ struct Robot {
 			Inch dy = -R * (sin(angle + dAngle) - sin(angle));
 
 			if (abs(arclength_l) > abs(arclength_r)) {
-				dx *= -1;
+				   dx *= -1;
 				dy *= -1;
 			}
 
@@ -348,8 +369,6 @@ struct Robot {
 			pos.vec[0] += arclength_l * sin(angle);
 			pos.vec[1] += arclength_l * cos(angle);
 		}
-
-		dist += (arclength_l + arclength_r) / 2;
 	}
 
 	void task_finished() {
@@ -405,20 +424,50 @@ struct Robot {
 				// The origin is the starting pad.
 				// angle = 0 degrees is straight up toward the right ramp,
 				// so the bot will be pointed toward -45 degrees when placed on the starting pad.
-				pos = {0, 0};
-				angle = rad(-45);
-				target_angle = rad(-45);
+				pos = INITIAL_POS;
+				angle = INITIAL_ANGLE;
+				target_angle = INITIAL_ANGLE;
 
 				task_finished();
 				return;
-			case ControlMode::WAIT_FOR_LIGHT:
+			case ControlMode::WAIT_FOR_TICKET_LIGHT:
+			case ControlMode::WAIT_FOR_START_LIGHT:
 				ml.Stop();
 				mr.Stop();
 
-				if (light_sensor_value >= WAIT_FOR_LIGHT_THRESHOLD_VOLTAGE) {
-					last_nonconfident_wait_for_light_tick = tick_count;
+				float threshold_voltage;
+				if (control_mode == ControlMode::WAIT_FOR_START_LIGHT) {
+					threshold_voltage = START_LIGHT_THRESHOLD_VOLTAGE;
+				} else {
+					threshold_voltage = TICKET_LIGHT_THRESHOLD_VOLTAGE;
 				}
-				if (force_start || last_nonconfident_wait_for_light_tick + WAIT_FOR_LIGHT_CONFIRM_TICKS < tick_count) {
+
+				light_sensor_average_value += light_sensor_value;
+				if (light_sensor_value >= threshold_voltage) {
+					last_nonconfident_wait_for_light_tick = tick_count;
+					light_sensor_average_value = 0;
+				}
+
+				if (control_mode == ControlMode::WAIT_FOR_START_LIGHT && force_start) {
+					task_finished();
+					return;
+				}
+
+				// wait some time until we're confident that the light has started
+				if (last_nonconfident_wait_for_light_tick + WAIT_FOR_LIGHT_CONFIRM_TICKS < tick_count) {
+					light_sensor_average_value /= WAIT_FOR_LIGHT_CONFIRM_TICKS;
+
+					if (control_mode == ControlMode::WAIT_FOR_TICKET_LIGHT) {
+						float red_dist = abs(RED_LIGHT_VOLTAGE - light_sensor_average_value);
+						float blue_dist = abs(BLUE_LIGHT_VOLTAGE - light_sensor_average_value);
+
+						if (red_dist < blue_dist) {
+							ticket_light_color = TICKET_LIGHT_RED;
+						} else {
+							ticket_light_color = TICKET_LIGHT_BLUE;
+						}
+					}
+
 					task_finished();
 				}
 				return;
@@ -447,13 +496,15 @@ struct Robot {
 				}
 				return;
 			}
-			case ControlMode::FORWARD_UNTIL_SWITCH:
+			case ControlMode::STRAIGHT_UNTIL_SWITCH:
 				if (!bump_switch.Value()) {
 					task_finished();
 					return;
 				}
-			case ControlMode::FORWARD: {
+			case ControlMode::STRAIGHT: {
 				control_effort = angle_controller.process(target_angle, angle);
+
+				float dist = pos.dist(pos0);
 
 				Inch dist_remain = fabs(target_dist) - fabs(dist);
 				float slewed_pct = slew(
@@ -513,7 +564,20 @@ struct WaitForStartLight : RobotTask {
 	explicit WaitForStartLight(int timeout_ms) : RobotTask(), timeout_ms(timeout_ms) {}
 
 	void execute() override {
-		robot.control_mode = ControlMode::WAIT_FOR_LIGHT;
+		robot.control_mode = ControlMode::WAIT_FOR_START_LIGHT;
+		robot.light_sensor_average_value = 0;
+		robot.last_nonconfident_wait_for_light_tick = robot.tick_count;
+	}
+};
+
+struct WaitForTicketLight : RobotTask {
+	// TODO: Implement WaitForLight timeout
+	explicit WaitForTicketLight(int ms) : RobotTask() {};
+
+	void execute() override {
+		robot.control_mode = ControlMode::WAIT_FOR_TICKET_LIGHT;
+		robot.light_sensor_average_value = 0;
+		robot.last_nonconfident_wait_for_light_tick = robot.tick_count;
 	}
 };
 
@@ -523,27 +587,22 @@ struct Straight : RobotTask {
 	explicit Straight(Inch inches) : RobotTask(), inches(inches) {};
 
 	void execute() override {
-		robot.dist = 0;
 		robot.pos0 = robot.pos;
 		robot.target_dist = inches;
 		robot.angle_controller.reset();
-		robot.control_mode = ControlMode::FORWARD;
+		robot.control_mode = ControlMode::STRAIGHT;
 		robot.stopped_i = 0;
 	}
 };
 
-struct StraightUntilSwitch : RobotTask {
+struct StraightUntilSwitch : Straight {
 	Inch inches;
 
-	explicit StraightUntilSwitch(Inch inches) : RobotTask(), inches(inches) {};
+	explicit StraightUntilSwitch(Inch inches) : Straight(inches), inches(inches) {};
 
 	void execute() override {
-		robot.dist = 0;
-		robot.pos0 = robot.pos;
-		robot.target_dist = inches;
-		robot.angle_controller.reset();
-		robot.control_mode = ControlMode::FORWARD_UNTIL_SWITCH;
-		robot.stopped_i = 0;
+		Straight::execute();
+		robot.control_mode = ControlMode::STRAIGHT_UNTIL_SWITCH;
 	}
 };
 
@@ -583,14 +642,6 @@ struct Position4Bar : RobotTask {
 	explicit Position4Bar(Degree target_angle) : RobotTask(), target_angle(target_angle) {};
 
 	float target_angle;
-
-	void execute() override {
-		// TODO
-	}
-};
-
-struct WaitForTicketLight : RobotTask {
-	explicit WaitForTicketLight(int ms) : RobotTask() {};
 
 	void execute() override {
 		// TODO
@@ -779,7 +830,7 @@ namespace visualization {
 		Vec<3> robot_offset{robot.pos.vec[0] * INCH_TO_PIXEL, -robot.pos.vec[1] * INCH_TO_PIXEL, 0};
 		FastLCD::SetFontPaletteIndex(Red);
 		RobotTask *head = robot.task_list;
-		Radian angle = rad(-45);
+		Radian angle = INITIAL_ANGLE;
 		Vec<3> pos{0, 0, 1};
 		while (head != nullptr) {
 			auto straight = dynamic_cast<Straight *>(head);
@@ -836,6 +887,18 @@ namespace visualization {
 		}
 		prev_touching = touching;
 
+		switch (robot.ticket_light_color) {
+			case TICKET_LIGHT_RED:
+				FastLCD::SetPaletteColor(Clear, RED);
+				break;
+			case TICKET_LIGHT_BLUE:
+				FastLCD::SetPaletteColor(Clear, BLUE);
+				break;
+			case TICKET_LIGHT_NONE:
+				FastLCD::SetPaletteColor(Clear, BLACK);
+				break;
+		}
+
 		FastLCD::Clear();
 		if (display_compass) {
 			Mat mat = Mat<3, 3>::RotationTranslation(-robot.angle + rad(180), LCD_WIDTH / 2.0, LCD_HEIGHT / 2.0);
@@ -863,25 +926,27 @@ namespace visualization {
 			FastLCD::Write("TargetAngle: ");
 			FastLCD::WriteLine(deg(robot.target_angle));
 
-			FastLCD::Write("L Motor Angle: ");
-			FastLCD::WriteLine((robot.total_counts_l / IGWAN_COUNTS_PER_REV) * 360);
-			FastLCD::Write("R Motor Angle: ");
-			FastLCD::WriteLine((robot.total_counts_r / IGWAN_COUNTS_PER_REV) * 360);
+			FastLCD::Write("L Motor Counts: ");
+			FastLCD::WriteLine(robot.total_counts_l);
+			FastLCD::Write("R Motor Counts: ");
+			FastLCD::WriteLine(robot.total_counts_r);
 
 			FastLCD::Write("ControlMode: ");
 			FastLCD::WriteLine(robot.control_mode_string());
 
-			FastLCD::Write("ControlEffort: ");
-			FastLCD::WriteLine(robot.angle_controller.control_effort);
-			FastLCD::Write("Error: ");
-			FastLCD::WriteLine(robot.angle_controller.error);
-			FastLCD::Write("I: ");
-			FastLCD::WriteLine(robot.angle_controller.I);
+//			FastLCD::Write("ControlEffort: ");
+//			FastLCD::WriteLine(robot.angle_controller.control_effort);
+//			FastLCD::Write("Error: ");
+//			FastLCD::WriteLine(robot.angle_controller.error);
+//			FastLCD::Write("I: ");
+//			FastLCD::WriteLine(robot.angle_controller.I);
 			FastLCD::Write("CDS Value: ");
 			FastLCD::WriteLine(robot.light_sensor_value);
+			FastLCD::Write("Average CDS V: ");
+			FastLCD::WriteLine(robot.light_sensor_average_value);
 
 			FastLCD::Write("Dist: ");
-			FastLCD::WriteLine(robot.dist);
+			FastLCD::WriteLine(robot.pos.dist(robot.pos0));
 			FastLCD::Write("TargetDist: ");
 			FastLCD::WriteLine(robot.target_dist);
 		}
@@ -953,20 +1018,15 @@ Straight t3(3.92100);
 Turn t4(45);
 Straight t5(5.581);
 Turn t6(0);
-Straight t7(26.33900);
+Straight t7(28.5);
 
 // Turn toward kiosk
-Turn kiosk1(-45.2);
-Straight kiosk2(14.35);
-Turn kiosk3(0);
-StraightUntilSwitch kiosk4(11);
+Turn kiosk1(-45);
+StraightUntilSwitch kiosk4(29);
+// Go back to line up with ticket light
+Straight kiosk5(-4.4);
+WaitForTicketLight ticketLight(3000);
 
-// Take the exact same path backwards 💀💀💀💀💀💀
-Straight down1(-10.076);
-Turn down2(-48);
-Straight down3(-16);
-Turn down4(0);
-Straight down5(-26.33900);
 
 /*
 // 4. Stamp the passport.
@@ -1044,7 +1104,7 @@ int main() {
 	/*
 	   * Assign colors to palette numbers.
 	 */
-	FastLCD::SetPaletteColor(Black, BLACK);
+	FastLCD::SetPaletteColor(Clear, BLACK);
 	FastLCD::SetPaletteColor(White, WHITE);
 	FastLCD::SetPaletteColor(Gray, GRAY);
 	FastLCD::SetPaletteColor(Red, RED);
