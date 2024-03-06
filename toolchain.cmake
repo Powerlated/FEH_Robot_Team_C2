@@ -12,8 +12,7 @@ set(CMAKE_RANLIB ${TOOLCHAIN_PREFIX}ranlib)
 set(CMAKE_SIZE ${TOOLCHAIN_PREFIX}size)
 set(CMAKE_STRIP ${TOOLCHAIN_PREFIX}strip)
 
-set(CMAKE_C_FLAGS "-ffunction-sections -fdata-sections -fmessage-length=0 -Wno-psabi -specs=nosys.specs \
--Wall -Os -mcpu=cortex-m4 -mfloat-abi=soft -mthumb -g3 -gdwarf-2 -gstrict-dwarf -fpermissive ")
+set(CMAKE_C_FLAGS "-ffunction-sections -fdata-sections -specs=nosys.specs -Os -mcpu=cortex-m4 -mfloat-abi=soft -mthumb -g3 -gdwarf-2 -gstrict-dwarf")
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -fno-exceptions")
 set(CMAKE_C_FLAGS_DEBUG "")
 set(CMAKE_C_FLAGS_RELEASE "")

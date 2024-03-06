@@ -9,6 +9,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 project(Proteus LANGUAGES C CXX)
 add_executable(${PROJECT_NAME}.elf)
 
+# Turn on all compiler warnings
+target_compile_options(${PROJECT_NAME}.elf PRIVATE -Wall)
+
 target_sources(${PROJECT_NAME}.elf
         PRIVATE
         Startup/startup_mk60d10.cpp
