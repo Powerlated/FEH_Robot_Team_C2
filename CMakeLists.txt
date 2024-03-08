@@ -4,18 +4,21 @@ set(CMAKE_TOOLCHAIN_FILE ${CMAKE_CURRENT_SOURCE_DIR}/toolchain.cmake)
 cmake_minimum_required(VERSION 3.27.8)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_STANDARD_REQUIRED true)
 
 project(Proteus LANGUAGES C CXX)
 add_executable(${PROJECT_NAME}.elf)
+
+set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON" FORCE)
 
 # Turn on all compiler warnings
 target_compile_options(${PROJECT_NAME}.elf PRIVATE -Wall)
 
 target_sources(${PROJECT_NAME}.elf
         PRIVATE
+
         Startup/startup_mk60d10.cpp
-        Libraries/FEHMotor.cpp
+
         Drivers/mcg.cpp
         Drivers/i2c.cpp
         Drivers/spi.cpp
@@ -23,21 +26,24 @@ target_sources(${PROJECT_NAME}.elf
         Drivers/ff.cpp
         Drivers/SDHC.cpp
         Drivers/lptmr.cpp
-        FEHProteus.cpp
+        Drivers/adc16.cpp
+        Drivers/FEHXBee.cpp
         Drivers/FEHPropeller.cpp
+
+        Libraries/FEHMotor.cpp
         Libraries/FEHUtility.cpp
         Libraries/FEHIO.cpp
-        Drivers/adc16.cpp
         Libraries/FEHBuzzer.cpp
         Libraries/FEHServo.cpp
         Libraries/FEHLCD.cpp
         Libraries/FastLCD.cpp
         Libraries/FEHAccel.cpp
         Libraries/FEHBattery.cpp
-        Drivers/FEHXBee.cpp
         Libraries/FEHRCS.cpp
         Libraries/FEHSD.cpp
         Libraries/FEHRandom.cpp
+
+        FEHProteus.cpp
 
         main.cpp
 )
