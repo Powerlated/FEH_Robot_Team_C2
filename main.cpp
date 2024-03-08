@@ -118,8 +118,8 @@ constexpr Inch INCHES_PER_REV = WHEEL_DIA * M_PI;
 constexpr Inch INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
 constexpr float DRIVE_SLEW_RATE = 200; // Percent per m/s
 constexpr float TURN_SLEW_RATE = 200; // Percent per radian/s
-constexpr float DRIVE_MIN_PERCENT = 0;
-constexpr float TURN_MIN_PERCENT = 0;
+constexpr float DRIVE_MIN_PERCENT = 5;
+constexpr float TURN_MIN_PERCENT = 5;
 constexpr float STOPPED_I = 10;
 constexpr float STOPPED_I_ACCUMULATE = 3;
 constexpr float STOPPED_I_HIGHPASS = 0.999;
@@ -162,7 +162,8 @@ enum {
 } PaletteColors;
 
 struct CycTimer {
-    uint32_t value = 0;
+    uint32_t value{};
+    uint32_t last_lap_cyc{};
 
     void begin() {
         // Enable debugging functions including cycle counter
@@ -179,6 +180,7 @@ struct CycTimer {
         uint32_t current_cyc = DWT_CYCCNT;
         uint32_t lap_cyc = current_cyc - value;
         value = current_cyc;
+        last_lap_cyc = lap_cyc;
         return lap_cyc;
     }
 };
@@ -310,7 +312,7 @@ struct Robot {
     }
 
     void task_finished() {
-        // Disable all IRQs other than encoder so the task list can run
+        // Set main function priority to higher than encoders so the task list can run.
         __set_BASEPRI(1);
         task_running = false;
     }
@@ -522,7 +524,7 @@ int spinwait_iters{};
 void wait_for_task_to_finish() {
     spinwait_iters = 0;
     robot.task_running = true;
-    // Re-enable IRQs outside of
+    // Lower main() priority back to normal.
     __set_BASEPRI(0);
     while (robot.task_running) {
         spinwait_iters++;
@@ -568,7 +570,7 @@ void Speed(float percent) {
 
 void Turn(Degree angle) {
     robot.target_angle = (float) rad(angle);
-    robot.turn_start_angle = (float) rad(angle);
+    robot.turn_start_angle = robot.angle;
     robot.turning_right = robot.target_angle > robot.angle;
     robot.control_mode = ControlMode::TURNING;
     robot.stopped_i = 0;
@@ -675,42 +677,12 @@ namespace visualization {
         draw_vtx_list(arrow_vtx, arrow_vtx_len, mat, true);
     }
 
-    constexpr int HALF_GRID_WIDTH = 240;
-    constexpr float GRID_SQUARE_INCHES = 3.0;
-    constexpr int GRID_SIZE = 32;
-    constexpr float INCH_TO_PIXEL = GRID_SIZE / GRID_SQUARE_INCHES;
-
-    void draw_grid_lines(Mat<3, 3> mat) {
-        Vec<3> robot_offset{
-                (float) fmod(robot.pos.vec[0] * INCH_TO_PIXEL, GRID_SIZE),
-                (float) fmod(-robot.pos.vec[1] * INCH_TO_PIXEL, GRID_SIZE),
-                0};
-        FastLCD::SetFontPaletteIndex(Gray);
-        static_assert((HALF_GRID_WIDTH * 2) % GRID_SIZE == 0);
-        for (int s = -HALF_GRID_WIDTH; s < HALF_GRID_WIDTH; s += GRID_SIZE) {
-            Vec<3> v1{(float) s, (float) -HALF_GRID_WIDTH, 1};
-            Vec<3> v2{(float) s, (float) HALF_GRID_WIDTH, 1};
-            v1 = v1.add(robot_offset);
-            v2 = v2.add(robot_offset);
-            v1 = mat.multiply(v1);
-            v2 = mat.multiply(v2);
-            FastLCD::DrawLine(
-                    (int) v1.vec[0], (int) v1.vec[1],
-                    (int) v2.vec[0], (int) v2.vec[1], false);
-
-            Vec<3> h1{(float) -HALF_GRID_WIDTH, (float) s, 1};
-            Vec<3> h2{(float) HALF_GRID_WIDTH, (float) s, 1};
-            h1 = h1.add(robot_offset);
-            h2 = h2.add(robot_offset);
-            h1 = mat.multiply(h1);
-            h2 = mat.multiply(h2);
-            FastLCD::DrawLine(
-                    (int) h1.vec[0], (int) h1.vec[1],
-                    (int) h2.vec[0], (int) h2.vec[1], false);
-        }
-    }
+    CycTimer visualization_timer;
+    CycTimer draw_timer;
 
     extern "C" void PIT1_IRQHandler(void) {
+        visualization_timer.begin();
+
         clear_PIT_irq_flag<1>();
 
         static bool prev_touching = false;
@@ -741,7 +713,6 @@ namespace visualization {
         FastLCD::Clear();
         if (display_compass) {
             Mat mat = Mat<3, 3>::RotationTranslation(-robot.angle + rad(180), LCD_WIDTH / 2.0, LCD_HEIGHT / 2.0);
-            draw_grid_lines(mat);
             draw_compass(mat);
         } else {
             FastLCD::SetFontPaletteIndex(White);
@@ -756,8 +727,8 @@ namespace visualization {
 //            FastLCD::Write(" ");
 //            FastLCD::WriteLine(robot.pos.vec[1]);
 
-            FastLCD::Write("Turn radius: ");
-            FastLCD::WriteLine(robot.R);
+//            FastLCD::Write("Turn radius: ");
+//            FastLCD::WriteLine(robot.R);
 
             FastLCD::Write("Angle: ");
             FastLCD::WriteLine(deg(robot.angle));
@@ -791,8 +762,10 @@ namespace visualization {
             FastLCD::WriteLine(robot.dist_remain);
             FastLCD::Write("Slewed%: ");
             FastLCD::WriteLine(robot.slewed_pct);
-            FastLCD::Write("Spinwait: ");
-            FastLCD::WriteLine(spinwait_iters);
+            FastLCD::Write("VT: ");
+            FastLCD::WriteLine((int)visualization_timer.last_lap_cyc);
+            FastLCD::Write("DT: ");
+            FastLCD::WriteLine((int)draw_timer.last_lap_cyc);
         }
 
         if (holding_sec < FORCE_START_HOLD_SEC) {
@@ -817,7 +790,11 @@ namespace visualization {
             FastLCD::FillRectangle(0, 0, progress_bar_width, 32);
         }
 
+        draw_timer.begin();
         FastLCD::DrawScreen();
+        draw_timer.lap();
+
+        visualization_timer.lap();
     }
 }
 
@@ -850,9 +827,9 @@ int main() {
     FastLCD::SetPaletteColor(Yellow, YELLOW);
 
     /*
-     * Set task list priority.
+     * Set main function priority.
      */
-    __set_BASEPRI(1 );
+    __set_BASEPRI(1);
 
     /*
      * Begin the diagnostics printing timer at the lowest possible priority (15).
@@ -880,13 +857,13 @@ int main() {
     // Go up ramp.
     Straight(3.92100);
     Turn(45);
-    Straight(5.581);
+    Straight(6);
     Turn(0);
-    Straight(27.5);
+    Straight(29);
 
     // Turn toward kiosk
     Turn(-45);
-    StraightUntilSwitch(29);
+    StraightUntilSwitch(28);
 
     // Go back to line up with ticket light
     Straight(-4.4);
@@ -895,26 +872,26 @@ int main() {
     Straight(-4.832636);
     Turn(-90);
 
-    if (robot.ticket_light_color == TicketLightColor::TICKET_LIGHT_RED) {
-        Straight(-4.963991);
+    if (robot.ticket_light_color == TICKET_LIGHT_BLUE) {
+        Straight(-2);
         Turn(0);
-        StraightUntilSwitch(6.5);
+        StraightUntilSwitch(5.75);
 
-        Straight(-5.844);
+        Straight(-5.844 + 2);
 
-        Turn(-35.6861289);
+        Turn(-40);
 
-        Straight(-20.67212);
-    } else if (robot.ticket_light_color == TicketLightColor::TICKET_LIGHT_BLUE) {
-        Straight(-9.463991);
+        Straight(-20.672 + 2.5);
+    } else if (robot.ticket_light_color == TICKET_LIGHT_RED) {
+        Straight(-3 - 2.5);
         Turn(0);
-        StraightUntilSwitch(6.5);
+        StraightUntilSwitch(5.75);
 
-        Straight(-12.007);
+        Straight(-12.007 + 2);
 
-        Turn(-35.6861289);
+        Turn(-40);
 
-        Straight(-13.041);
+        Straight(-13.041 + 1);
     }
 
     Turn(0);
