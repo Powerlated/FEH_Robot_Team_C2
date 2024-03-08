@@ -310,6 +310,8 @@ struct Robot {
     }
 
     void task_finished() {
+        // Disable all IRQs other than encoder so the task list can run
+        __set_BASEPRI(1);
         task_running = false;
     }
 
@@ -520,6 +522,8 @@ int spinwait_iters{};
 void wait_for_task_to_finish() {
     spinwait_iters = 0;
     robot.task_running = true;
+    // Re-enable IRQs outside of
+    __set_BASEPRI(0);
     while (robot.task_running) {
         spinwait_iters++;
     }
@@ -585,54 +589,6 @@ void Delay(int ms) {
     // TODO
     wait_for_task_to_finish();
 }
-
-/**
-* Formulas taken from RBJ's Audio EQ Cookbook:
-* https://www.w3.org/TR/audio-eq-cookbook/
-*/
-struct Biquad {
-    float c0, c1, c2, c3, c4;
-    float y1, y2;
-    float x1, x2;
-
-    constexpr static Biquad lpf(float sample_rate, float cutoff_freq, float q) {
-        float w = 2 * (float) M_PI * (cutoff_freq / sample_rate);
-        float a = sinf(w) / (2 * q);
-
-        float b0 = (1 - cosf(w)) / 2;
-        float b1 = 1 - cosf(w);
-        float b2 = (1 - cosf(w)) / 2;
-
-        float a0 = 1 + a;
-        float a1 = -2 * cosf(w);
-        float a2 = 1 - a;
-
-        float c0 = b0 / a0;
-        float c1 = b1 / a0;
-        float c2 = b2 / a0;
-        float c3 = a1 / a0;
-        float c4 = a2 / a0;
-
-        return Biquad{
-                c0, c1, c2, c3, c4,
-                0, 0,
-                0, 0
-        };
-    }
-
-    // Direct Form 1
-    float process(const float in) {
-        float result = c0 * in + c1 * x1 + c2 * x2 - c3 * y1 - c4 * y2;
-
-        x2 = x1;
-        x1 = in;
-
-        y2 = y1;
-        y1 = result;
-
-        return result;
-    }
-};
 
 // NXP Freescale K60 manual: Chapter 40: Periodic Interrupt Timer (PIT)
 template<int pit_num, int irq_priority>
@@ -865,124 +821,6 @@ namespace visualization {
     }
 }
 
-void sleep(int ms) {
-    // Make sure PIT3 IRQ flag isn't on
-    clear_PIT_irq_flag<3>();
-
-    auto cyc = (uint32_t) ((float) ms * (PROTEUS_SYSTEM_HZ / 1000));
-
-    // Stop PIT3 just in case
-    PIT_BASE_PTR->CHANNEL[3].TCTRL = 0;
-
-    // Enable PIT clock
-    PIT_BASE_PTR->MCR = 0;
-    // Set up PIT3 timeout cycles
-    PIT_BASE_PTR->CHANNEL[3].LDVAL = cyc / BSP_BUS_DIV;
-    // Start PIT3
-    PIT_BASE_PTR->CHANNEL[3].TCTRL = 0b11;
-
-    // Wait for the PIT3 IRQ flag to show up
-    while (!(PIT_BASE_PTR->CHANNEL[3].TFLG & 1));
-
-    // Clear the PIT3 IRQ flag
-    clear_PIT_irq_flag<3>();
-
-    // Stop PIT3
-    PIT_BASE_PTR->CHANNEL[3].TCTRL = 0;
-}
-
-/*
-Speed t0(50);
-
-// Wait for start light to turn on.
-WaitForStartLight t1(3000);
-
-// Go up ramp.
-Straight t3(3.92100);
-Turn t4(45);
-Straight t5(5.581);
-Turn t6(0);
-Straight t7(28.5);
-
-// Turn toward kiosk
-Turn kiosk1(-45);
-StraightUntilSwitch kiosk4(29);
-// Go back to line up with ticket light
-Straight kiosk5(-4.4);
-WaitForTicketLight ticketLight(3000);
-
-Conditional c0((int *) &robot.ticket_light_color, (int) TicketLightColor::TICKET_LIGHT_RED);
-Straight rl0(-4);
-Turn rl1(-90);
-Straight rl2(-8);
-Turn rl3(0);
-StraightUntilSwitch rl4(4);
-
-EndConditional ec0();
-
-Conditional c1((int *) &robot.ticket_light_color, (int) TicketLightColor::TICKET_LIGHT_BLUE);
-Straight bl0(-4);
-Turn bl1(-90);
-Straight bl2(-12);
-Turn bl3(0);
-StraightUntilSwitch bl4(4);
-
-EndConditional ec1();
-
-/*
-// 4. Stamp the passport.
-Turn t8(-37.6);
-Straight t9(9.537);
-Turn t10(0);
-Straight t11(6.150);
-
-StampPassport t12();
-
-// 5. Drop the luggage into the high chute.
-Straight t13(-6.150);
-Turn t14(64.4);
-Straight t15(-10.631);
-Turn t16(0);
-Straight t17(-5.365);
-Position4Bar t18(90);
-Position4Bar t19(0);
-
-// 6. Go to the ticket booth light, wait for it to turn on, and record its color.
-Straight t20(5.365);
-Turn t21(-9.6);
-Straight t22(17.853);
-
-WaitForTicketLight t23();
-
-// 7. Press the left ticket booth button.
-// TODO: Press the correct ticket booth button.
-Turn t24(-74.7);
-Straight t25(-6.342);
-Turn t26(0);
-Straight t27(3);
-Straight t28(-3);
-
-// 8. Flip the fuel lever, wait 5 seconds, and flip it back up.
-Turn t29(-142.8); // Turn toward ramp
-Straight t30(26.102); // Go to ramp
-Turn t31(-180.0); // Turn down ramp
-Position4Bar t32(25); // Raise 4-bar
-Straight t33(27.993); // Go down ramp
-Position4Bar t34(15); // Lower the lever
-Straight t35(-5.830); // Go back a few inches
-Position4Bar t36(0); // Lower 4-bar
-Delay t37(5000); // Wait 5 seconds
-Straight t38(5.830); // Go forward again
-Position4Bar t39(10); // Raise the lever
-
-// 9. Push end button.
-Straight t40(-5.830);
-Turn t41(-72.5);
-Straight t42(-14.517);
-Turn t43(-45);
-Straight t44(-16.267); // Back into the course end button
-*/
-
 /*
 * EXCEPTION PRIORITY LEVELS - FROM HIGHEST TO LOWEST
 *
@@ -1012,6 +850,11 @@ int main() {
     FastLCD::SetPaletteColor(Yellow, YELLOW);
 
     /*
+     * Set task list priority.
+     */
+    __set_BASEPRI(1 );
+
+    /*
      * Begin the diagnostics printing timer at the lowest possible priority (15).
      * Calls PIT1_IRQHandler() every 0.05 seconds.
      */
@@ -1030,7 +873,7 @@ int main() {
      * Robot Tasks.
      */
 
-    Speed(50);
+    Speed(25);
     // Wait for start light to turn on.
     WaitForStartLight(3000);
 
@@ -1039,7 +882,7 @@ int main() {
     Turn(45);
     Straight(5.581);
     Turn(0);
-    Straight(28.5);
+    Straight(27.5);
 
     // Turn toward kiosk
     Turn(-45);
@@ -1049,19 +892,33 @@ int main() {
     Straight(-4.4);
     WaitForTicketLight(3000);
 
+    Straight(-4.832636);
+    Turn(-90);
+
     if (robot.ticket_light_color == TicketLightColor::TICKET_LIGHT_RED) {
-        Straight(-4);
-        Turn(-90);
-        Straight(-8);
+        Straight(-4.963991);
         Turn(0);
-        StraightUntilSwitch(4);
+        StraightUntilSwitch(6.5);
+
+        Straight(-5.844);
+
+        Turn(-35.6861289);
+
+        Straight(-20.67212);
     } else if (robot.ticket_light_color == TicketLightColor::TICKET_LIGHT_BLUE) {
-        Straight(-4);
-        Turn(-90);
-        Straight(-12);
+        Straight(-9.463991);
         Turn(0);
-        StraightUntilSwitch(4);
+        StraightUntilSwitch(6.5);
+
+        Straight(-12.007);
+
+        Turn(-35.6861289);
+
+        Straight(-13.041);
     }
+
+    Turn(0);
+    Straight(-30);
 
     stop_robot_control_loop();
 
