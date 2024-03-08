@@ -38,77 +38,77 @@ using Inch = float;
 using Hertz = int;
 
 constexpr Radian rad(Degree deg) {
-	return (float) (deg * (M_PI / 180));
+    return (float) (deg * (M_PI / 180));
 }
 
 constexpr Degree deg(Radian rad) {
-	return (float) (rad * (180 / M_PI));
+    return (float) (rad * (180 / M_PI));
 }
 
 template<int m>
 struct Vec {
-	float vec[m];
+    float vec[m];
 
-	Vec add(Vec &b) const {
-		Vec<m> sum{};
+    Vec add(Vec &b) const {
+        Vec<m> sum{};
 
-		for (int i = 0; i < m; i++) {
-			sum.vec[i] = vec[i] + b.vec[i];
-		}
+        for (int i = 0; i < m; i++) {
+            sum.vec[i] = vec[i] + b.vec[i];
+        }
 
-		return sum;
-	}
+        return sum;
+    }
 
-	float dist(Vec<m> &b) const {
-		static_assert(m >= 2);
-		return sqrt(pow(b.vec[0] - vec[0], 2) + pow(b.vec[1] - vec[1], 2));
-	}
+    float dist(Vec<m> &b) const {
+        static_assert(m >= 2);
+        return sqrt(pow(b.vec[0] - vec[0], 2) + pow(b.vec[1] - vec[1], 2));
+    }
 };
 
 template<int m, int n>
 struct Mat {
-	static_assert(m == n);
-	float mat[m * n];
+    static_assert(m == n);
+    float mat[m * n];
 
-	Vec<m> multiply(Vec<m> &b) const {
-		Vec<m> result{};
+    Vec<m> multiply(Vec<m> &b) const {
+        Vec<m> result{};
 
-		int mat_pos = 0;
-		for (int r = 0; r < m; r++) {
-			for (int c = 0; c < n; c++) {
-				result.vec[r] += mat[mat_pos++] * b.vec[c];
-			}
-		}
+        int mat_pos = 0;
+        for (int r = 0; r < m; r++) {
+            for (int c = 0; c < n; c++) {
+                result.vec[r] += mat[mat_pos++] * b.vec[c];
+            }
+        }
 
-		return result;
-	}
+        return result;
+    }
 
-	static Mat<3, 3> RotationTranslation(float angle, float dx, float dy) {
-		float cos = cosf(angle);
-		float sin = sinf(angle);
+    static Mat<3, 3> RotationTranslation(float angle, float dx, float dy) {
+        float cos = cosf(angle);
+        float sin = sinf(angle);
 
-		return Mat<3, 3>{
-				cos, -sin, dx,
-				sin, cos, dy,
-				0, 0, 1
-		};
-	}
+        return Mat<3, 3>{
+                cos, -sin, dx,
+                sin, cos, dy,
+                0, 0, 1
+        };
+    }
 };
 
 constexpr Hertz PROTEUS_SYSTEM_HZ = 88000000.0;
 
 constexpr uint32_t cyc(const double sec) {
-	return (uint32_t) (sec * PROTEUS_SYSTEM_HZ);
+    return (uint32_t) (sec * PROTEUS_SYSTEM_HZ);
 }
 
-constexpr Hertz TICK_RATE = 1000;
+constexpr Hertz TICK_RATE = 100;
 constexpr int SYSTICK_INTERVAL_CYCLES = cyc(1.0 / TICK_RATE);
 
 constexpr uint32_t ticks(const double sec) {
-	return (uint32_t) (sec * TICK_RATE);
+    return (uint32_t) (sec * TICK_RATE);
 }
 
-constexpr Hertz DIAGNOSTICS_HZ = 20;
+constexpr Hertz DIAGNOSTICS_HZ = 5;
 constexpr Microsecond TICK_INTERVAL_MICROSECONDS = (1.0 / TICK_RATE) * 1000000;
 constexpr Inch TRACK_WIDTH = 8.276;
 
@@ -154,65 +154,61 @@ constexpr int LCD_WIDTH = 320;
 constexpr int LCD_HEIGHT = 240;
 
 enum {
-	Clear = 0,
-	White,
-	Gray,
-	Red,
-	Yellow,
+    Clear = 0,
+    White,
+    Gray,
+    Red,
+    Yellow,
 } PaletteColors;
 
-void stop_robot_control_loop() {
-	SysTick_BASE_PTR->CSR = 0;
-}
-
 struct CycTimer {
-	uint32_t value = 0;
+    uint32_t value = 0;
 
-	void begin() {
-		// Enable debugging functions including cycle counter
-		// 24th bit is TRCENA
-		DEMCR |= (0b1 << 24);
-		// Enable the cycle counter itself
-		// first bit is CYCCNTENA
-		DWT_CTRL |= 0b1;
+    void begin() {
+        // Enable debugging functions including cycle counter
+        // 24th bit is TRCENA
+        DEMCR |= (0b1 << 24);
+        // Enable the cycle counter itself
+        // first bit is CYCCNTENA
+        DWT_CTRL |= 0b1;
 
-		value = DWT_CYCCNT;
-	}
+        value = DWT_CYCCNT;
+    }
 
-	uint32_t lap() {
-		uint32_t current_cyc = DWT_CYCCNT;
-		uint32_t lap_cyc = current_cyc - value;
-		value = current_cyc;
-		return lap_cyc;
-	}
+    uint32_t lap() {
+        uint32_t current_cyc = DWT_CYCCNT;
+        uint32_t lap_cyc = current_cyc - value;
+        value = current_cyc;
+        return lap_cyc;
+    }
 };
 
 struct PIController {
-	float sample_time;
-	float error{};
-	float kP, kI;
-	float I{}, max_I;
-	float control_effort{};
+    float sample_time;
+    float error{};
+    float kP, kI;
+    float I{}, max_I;
+    float control_effort{};
 
-	explicit PIController(float sample_rate, float kP, float kI, float max_I) :
-			sample_time(1 / sample_rate), kP(kP), kI(kI), max_I(max_I) {}
+    explicit PIController(float sample_rate, float kP, float kI, float max_I) :
+            sample_time(1 / sample_rate), kP(kP), kI(kI), max_I(max_I) {}
 
-	float process(float setpoint, float process_variable) {
-		error = setpoint - process_variable;
+    float process(float setpoint, float process_variable) {
+        error = setpoint - process_variable;
 
-		I += error * sample_time;
-		I = fmaxf(-max_I, fminf(max_I, I));
+        I += error * sample_time;
+        I = fmaxf(-max_I, fminf(max_I, I));
 
-		control_effort =
-				kP * error +
-				kI * I;
+        control_effort =
+                kP * error +
+                kI * I;
 
-		return control_effort;
-	}
+        return control_effort;
+    }
 
-	void reset() {
-		I = 0;
-	}
+    void reset() {
+        I = 0;
+    }
 };
 
 /**
@@ -222,717 +218,603 @@ struct PIController {
 * V_max = (-at+sqrt((a^2)(t^2) + 4da)) / 2
 */
 
-enum TicketLightColor {
-	TICKET_LIGHT_NONE,
-	TICKET_LIGHT_RED,
-	TICKET_LIGHT_BLUE
+enum TicketLightColor : int {
+    TICKET_LIGHT_NONE,
+    TICKET_LIGHT_RED,
+    TICKET_LIGHT_BLUE
 };
 
 enum class ControlMode {
-	INIT_TASK,
-	TURNING,
-	STRAIGHT,
-	STRAIGHT_UNTIL_SWITCH,
-	WAIT_FOR_START_LIGHT,
-	WAIT_FOR_TICKET_LIGHT
+    INIT,
+    TURNING,
+    STRAIGHT,
+    STRAIGHT_UNTIL_SWITCH,
+    WAIT_FOR_START_LIGHT,
+    WAIT_FOR_TICKET_LIGHT
 };
 
-struct RobotTask {
-	RobotTask *next_task = nullptr;
-
-	RobotTask();
-
-	virtual void execute() = 0;
-};
 
 struct Robot {
-	/*
-	  * Because my modified DigitalEncoder code obtains a pointer to itself using the “this” keyword so that the port
-	  * IRQs can update the object state, we MUST avoid using a copy of the object and use the original object
-	  * that we instantiated. I couldn't get this working properly with C++ move semantics, so I'm instantiating the
-	  * DigitalEncoder objects inside the Drivetrain constructor instead. It's working now.
-	 */
+    /*
+      * Because my modified DigitalEncoder code obtains a pointer to itself using the “this” keyword so that the port
+      * IRQs can update the object state, we MUST avoid using a copy of the object and use the original object
+      * that we instantiated. I couldn't get this working properly with C++ move semantics, so I'm instantiating the
+      * DigitalEncoder objects inside the Drivetrain constructor instead. It's working now.
+     */
 
-	FEHMotor ml{DRIVE_MOTOR_L_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
-	FEHMotor mr{DRIVE_MOTOR_R_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
-	DigitalEncoder el{ENCODER_L_PIN_0, ENCODER_L_PIN_1};
-	DigitalEncoder er{ENCODER_R_PIN_0, ENCODER_R_PIN_1};
-	DigitalInputPin bump_switch{BUMP_SWITCH_PIN};
-	AnalogInputPin light_sensor{LIGHT_SENSOR_PIN};
-	FEHServo servo{FEHServo::FEHServoPort::Servo0};
+    FEHMotor ml{DRIVE_MOTOR_L_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
+    FEHMotor mr{DRIVE_MOTOR_R_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
+    DigitalEncoder el{ENCODER_L_PIN_0, ENCODER_L_PIN_1};
+    DigitalEncoder er{ENCODER_R_PIN_0, ENCODER_R_PIN_1};
+    DigitalInputPin bump_switch{BUMP_SWITCH_PIN};
+    AnalogInputPin light_sensor{LIGHT_SENSOR_PIN};
+    FEHServo servo{FEHServo::FEHServoPort::Servo0};
 
-	RobotTask *current_task{};
-	RobotTask *task_list{};
-	ControlMode control_mode = ControlMode::INIT_TASK;
+    ControlMode control_mode = ControlMode::INIT;
 
-	// Start Light / Ticket Light variables
-	bool force_start{};
-	Volt light_sensor_value{};
-	int last_nonconfident_wait_for_light_tick{};
-	float light_sensor_average_value{};
-	TicketLightColor ticket_light_color = TICKET_LIGHT_NONE;
+    // Start Light / Ticket Light variables
+    bool force_start{};
+    Volt light_sensor_value{};
+    int last_nonconfident_wait_for_light_tick{};
+    float light_sensor_average_value{};
+    TicketLightColor ticket_light_color = TICKET_LIGHT_NONE;
 
-	volatile int tick_count{}, task_tick_count{}, task_number{};
+    int tick_count{}, task_tick_count{};
 
-	// Drivetrain variables
-	float pct_l{}, pct_r{};
-	float target_pct{};
-	Inch target_dist{};
-	int total_counts_l{}, total_counts_r{};
-	PIController angle_controller = PIController(TICK_RATE, 100, 50, 30);
+    // Drivetrain variables
+    float pct_l{}, pct_r{};
+    float target_pct{};
+    float slewed_pct{};
+    float dist_remain{};
+    Inch target_dist{};
+    int total_counts_l{}, total_counts_r{};
+    PIController angle_controller = PIController(TICK_RATE, 100, 50, 30);
 
-	// Position is in inches
-	Vec<2> pos{}, pos0{};
-	// Angle in radians
-	Radian angle{};
-	Radian target_angle{};
-	Radian turn_start_angle{};
-	bool turning_right{};
-	float R{};
+    // Position is in inches
+    Vec<2> pos{}, pos0{};
+    // Angle in radians
+    Radian angle{};
+    Radian target_angle{};
+    Radian turn_start_angle{};
+    bool turning_right{};
+    float R{};
 
-	int last_encoder_l_tick_at = 0;
-	int last_encoder_r_tick_at = 0;
-	float stopped_i{};
+    volatile bool task_running{};
 
-	[[nodiscard]] const char *control_mode_string() const {
-		switch (control_mode) {
-			case ControlMode::INIT_TASK:
-				return "InitTask";
-			case ControlMode::STRAIGHT:
-				return "Forward";
-			case ControlMode::STRAIGHT_UNTIL_SWITCH:
-				return "FwdTilSwitch";
-			case ControlMode::TURNING:
-				return "Turning";
-			case ControlMode::WAIT_FOR_START_LIGHT:
-				return "WaitStartLight";
-			case ControlMode::WAIT_FOR_TICKET_LIGHT:
-				return "WaitTicketLight";
-		}
-		return "?????";
-	}
+    int last_encoder_l_tick_at = 0;
+    int last_encoder_r_tick_at = 0;
+    float stopped_i{};
 
-	void process_odometry() {
-		auto counts_l = el.Counts();
-		auto counts_r = -er.Counts();
+    Robot() {
+        pos = INITIAL_POS;
+        angle = INITIAL_ANGLE;
+        target_angle = INITIAL_ANGLE;
+    }
 
-		total_counts_l += counts_l;
-		total_counts_r += counts_r;
+    [[nodiscard]] const char *control_mode_string() const {
+        switch (control_mode) {
+            case ControlMode::INIT:
+                return "Init";
+            case ControlMode::STRAIGHT:
+                return "Forward";
+            case ControlMode::STRAIGHT_UNTIL_SWITCH:
+                return "FwdTilSwitch";
+            case ControlMode::TURNING:
+                return "Turning";
+            case ControlMode::WAIT_FOR_START_LIGHT:
+                return "WaitStartLight";
+            case ControlMode::WAIT_FOR_TICKET_LIGHT:
+                return "WaitTicketLight";
+        }
+        return "?????";
+    }
 
-		if (counts_l != 0) {
-			last_encoder_l_tick_at = tick_count;
-		}
-		if (counts_r != 0) {
-			last_encoder_r_tick_at = tick_count;
-		}
+    void task_finished() {
+        task_running = false;
+    }
 
-		if (last_encoder_l_tick_at + ticks(0.025) < tick_count) {
-			stopped_i += STOPPED_I_ACCUMULATE / TICK_RATE;
-		}
-		if (last_encoder_r_tick_at + ticks(0.025) < tick_count) {
-			stopped_i += STOPPED_I_ACCUMULATE / TICK_RATE;
-		}
-		stopped_i *= STOPPED_I_HIGHPASS;
+    void process_odometry() {
+        auto counts_l = el.Counts();
+        auto counts_r = -er.Counts();
 
-		el.ResetCounts();
-		er.ResetCounts();
+        total_counts_l += counts_l;
+        total_counts_r += counts_r;
 
-		Inch arclength_l = DRIVE_INCHES_PER_COUNT_L * (float) counts_l;
-		Inch arclength_r = DRIVE_INCHES_PER_COUNT_R * (float) counts_r;
+        if (counts_l != 0) {
+            last_encoder_l_tick_at = tick_count;
+        }
+        if (counts_r != 0) {
+            last_encoder_r_tick_at = tick_count;
+        }
 
-		Inch arclength_inner;
-		if (abs(arclength_l) > abs(arclength_r)) {
-			arclength_inner = arclength_r;
-		} else {
-			arclength_inner = arclength_l;
-		}
+        if (last_encoder_l_tick_at + ticks(0.025) < tick_count) {
+            stopped_i += STOPPED_I_ACCUMULATE / TICK_RATE;
+        }
+        if (last_encoder_r_tick_at + ticks(0.025) < tick_count) {
+            stopped_i += STOPPED_I_ACCUMULATE / TICK_RATE;
+        }
+        stopped_i *= STOPPED_I_HIGHPASS;
 
-		Radian dAngle = (arclength_l - arclength_r) / TRACK_WIDTH;
-		if (dAngle != 0) {
-			Inch radius_inner = fabsf(arclength_inner / dAngle);
+        el.ResetCounts();
+        er.ResetCounts();
 
-			// Let R be the distance from the arc center to the point between the wheels
-			R = radius_inner + TRACK_WIDTH / 2;
+        Inch arclength_l = DRIVE_INCHES_PER_COUNT_L * (float) counts_l;
+        Inch arclength_r = DRIVE_INCHES_PER_COUNT_R * (float) counts_r;
 
-			Inch dx = R * (cos(angle + dAngle) - cos(angle));
-			Inch dy = -R * (sin(angle + dAngle) - sin(angle));
+        Inch arclength_inner;
+        if (abs(arclength_l) > abs(arclength_r)) {
+            arclength_inner = arclength_r;
+        } else {
+            arclength_inner = arclength_l;
+        }
 
-			if (abs(arclength_l) > abs(arclength_r)) {
-				   dx *= -1;
-				dy *= -1;
-			}
+        Radian dAngle = (arclength_l - arclength_r) / TRACK_WIDTH;
+        if (dAngle != 0) {
+            Inch radius_inner = fabsf(arclength_inner / dAngle);
 
-			pos.vec[0] += dx;
-			pos.vec[1] += dy;
-			angle += dAngle;
-		} else {
-			pos.vec[0] += arclength_l * sin(angle);
-			pos.vec[1] += arclength_l * cos(angle);
-		}
-	}
+            // Let R be the distance from the arc center to the point between the wheels
+            R = radius_inner + TRACK_WIDTH / 2;
 
-	void task_finished() {
-		if (current_task != nullptr) {
-			current_task->execute();
-			current_task = current_task->next_task;
-			task_number++;
-		} else {
-			// Stop the robot control loop once we've finished the last task
-			ml.SetPercent(0);
-			mr.SetPercent(0);
-			stop_robot_control_loop();
-		}
-	}
+            Inch dx = R * (cos(angle + dAngle) - cos(angle));
+            Inch dy = -R * (sin(angle + dAngle) - sin(angle));
 
-	void motor_power(float new_pct_l, float new_pct_r) {
-		pct_l = new_pct_l;
-		pct_r = new_pct_r;
+            if (abs(arclength_l) > abs(arclength_r)) {
+                dx *= -1;
+                dy *= -1;
+            }
 
-		ml.SetPercent(pct_l);
-		mr.SetPercent(pct_r);
-	}
+            pos.vec[0] += dx;
+            pos.vec[1] += dy;
+            angle += dAngle;
+        } else {
+            pos.vec[0] += arclength_l * sin(angle);
+            pos.vec[1] += arclength_l * cos(angle);
+        }
+    }
 
-	static float slew(float rate, float min, float max, float dist_from_start, float dist_to_end) {
-		float slewed_start = sqrtf(rate * fabs(dist_from_start));
-		float slewed_end = sqrtf(rate * fabs(dist_to_end));
-		return fmin(max, fmin(slewed_start, slewed_end) + min);
-	}
+    void motor_power(float new_pct_l, float new_pct_r) {
+        pct_l = new_pct_l;
+        pct_r = new_pct_r;
 
-	void tick() {
-		tick_count++;
-		task_tick_count++;
+        ml.SetPercent(pct_l);
+        mr.SetPercent(pct_r);
+    }
 
-		/*
-			 * GET ANALOG INPUT DATA
-		 */
+    static float slew(float rate, float min, float max, float dist_from_start, float dist_to_end) {
+        float slewed_start = sqrtf(rate * fabs(dist_from_start));
+        float slewed_end = sqrtf(rate * fabs(dist_to_end));
+        return fmin(max, fmin(slewed_start, slewed_end) + min);
+    }
 
-		light_sensor_value = light_sensor.Value();
+    void tick() {
+        tick_count++;
+        task_tick_count++;
 
-		/*
-			 * ODOMETRY
-		 */
+        /*
+         * GET ANALOG INPUT DATA
+         */
 
-		process_odometry();
+        light_sensor_value = light_sensor.Value();
 
-		/*
-			 * DRIVETRAIN MOTOR MANAGEMENT
-		 */
+        /*
+         * ODOMETRY
+         */
 
-		float control_effort;
-		switch (control_mode) {
-			case ControlMode::INIT_TASK:
-				// The origin is the starting pad.
-				// angle = 0 degrees is straight up toward the right ramp,
-				// so the bot will be pointed toward -45 degrees when placed on the starting pad.
-				pos = INITIAL_POS;
-				angle = INITIAL_ANGLE;
-				target_angle = INITIAL_ANGLE;
+        process_odometry();
 
-				task_finished();
-				return;
-			case ControlMode::WAIT_FOR_TICKET_LIGHT:
-			case ControlMode::WAIT_FOR_START_LIGHT:
-				ml.Stop();
-				mr.Stop();
+        /*
+         * DRIVETRAIN MOTOR MANAGEMENT
+         */
 
-				float threshold_voltage;
-				if (control_mode == ControlMode::WAIT_FOR_START_LIGHT) {
-					threshold_voltage = START_LIGHT_THRESHOLD_VOLTAGE;
-				} else {
-					threshold_voltage = TICKET_LIGHT_THRESHOLD_VOLTAGE;
-				}
+        float control_effort;
+        switch (control_mode) {
+            case ControlMode::WAIT_FOR_TICKET_LIGHT:
+            case ControlMode::WAIT_FOR_START_LIGHT:
+                ml.Stop();
+                mr.Stop();
 
-				light_sensor_average_value += light_sensor_value;
-				if (light_sensor_value >= threshold_voltage) {
-					last_nonconfident_wait_for_light_tick = tick_count;
-					light_sensor_average_value = 0;
-				}
+                float threshold_voltage;
+                if (control_mode == ControlMode::WAIT_FOR_START_LIGHT) {
+                    threshold_voltage = START_LIGHT_THRESHOLD_VOLTAGE;
+                } else {
+                    threshold_voltage = TICKET_LIGHT_THRESHOLD_VOLTAGE;
+                }
 
-				if (control_mode == ControlMode::WAIT_FOR_START_LIGHT && force_start) {
-					task_finished();
-					return;
-				}
+                light_sensor_average_value += light_sensor_value;
+                if (light_sensor_value >= threshold_voltage) {
+                    last_nonconfident_wait_for_light_tick = tick_count;
+                    light_sensor_average_value = 0;
+                }
 
-				// wait some time until we're confident that the light has started
-				if (last_nonconfident_wait_for_light_tick + WAIT_FOR_LIGHT_CONFIRM_TICKS < tick_count) {
-					light_sensor_average_value /= WAIT_FOR_LIGHT_CONFIRM_TICKS;
+                if (control_mode == ControlMode::WAIT_FOR_START_LIGHT && force_start) {
+                    task_finished();
+                    return;
+                }
 
-					if (control_mode == ControlMode::WAIT_FOR_TICKET_LIGHT) {
-						float red_dist = abs(RED_LIGHT_VOLTAGE - light_sensor_average_value);
-						float blue_dist = abs(BLUE_LIGHT_VOLTAGE - light_sensor_average_value);
+                // wait some time until we're confident that the light has started
+                if (last_nonconfident_wait_for_light_tick + WAIT_FOR_LIGHT_CONFIRM_TICKS < tick_count) {
+                    light_sensor_average_value /= WAIT_FOR_LIGHT_CONFIRM_TICKS;
 
-						if (red_dist < blue_dist) {
-							ticket_light_color = TICKET_LIGHT_RED;
-						} else {
-							ticket_light_color = TICKET_LIGHT_BLUE;
-						}
-					}
+                    if (control_mode == ControlMode::WAIT_FOR_TICKET_LIGHT) {
+                        float red_dist = abs(RED_LIGHT_VOLTAGE - light_sensor_average_value);
+                        float blue_dist = abs(BLUE_LIGHT_VOLTAGE - light_sensor_average_value);
 
-					task_finished();
-				}
-				return;
-			case ControlMode::TURNING: {
-				Radian angle_turned_so_far = fabs(angle - turn_start_angle);
-				Radian angle_remain = fabs(target_angle - angle);
-				float slewed_pct = slew(
-						TURN_SLEW_RATE,
-						TURN_MIN_PERCENT,
-						target_pct,
-						angle_turned_so_far,
-						angle_remain
-				);
-				slewed_pct += stopped_i * STOPPED_I;
+                        if (red_dist < blue_dist) {
+                            ticket_light_color = TICKET_LIGHT_RED;
+                        } else {
+                            ticket_light_color = TICKET_LIGHT_BLUE;
+                        }
+                    }
 
-				if (turning_right) {
-					motor_power(slewed_pct, -slewed_pct);
-					if (angle >= target_angle) {
-						task_finished();
-					}
-				} else {
-					motor_power(-slewed_pct, slewed_pct);
-					if (angle <= target_angle) {
-						task_finished();
-					}
-				}
-				return;
-			}
-			case ControlMode::STRAIGHT_UNTIL_SWITCH:
-				if (!bump_switch.Value()) {
-					task_finished();
-					return;
-				}
-			case ControlMode::STRAIGHT: {
-				control_effort = angle_controller.process(target_angle, angle);
+                    task_finished();
+                }
+                return;
+            case ControlMode::TURNING: {
+                Radian angle_turned_so_far = fabs(angle - turn_start_angle);
+                Radian angle_remain = fabs(target_angle - angle);
+                slewed_pct = slew(
+                        TURN_SLEW_RATE,
+                        TURN_MIN_PERCENT,
+                        target_pct,
+                        angle_turned_so_far,
+                        angle_remain
+                );
+                float power_pct = slewed_pct + stopped_i * STOPPED_I;
 
-				float dist = pos.dist(pos0);
+                if (turning_right) {
+                    motor_power(power_pct, -power_pct);
+                    if (angle >= target_angle) {
+                        task_finished();
+                    }
+                } else {
+                    motor_power(-power_pct, power_pct);
+                    if (angle <= target_angle) {
+                        task_finished();
+                    }
+                }
+                return;
+            }
+            case ControlMode::STRAIGHT_UNTIL_SWITCH:
+                if (!bump_switch.Value()) {
+                    task_finished();
+                    return;
+                }
+            case ControlMode::STRAIGHT: {
+                control_effort = angle_controller.process(target_angle, angle);
 
-				Inch dist_remain = fabs(target_dist) - fabs(dist);
-				float slewed_pct = slew(
-						DRIVE_SLEW_RATE,
-						DRIVE_MIN_PERCENT,
-						target_pct,
-						dist,
-						dist_remain
-				);
-				slewed_pct += stopped_i * STOPPED_I;
+                float dist = pos.dist(pos0);
+                dist_remain = fabs(target_dist) - fabs(dist);
+                slewed_pct = slew(
+                        DRIVE_SLEW_RATE,
+                        DRIVE_MIN_PERCENT,
+                        target_pct,
+                        dist,
+                        dist_remain
+                );
+                float power_pct = slewed_pct + stopped_i * STOPPED_I;
 
-				if (target_dist < 0) {
-					motor_power(-slewed_pct + control_effort, -slewed_pct - control_effort);
-				} else {
-					motor_power(slewed_pct + control_effort, slewed_pct - control_effort);
-				}
+                if (target_dist < 0) {
+                    motor_power(-power_pct + control_effort, -power_pct - control_effort);
+                } else {
+                    motor_power(power_pct + control_effort, power_pct - control_effort);
+                }
 
-				if (fabs(dist) > fabsf(target_dist)) {
-					task_finished();
-				}
-				return;
-			}
-			default:
-				return;
-		}
-	}
+                if (fabs(dist) > fabsf(target_dist)) {
+                    task_finished();
+                }
+                return;
+            }
+            default:
+                return;
+        }
+    }
 } robot;
 
-/*
-* Adds the newly created task to the task linked list.
-* All inheriting constructors must explicitly run this to add themselves to the task list.
-*/
-RobotTask::RobotTask() {
-	RobotTask **head_ptr = &robot.current_task;
-
-	RobotTask *last = *head_ptr;
-	// If the LL head is null, set this node to the LL head, store a pointer to the start of the task list, and return
-	if (*head_ptr == nullptr) {
-		*head_ptr = this;
-		robot.task_list = this;
-		return;
-	}
-
-	// Traverse LL until we reach a task that doesn't have a next task
-	while (last->next_task != nullptr) {
-		last = last->next_task;
-	}
-
-	// Set this task as the next task of the last task
-	last->next_task = this;
+void stop_robot_control_loop() {
+    robot.motor_power(0, 0);
+    SysTick_BASE_PTR->CSR = 0;
 }
 
-struct WaitForStartLight : RobotTask {
-	// TODO: Implement WaitForLight timeout
-	int timeout_ms;
+int spinwait_iters{};
 
-	explicit WaitForStartLight(int timeout_ms) : RobotTask(), timeout_ms(timeout_ms) {}
+void wait_for_task_to_finish() {
+    spinwait_iters = 0;
+    robot.task_running = true;
+    while (robot.task_running) {
+        spinwait_iters++;
+    }
+}
 
-	void execute() override {
-		robot.control_mode = ControlMode::WAIT_FOR_START_LIGHT;
-		robot.light_sensor_average_value = 0;
-		robot.last_nonconfident_wait_for_light_tick = robot.tick_count;
-	}
-};
+void WaitForStartLight(int timeout_ms) {
+    robot.control_mode = ControlMode::WAIT_FOR_START_LIGHT;
+    robot.light_sensor_average_value = 0;
+    robot.last_nonconfident_wait_for_light_tick = robot.tick_count;
+    wait_for_task_to_finish();
+}
 
-struct WaitForTicketLight : RobotTask {
-	// TODO: Implement WaitForLight timeout
-	explicit WaitForTicketLight(int ms) : RobotTask() {};
+void WaitForTicketLight(int timeout_ms) {
+    robot.control_mode = ControlMode::WAIT_FOR_TICKET_LIGHT;
+    robot.light_sensor_average_value = 0;
+    robot.last_nonconfident_wait_for_light_tick = robot.tick_count;
+    wait_for_task_to_finish();
+}
 
-	void execute() override {
-		robot.control_mode = ControlMode::WAIT_FOR_TICKET_LIGHT;
-		robot.light_sensor_average_value = 0;
-		robot.last_nonconfident_wait_for_light_tick = robot.tick_count;
-	}
-};
+void Straight_prepare(Inch inches) {
+    robot.pos0 = robot.pos;
+    robot.target_dist = inches;
+    robot.angle_controller.reset();
+    robot.control_mode = ControlMode::STRAIGHT;
+    robot.stopped_i = 0;
+}
 
-struct Straight : RobotTask {
-	Inch inches;
+void Straight(Inch inches) {
+    Straight_prepare(inches);
+    wait_for_task_to_finish();
+}
 
-	explicit Straight(Inch inches) : RobotTask(), inches(inches) {};
+void StraightUntilSwitch(Inch inches) {
+    Straight_prepare(inches);
+    robot.control_mode = ControlMode::STRAIGHT_UNTIL_SWITCH;
+    wait_for_task_to_finish();
+}
 
-	void execute() override {
-		robot.pos0 = robot.pos;
-		robot.target_dist = inches;
-		robot.angle_controller.reset();
-		robot.control_mode = ControlMode::STRAIGHT;
-		robot.stopped_i = 0;
-	}
-};
+void Speed(float percent) {
+    robot.target_pct = percent;
+}
 
-struct StraightUntilSwitch : Straight {
-	Inch inches;
+void Turn(Degree angle) {
+    robot.target_angle = (float) rad(angle);
+    robot.turn_start_angle = (float) rad(angle);
+    robot.turning_right = robot.target_angle > robot.angle;
+    robot.control_mode = ControlMode::TURNING;
+    robot.stopped_i = 0;
+    wait_for_task_to_finish();
+}
 
-	explicit StraightUntilSwitch(Inch inches) : Straight(inches), inches(inches) {};
+void StampPassport() {
+    // TODO
+    wait_for_task_to_finish();
+}
 
-	void execute() override {
-		Straight::execute();
-		robot.control_mode = ControlMode::STRAIGHT_UNTIL_SWITCH;
-	}
-};
+void Position4Bar(Degree target_angle) {
+    // TODO
+    wait_for_task_to_finish();
+}
 
-struct Speed : RobotTask {
-	float percent;
-
-	explicit Speed(float percent) : RobotTask(), percent(percent) {};
-
-	void execute() override {
-		robot.target_pct = percent;
-	}
-};
-
-struct Turn : RobotTask {
-	explicit Turn(Degree angle) : RobotTask(), angle(angle) {};
-
-	Degree angle;
-
-	void execute() override {
-		robot.target_angle = (float) rad(angle);
-		robot.turn_start_angle = (float) rad(angle);
-		robot.turning_right = robot.target_angle > robot.angle;
-		robot.control_mode = ControlMode::TURNING;
-		robot.stopped_i = 0;
-	}
-};
-
-struct StampPassport : RobotTask {
-	explicit StampPassport() : RobotTask() {};
-
-	void execute() override {
-		// TODO
-	}
-};
-
-struct Position4Bar : RobotTask {
-	explicit Position4Bar(Degree target_angle) : RobotTask(), target_angle(target_angle) {};
-
-	float target_angle;
-
-	void execute() override {
-		// TODO
-	}
-};
-
-struct Delay : RobotTask {
-	explicit Delay(int ms) : RobotTask(), ms(ms) {};
-
-	int ms;
-
-	void execute() override {
-		// TODO
-	}
-};
+void Delay(int ms) {
+    // TODO
+    wait_for_task_to_finish();
+}
 
 /**
 * Formulas taken from RBJ's Audio EQ Cookbook:
 * https://www.w3.org/TR/audio-eq-cookbook/
 */
 struct Biquad {
-	float c0, c1, c2, c3, c4;
-	float y1, y2;
-	float x1, x2;
+    float c0, c1, c2, c3, c4;
+    float y1, y2;
+    float x1, x2;
 
-	constexpr static Biquad lpf(float sample_rate, float cutoff_freq, float q) {
-		float w = 2 * (float) M_PI * (cutoff_freq / sample_rate);
-		float a = sinf(w) / (2 * q);
+    constexpr static Biquad lpf(float sample_rate, float cutoff_freq, float q) {
+        float w = 2 * (float) M_PI * (cutoff_freq / sample_rate);
+        float a = sinf(w) / (2 * q);
 
-		float b0 = (1 - cosf(w)) / 2;
-		float b1 = 1 - cosf(w);
-		float b2 = (1 - cosf(w)) / 2;
+        float b0 = (1 - cosf(w)) / 2;
+        float b1 = 1 - cosf(w);
+        float b2 = (1 - cosf(w)) / 2;
 
-		float a0 = 1 + a;
-		float a1 = -2 * cosf(w);
-		float a2 = 1 - a;
+        float a0 = 1 + a;
+        float a1 = -2 * cosf(w);
+        float a2 = 1 - a;
 
-		float c0 = b0 / a0;
-		float c1 = b1 / a0;
-		float c2 = b2 / a0;
-		float c3 = a1 / a0;
-		float c4 = a2 / a0;
+        float c0 = b0 / a0;
+        float c1 = b1 / a0;
+        float c2 = b2 / a0;
+        float c3 = a1 / a0;
+        float c4 = a2 / a0;
 
-		return Biquad{
-				c0, c1, c2, c3, c4,
-				0, 0,
-				0, 0
-		};
-	}
+        return Biquad{
+                c0, c1, c2, c3, c4,
+                0, 0,
+                0, 0
+        };
+    }
 
-	// Direct Form 1
-	float process(const float in) {
-		float result = c0 * in + c1 * x1 + c2 * x2 - c3 * y1 - c4 * y2;
+    // Direct Form 1
+    float process(const float in) {
+        float result = c0 * in + c1 * x1 + c2 * x2 - c3 * y1 - c4 * y2;
 
-		x2 = x1;
-		x1 = in;
+        x2 = x1;
+        x1 = in;
 
-		y2 = y1;
-		y1 = result;
+        y2 = y1;
+        y1 = result;
 
-		return result;
-	}
+        return result;
+    }
 };
 
 // NXP Freescale K60 manual: Chapter 40: Periodic Interrupt Timer (PIT)
 template<int pit_num, int irq_priority>
 void init_PIT(uint32_t cyc_interval) {
-	// PIT0 is being used by FEHIO AnalogEncoder and AnalogInputPin, cannot use
-	static_assert(pit_num != 0);
-	static_assert(pit_num < 4);
+    // PIT0 is being used by FEHIO AnalogEncoder and AnalogInputPin, cannot use
+    static_assert(pit_num != 0);
+    static_assert(pit_num < 4);
 
-	// Set priority
-	NVIC_SetPriority((IRQn) (PIT0_IRQn + pit_num), irq_priority);
+    // Set priority
+    NVIC_SetPriority((IRQn) (PIT0_IRQn + pit_num), irq_priority);
 
-	// Enable PIT clock
-	PIT_BASE_PTR->MCR = 0;
-	// Set up PIT interval
-	PIT_BASE_PTR->CHANNEL[pit_num].LDVAL = cyc_interval / BSP_BUS_DIV;
-	// Start PIT and enable PIT interrupts
-	PIT_BASE_PTR->CHANNEL[pit_num].TCTRL = PIT_TCTRL_TEN_MASK | PIT_TCTRL_TIE_MASK;
+    // Enable PIT clock
+    PIT_BASE_PTR->MCR = 0;
+    // Set up PIT interval
+    PIT_BASE_PTR->CHANNEL[pit_num].LDVAL = cyc_interval / BSP_BUS_DIV;
+    // Start PIT and enable PIT interrupts
+    PIT_BASE_PTR->CHANNEL[pit_num].TCTRL = PIT_TCTRL_TEN_MASK | PIT_TCTRL_TIE_MASK;
 
-	// Enable interrupt in NVIC
-	NVIC_EnableIRQ((IRQn) (PIT0_IRQn + pit_num));
+    // Enable interrupt in NVIC
+    NVIC_EnableIRQ((IRQn) (PIT0_IRQn + pit_num));
 }
 
 template<int pit_num>
 void clear_PIT_irq_flag() {
-	PIT_BASE_PTR->CHANNEL[pit_num].TFLG = 1;
+    PIT_BASE_PTR->CHANNEL[pit_num].TFLG = 1;
 }
 
 CycTimer tick_timer{};
 int tick_cycles{};
 // This is called every (1 / TICK_RATE) seconds by the SysTick timer
 extern "C" void SysTick_Handler(void) {
-	tick_timer.begin();
-	robot.tick();
-	tick_cycles = (int) tick_timer.lap();
+    tick_timer.begin();
+    robot.tick();
+    tick_cycles = (int) tick_timer.lap();
 }
 
 namespace visualization {
-	const char *nesw[4] = {"N", "W", "S", "E"};
+    const char *nesw[4] = {"N", "W", "S", "E"};
 
-	Vec<3> nesw_poss[] = {
-			Vec<3>{0, 80, 1},
-			Vec<3>{80, 0, 1},
-			Vec<3>{0, -80, 1},
-			Vec<3>{-80, 0, 1},
-	};
+    Vec<3> nesw_poss[] = {
+            Vec<3>{0, 80, 1},
+            Vec<3>{80, 0, 1},
+            Vec<3>{0, -80, 1},
+            Vec<3>{-80, 0, 1},
+    };
 
-	Vec<3> arrow_vtx[] = {
-			Vec<3>{-10, 0, 1},
-			Vec<3>{10, 0, 1},
-			Vec<3>{10, 45, 1},
-			Vec<3>{14, 45, 1},
-			Vec<3>{0, 64, 1},
-			Vec<3>{-14, 45, 1},
-			Vec<3>{-10, 45, 1},
-	};
+    Vec<3> arrow_vtx[] = {
+            Vec<3>{-10, 0, 1},
+            Vec<3>{10, 0, 1},
+            Vec<3>{10, 45, 1},
+            Vec<3>{14, 45, 1},
+            Vec<3>{0, 64, 1},
+            Vec<3>{-14, 45, 1},
+            Vec<3>{-10, 45, 1},
+    };
 
-	const int arrow_vtx_len = sizeof(arrow_vtx) / sizeof(Vec<3>);
+    const int arrow_vtx_len = sizeof(arrow_vtx) / sizeof(Vec<3>);
 
-	void draw_vtx_list(Vec<3> vtx_list[], int len, Mat<3, 3> mat, bool thick) {
-		Vec<3> vtx1 = mat.multiply(vtx_list[len - 1]);
-		for (int i = 0; i < len; i++) {
-			Vec<3> vtx2 = mat.multiply(vtx_list[i]);
-			FastLCD::DrawLine(
-					(int) vtx1.vec[0],
-					(int) vtx1.vec[1],
-					(int) vtx2.vec[0],
-					(int) vtx2.vec[1], thick);
-			vtx1 = vtx2;
-		}
-	}
+    void draw_vtx_list(Vec<3> vtx_list[], int len, Mat<3, 3> mat, bool thick) {
+        Vec<3> vtx1 = mat.multiply(vtx_list[len - 1]);
+        for (int i = 0; i < len; i++) {
+            Vec<3> vtx2 = mat.multiply(vtx_list[i]);
+            FastLCD::DrawLine(
+                    (int) vtx1.vec[0],
+                    (int) vtx1.vec[1],
+                    (int) vtx2.vec[0],
+                    (int) vtx2.vec[1], thick);
+            vtx1 = vtx2;
+        }
+    }
 
-	void draw_compass(Mat<3, 3> mat) {
-		FastLCD::SetFontPaletteIndex(White);
-		for (int i = 0; i < 4; i++) {
-			Vec<3> offs{-12.0 / 2, -17.0 / 2, 1};
-			Vec<3> pos = mat.multiply(nesw_poss[i]).add(offs);
-			FastLCD::WriteAt(nesw[i], (int) pos.vec[0], (int) pos.vec[1]);
-		}
+    void draw_compass(Mat<3, 3> mat) {
+        FastLCD::SetFontPaletteIndex(White);
+        for (int i = 0; i < 4; i++) {
+            Vec<3> offs{-12.0 / 2, -17.0 / 2, 1};
+            Vec<3> pos = mat.multiply(nesw_poss[i]).add(offs);
+            FastLCD::WriteAt(nesw[i], (int) pos.vec[0], (int) pos.vec[1]);
+        }
 
-		FastLCD::DrawCircle(LCD_WIDTH / 2, LCD_HEIGHT / 2, 64);
-		FastLCD::WriteAt(deg(robot.angle), LCD_WIDTH / 2 - 42, 17);
+        FastLCD::DrawCircle(LCD_WIDTH / 2, LCD_HEIGHT / 2, 64);
+        FastLCD::WriteAt(deg(robot.angle), LCD_WIDTH / 2 - 42, 17);
 
-		FastLCD::SetFontPaletteIndex(Yellow);
-		draw_vtx_list(arrow_vtx, arrow_vtx_len, mat, true);
-	}
+        FastLCD::SetFontPaletteIndex(Yellow);
+        draw_vtx_list(arrow_vtx, arrow_vtx_len, mat, true);
+    }
 
-	constexpr int HALF_GRID_WIDTH = 240;
-	constexpr float GRID_SQUARE_INCHES = 3.0;
-	constexpr int GRID_SIZE = 32;
-	constexpr float INCH_TO_PIXEL = GRID_SIZE / GRID_SQUARE_INCHES;
+    constexpr int HALF_GRID_WIDTH = 240;
+    constexpr float GRID_SQUARE_INCHES = 3.0;
+    constexpr int GRID_SIZE = 32;
+    constexpr float INCH_TO_PIXEL = GRID_SIZE / GRID_SQUARE_INCHES;
 
-	void draw_grid_lines(Mat<3, 3> mat) {
-		Vec<3> robot_offset{
-				(float) fmod(robot.pos.vec[0] * INCH_TO_PIXEL, GRID_SIZE),
-				(float) fmod(-robot.pos.vec[1] * INCH_TO_PIXEL, GRID_SIZE),
-				0};
-		FastLCD::SetFontPaletteIndex(Gray);
-		static_assert((HALF_GRID_WIDTH * 2) % GRID_SIZE == 0);
-		for (int s = -HALF_GRID_WIDTH; s < HALF_GRID_WIDTH; s += GRID_SIZE) {
-			Vec<3> v1{(float) s, (float) -HALF_GRID_WIDTH, 1};
-			Vec<3> v2{(float) s, (float) HALF_GRID_WIDTH, 1};
-			v1 = v1.add(robot_offset);
-			v2 = v2.add(robot_offset);
-			v1 = mat.multiply(v1);
-			v2 = mat.multiply(v2);
-			FastLCD::DrawLine(
-					(int) v1.vec[0], (int) v1.vec[1],
-					(int) v2.vec[0], (int) v2.vec[1], false);
+    void draw_grid_lines(Mat<3, 3> mat) {
+        Vec<3> robot_offset{
+                (float) fmod(robot.pos.vec[0] * INCH_TO_PIXEL, GRID_SIZE),
+                (float) fmod(-robot.pos.vec[1] * INCH_TO_PIXEL, GRID_SIZE),
+                0};
+        FastLCD::SetFontPaletteIndex(Gray);
+        static_assert((HALF_GRID_WIDTH * 2) % GRID_SIZE == 0);
+        for (int s = -HALF_GRID_WIDTH; s < HALF_GRID_WIDTH; s += GRID_SIZE) {
+            Vec<3> v1{(float) s, (float) -HALF_GRID_WIDTH, 1};
+            Vec<3> v2{(float) s, (float) HALF_GRID_WIDTH, 1};
+            v1 = v1.add(robot_offset);
+            v2 = v2.add(robot_offset);
+            v1 = mat.multiply(v1);
+            v2 = mat.multiply(v2);
+            FastLCD::DrawLine(
+                    (int) v1.vec[0], (int) v1.vec[1],
+                    (int) v2.vec[0], (int) v2.vec[1], false);
 
-			Vec<3> h1{(float) -HALF_GRID_WIDTH, (float) s, 1};
-			Vec<3> h2{(float) HALF_GRID_WIDTH, (float) s, 1};
-			h1 = h1.add(robot_offset);
-			h2 = h2.add(robot_offset);
-			h1 = mat.multiply(h1);
-			h2 = mat.multiply(h2);
-			FastLCD::DrawLine(
-					(int) h1.vec[0], (int) h1.vec[1],
-					(int) h2.vec[0], (int) h2.vec[1], false);
-		}
-	}
+            Vec<3> h1{(float) -HALF_GRID_WIDTH, (float) s, 1};
+            Vec<3> h2{(float) HALF_GRID_WIDTH, (float) s, 1};
+            h1 = h1.add(robot_offset);
+            h2 = h2.add(robot_offset);
+            h1 = mat.multiply(h1);
+            h2 = mat.multiply(h2);
+            FastLCD::DrawLine(
+                    (int) h1.vec[0], (int) h1.vec[1],
+                    (int) h2.vec[0], (int) h2.vec[1], false);
+        }
+    }
 
-	void draw_task_visualizer(Mat<3, 3> mat) {
-		Vec<3> robot_offset{robot.pos.vec[0] * INCH_TO_PIXEL, -robot.pos.vec[1] * INCH_TO_PIXEL, 0};
-		FastLCD::SetFontPaletteIndex(Red);
-		RobotTask *head = robot.task_list;
-		Radian angle = INITIAL_ANGLE;
-		Vec<3> pos{0, 0, 1};
-		while (head != nullptr) {
-			auto straight = dynamic_cast<Straight *>(head);
-			auto straight_until_switch = dynamic_cast<StraightUntilSwitch *>(head);
+    extern "C" void PIT1_IRQHandler(void) {
+        clear_PIT_irq_flag<1>();
 
-			if (straight != nullptr || straight_until_switch != nullptr) {
-				float inches;
+        static bool prev_touching = false;
+        static bool display_compass = true;
+        static float holding_sec = 0;
 
-				if (straight != nullptr) inches = straight->inches;
-				if (straight_until_switch != nullptr) inches = straight_until_switch->inches;
+        int x, y;
+        bool touching = LCD.Touch(&x, &y);
+        if (touching && !prev_touching) {
+            if (x < LCD_WIDTH / 2) {
+                display_compass = !display_compass;
+            }
+        }
+        prev_touching = touching;
 
-				float grid_size_mul = GRID_SIZE / GRID_SQUARE_INCHES;
-				float dx = inches * cosf(angle + rad(90)) * grid_size_mul;
-				float dy = inches * sinf(angle + rad(90)) * grid_size_mul;
+        switch (robot.ticket_light_color) {
+            case TICKET_LIGHT_RED:
+                FastLCD::SetPaletteColor(Clear, RED);
+                break;
+            case TICKET_LIGHT_BLUE:
+                FastLCD::SetPaletteColor(Clear, BLUE);
+                break;
+            case TICKET_LIGHT_NONE:
+                FastLCD::SetPaletteColor(Clear, BLACK);
+                break;
+        }
 
-				Vec<3> offset_pos = pos.add(robot_offset);
-				Vec<3> p1 = mat.multiply(offset_pos);
-				Vec<3> p2{dx, dy, 0};
-				p2 = p2.add(offset_pos);
-				p2 = mat.multiply(p2);
-
-				FastLCD::DrawLine(
-						(int) p1.vec[0],
-						(int) p1.vec[1],
-						(int) p2.vec[0],
-						(int) p2.vec[1], true);
-
-				Vec<3> dpos{dx, dy, 0};
-				pos = pos.add(dpos);
-			}
-
-			auto turn = dynamic_cast<Turn *>(head);
-			if (turn != nullptr) {
-				angle = rad(turn->angle);
-			}
-
-			head = head->next_task;
-		}
-	}
-
-	extern "C" void PIT1_IRQHandler(void) {
-		clear_PIT_irq_flag<1>();
-
-		static bool prev_touching = false;
-		static bool display_compass = true;
-		static float holding_sec = 0;
-
-		int x, y;
-		bool touching = LCD.Touch(&x, &y);
-		if (touching && !prev_touching) {
-			if (x < LCD_WIDTH / 2) {
-				display_compass = !display_compass;
-			}
-		}
-		prev_touching = touching;
-
-		switch (robot.ticket_light_color) {
-			case TICKET_LIGHT_RED:
-				FastLCD::SetPaletteColor(Clear, RED);
-				break;
-			case TICKET_LIGHT_BLUE:
-				FastLCD::SetPaletteColor(Clear, BLUE);
-				break;
-			case TICKET_LIGHT_NONE:
-				FastLCD::SetPaletteColor(Clear, BLACK);
-				break;
-		}
-
-		FastLCD::Clear();
-		if (display_compass) {
-			Mat mat = Mat<3, 3>::RotationTranslation(-robot.angle + rad(180), LCD_WIDTH / 2.0, LCD_HEIGHT / 2.0);
-			draw_grid_lines(mat);
-			draw_task_visualizer(mat);
-			draw_compass(mat);
-		} else {
-			FastLCD::SetFontPaletteIndex(White);
+        FastLCD::Clear();
+        if (display_compass) {
+            Mat mat = Mat<3, 3>::RotationTranslation(-robot.angle + rad(180), LCD_WIDTH / 2.0, LCD_HEIGHT / 2.0);
+            draw_grid_lines(mat);
+            draw_compass(mat);
+        } else {
+            FastLCD::SetFontPaletteIndex(White);
 //			FastLCD::Write("Tick CPU usage: ");
 //			FastLCD::Write((tick_cycles * 100) / (int) cyc(1.0 / TICK_RATE) + 1); // add 1% safety margin
 //			FastLCD::WriteLine("%");
 //			FastLCD::Write("Tick count: ");
 //			FastLCD::WriteLine((int) robot.tick_count);
 
-			FastLCD::Write("X/Yin: ");
-			FastLCD::Write(robot.pos.vec[0]);
-			FastLCD::Write(" ");
-			FastLCD::WriteLine(robot.pos.vec[1]);
+//            FastLCD::Write("X/Yin: ");
+//            FastLCD::Write(robot.pos.vec[0]);
+//            FastLCD::Write(" ");
+//            FastLCD::WriteLine(robot.pos.vec[1]);
 
-			FastLCD::Write("Turn radius: ");
-			FastLCD::WriteLine(robot.R);
+            FastLCD::Write("Turn radius: ");
+            FastLCD::WriteLine(robot.R);
 
-			FastLCD::Write("Angle: ");
-			FastLCD::WriteLine(deg(robot.angle));
-			FastLCD::Write("TargetAngle: ");
-			FastLCD::WriteLine(deg(robot.target_angle));
+            FastLCD::Write("Angle: ");
+            FastLCD::WriteLine(deg(robot.angle));
+            FastLCD::Write("TargetAngle: ");
+            FastLCD::WriteLine(deg(robot.target_angle));
 
-			FastLCD::Write("L Motor Counts: ");
-			FastLCD::WriteLine(robot.total_counts_l);
-			FastLCD::Write("R Motor Counts: ");
-			FastLCD::WriteLine(robot.total_counts_r);
+            FastLCD::Write("L Motor Counts: ");
+            FastLCD::WriteLine(robot.total_counts_l);
+            FastLCD::Write("R Motor Counts: ");
+            FastLCD::WriteLine(robot.total_counts_r);
 
-			FastLCD::Write("ControlMode: ");
-			FastLCD::WriteLine(robot.control_mode_string());
+            FastLCD::Write("ControlMode: ");
+            FastLCD::WriteLine(robot.control_mode_string());
 
 //			FastLCD::Write("ControlEffort: ");
 //			FastLCD::WriteLine(robot.angle_controller.control_effort);
@@ -940,74 +822,76 @@ namespace visualization {
 //			FastLCD::WriteLine(robot.angle_controller.error);
 //			FastLCD::Write("I: ");
 //			FastLCD::WriteLine(robot.angle_controller.I);
-			FastLCD::Write("CDS Value: ");
-			FastLCD::WriteLine(robot.light_sensor_value);
-			FastLCD::Write("Average CDS V: ");
-			FastLCD::WriteLine(robot.light_sensor_average_value);
+            FastLCD::Write("CDS Value: ");
+            FastLCD::WriteLine(robot.light_sensor_value);
+            FastLCD::Write("Average CDS V: ");
+            FastLCD::WriteLine(robot.light_sensor_average_value);
 
-			FastLCD::Write("Dist: ");
-			FastLCD::WriteLine(robot.pos.dist(robot.pos0));
-			FastLCD::Write("TargetDist: ");
-			FastLCD::WriteLine(robot.target_dist);
-		}
+            FastLCD::Write("Dist: ");
+            FastLCD::WriteLine(robot.pos.dist(robot.pos0));
+            FastLCD::Write("TargetDist: ");
+            FastLCD::WriteLine(robot.target_dist);
+            FastLCD::Write("DistRemain: ");
+            FastLCD::WriteLine(robot.dist_remain);
+            FastLCD::Write("Slewed%: ");
+            FastLCD::WriteLine(robot.slewed_pct);
+            FastLCD::Write("Spinwait: ");
+            FastLCD::WriteLine(spinwait_iters);
+        }
 
-		if (holding_sec < FORCE_START_HOLD_SEC) {
-			if (touching && x >= LCD_WIDTH / 2) {
-				holding_sec += 1.0 / DIAGNOSTICS_HZ;
-			} else {
-				holding_sec = 0;
-			}
-		} else {
-			holding_sec += 1.0 / DIAGNOSTICS_HZ;
+        if (holding_sec < FORCE_START_HOLD_SEC) {
+            if (touching && x >= LCD_WIDTH / 2) {
+                holding_sec += 1.0 / DIAGNOSTICS_HZ;
+            } else {
+                holding_sec = 0;
+            }
+        } else {
+            holding_sec += 1.0 / DIAGNOSTICS_HZ;
 
-			if (holding_sec > FORCE_START_TOTAL_SEC) {
-				robot.force_start = true;
-				holding_sec = 0;
-			}
-		}
+            if (holding_sec > FORCE_START_TOTAL_SEC) {
+                robot.force_start = true;
+                holding_sec = 0;
+            }
+        }
 
-		if (holding_sec > 0) {
-			float progress = holding_sec / FORCE_START_TOTAL_SEC;
-			auto progress_bar_width = (int) (progress * LCD_WIDTH);
-			FastLCD::SetFontPaletteIndex(3);
-			FastLCD::FillRectangle(0, 0, progress_bar_width, 32);
-		}
+        if (holding_sec > 0) {
+            float progress = holding_sec / FORCE_START_TOTAL_SEC;
+            auto progress_bar_width = (int) (progress * LCD_WIDTH);
+            FastLCD::SetFontPaletteIndex(3);
+            FastLCD::FillRectangle(0, 0, progress_bar_width, 32);
+        }
 
-		FastLCD::DrawScreen();
-	}
+        FastLCD::DrawScreen();
+    }
 }
 
 void sleep(int ms) {
-	// Make sure PIT3 IRQ flag isn't on
-	clear_PIT_irq_flag<3>();
+    // Make sure PIT3 IRQ flag isn't on
+    clear_PIT_irq_flag<3>();
 
-	auto cyc = (uint32_t) ((float) ms * (PROTEUS_SYSTEM_HZ / 1000));
+    auto cyc = (uint32_t) ((float) ms * (PROTEUS_SYSTEM_HZ / 1000));
 
-	// Stop PIT3 just in case
-	PIT_BASE_PTR->CHANNEL[3].TCTRL = 0;
+    // Stop PIT3 just in case
+    PIT_BASE_PTR->CHANNEL[3].TCTRL = 0;
 
-	// Enable PIT clock
-	PIT_BASE_PTR->MCR = 0;
-	// Set up PIT3 timeout cycles
-	PIT_BASE_PTR->CHANNEL[3].LDVAL = cyc / BSP_BUS_DIV;
-	// Start PIT3
-	PIT_BASE_PTR->CHANNEL[3].TCTRL = 0b11;
+    // Enable PIT clock
+    PIT_BASE_PTR->MCR = 0;
+    // Set up PIT3 timeout cycles
+    PIT_BASE_PTR->CHANNEL[3].LDVAL = cyc / BSP_BUS_DIV;
+    // Start PIT3
+    PIT_BASE_PTR->CHANNEL[3].TCTRL = 0b11;
 
-	// Wait for the PIT3 IRQ flag to show up
-	while (!(PIT_BASE_PTR->CHANNEL[3].TFLG & 1));
+    // Wait for the PIT3 IRQ flag to show up
+    while (!(PIT_BASE_PTR->CHANNEL[3].TFLG & 1));
 
-	// Clear the PIT3 IRQ flag
-	clear_PIT_irq_flag<3>();
+    // Clear the PIT3 IRQ flag
+    clear_PIT_irq_flag<3>();
 
-	// Stop PIT3
-	PIT_BASE_PTR->CHANNEL[3].TCTRL = 0;
+    // Stop PIT3
+    PIT_BASE_PTR->CHANNEL[3].TCTRL = 0;
 }
 
 /*
-* Queue up robot tasks. The RobotTask constructor will add these to the queue as they are declared.
-* Static variables in the same .cpp file are initialized in order of declaration so this is fine.
-*/
-
 Speed t0(50);
 
 // Wait for start light to turn on.
@@ -1027,6 +911,23 @@ StraightUntilSwitch kiosk4(29);
 Straight kiosk5(-4.4);
 WaitForTicketLight ticketLight(3000);
 
+Conditional c0((int *) &robot.ticket_light_color, (int) TicketLightColor::TICKET_LIGHT_RED);
+Straight rl0(-4);
+Turn rl1(-90);
+Straight rl2(-8);
+Turn rl3(0);
+StraightUntilSwitch rl4(4);
+
+EndConditional ec0();
+
+Conditional c1((int *) &robot.ticket_light_color, (int) TicketLightColor::TICKET_LIGHT_BLUE);
+Straight bl0(-4);
+Turn bl1(-90);
+Straight bl2(-12);
+Turn bl3(0);
+StraightUntilSwitch bl4(4);
+
+EndConditional ec1();
 
 /*
 // 4. Stamp the passport.
@@ -1095,35 +996,74 @@ Straight t44(-16.267); // Back into the course end button
 */
 
 int main() {
-	LCD.Clear();
-	LCD.WriteLine("Hello FEH!");
-	LCD.WriteLine("SP24 Team C2");
-	LCD.WriteLine("\"LOREM IPSUM\"");
-	LCD.WriteLine("Initializing Robot...");
+    LCD.Clear();
+    LCD.WriteLine("Hello FEH!");
+    LCD.WriteLine("SP24 Team C2");
+    LCD.WriteLine("\"LOREM IPSUM\"");
+    LCD.WriteLine("Initializing Robot...");
 
-	/*
-	   * Assign colors to palette numbers.
-	 */
-	FastLCD::SetPaletteColor(Clear, BLACK);
-	FastLCD::SetPaletteColor(White, WHITE);
-	FastLCD::SetPaletteColor(Gray, GRAY);
-	FastLCD::SetPaletteColor(Red, RED);
-	FastLCD::SetPaletteColor(Yellow, YELLOW);
+    /*
+       * Assign colors to palette numbers.
+     */
+    FastLCD::SetPaletteColor(Clear, BLACK);
+    FastLCD::SetPaletteColor(White, WHITE);
+    FastLCD::SetPaletteColor(Gray, GRAY);
+    FastLCD::SetPaletteColor(Red, RED);
+    FastLCD::SetPaletteColor(Yellow, YELLOW);
 
-	/*
-	   * Begin the diagnostics printing timer at the lowest possible priority (15).
-	   * Calls PIT1_IRQHandler() every 0.05 seconds.
-	 */
-	init_PIT<1, 15>(cyc(1.0 / DIAGNOSTICS_HZ));
+    /*
+     * Begin the diagnostics printing timer at the lowest possible priority (15).
+     * Calls PIT1_IRQHandler() every 0.05 seconds.
+     */
+    init_PIT<1, 15>(cyc(1.0 / DIAGNOSTICS_HZ));
 
-	/*
-	   * Initialize the robot control loop by setting up the SysTick timer.
-	   * Calls SysTick_Handler() at TICK_RATE hz.
-	   *
-	   * Priority is 1 because DigitalEncoder PORT IRQs need higher priority.
-	 */
-	SysTick_Config(SYSTICK_INTERVAL_CYCLES);
-	NVIC_SetPriority(SysTick_IRQn, 1);
+    /*
+     * Initialize the robot control loop by setting up the SysTick timer.
+     * Calls SysTick_Handler() at TICK_RATE hz.
+     *
+     * Priority is 1 because DigitalEncoder PORT IRQs need higher priority.
+     */
+    SysTick_Config(SYSTICK_INTERVAL_CYCLES);
+    NVIC_SetPriority(SysTick_IRQn, 1);
 
-	return 0;
+    /*
+     * Robot Tasks.
+     */
+
+    Speed(50);
+    // Wait for start light to turn on.
+    WaitForStartLight(3000);
+
+    // Go up ramp.
+    Straight(3.92100);
+    Turn(45);
+    Straight(5.581);
+    Turn(0);
+    Straight(28.5);
+
+    // Turn toward kiosk
+    Turn(-45);
+    StraightUntilSwitch(29);
+
+    // Go back to line up with ticket light
+    Straight(-4.4);
+    WaitForTicketLight(3000);
+
+    if (robot.ticket_light_color == TicketLightColor::TICKET_LIGHT_RED) {
+        Straight(-4);
+        Turn(-90);
+        Straight(-8);
+        Turn(0);
+        StraightUntilSwitch(4);
+    } else if (robot.ticket_light_color == TicketLightColor::TICKET_LIGHT_BLUE) {
+        Straight(-4);
+        Turn(-90);
+        Straight(-12);
+        Turn(0);
+        StraightUntilSwitch(4);
+    }
+
+    stop_robot_control_loop();
+
+    return 0;
 }
