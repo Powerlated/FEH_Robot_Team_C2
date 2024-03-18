@@ -687,6 +687,13 @@ namespace visualization {
     CycTimer visualization_timer;
     CycTimer draw_timer;
 
+    template<typename T>
+    void log(const char *label, T value) {
+        FastLCD::Write(label);
+        FastLCD::Write(": ");
+        FastLCD::WriteLine(value);
+    }
+
     extern "C" void PIT1_IRQHandler(void) {
         visualization_timer.begin();
 
@@ -726,53 +733,35 @@ namespace visualization {
 //			FastLCD::Write("Tick CPU usage: ");
 //			FastLCD::Write((tick_cycles * 100) / (int) cyc(1.0 / TICK_RATE) + 1); // add 1% safety margin
 //			FastLCD::WriteLine("%");
-//			FastLCD::Write("Tick count: ");
-//			FastLCD::WriteLine((int) robot.tick_count);
+//			log("Tick count", (int) robot.tick_count);
 
 //            FastLCD::Write("X/Yin: ");
 //            FastLCD::Write(robot.pos.vec[0]);
 //            FastLCD::Write(" ");
 //            FastLCD::WriteLine(robot.pos.vec[1]);
 
-//            FastLCD::Write("Turn radius: ");
-//            FastLCD::WriteLine(robot.R);
+//            log("Turn radius: ", robot.R);
 
-            FastLCD::Write("Angle: ");
-            FastLCD::WriteLine(deg(robot.angle));
-            FastLCD::Write("TargetAngle: ");
-            FastLCD::WriteLine(deg(robot.target_angle));
+            log("Angle", deg(robot.angle));
+            log("TargetAngle", deg(robot.target_angle));
 
-            FastLCD::Write("L Motor Counts: ");
-            FastLCD::WriteLine(robot.total_counts_l);
-            FastLCD::Write("R Motor Counts: ");
-            FastLCD::WriteLine(robot.total_counts_r);
+            log("L Motor Counts", robot.total_counts_l);
+            log("R Motor Counts", robot.total_counts_r);
 
-            FastLCD::Write("ControlMode: ");
-            FastLCD::WriteLine(robot.control_mode_string());
+            log("ControlMode", robot.control_mode_string());
 
-//			FastLCD::Write("ControlEffort: ");
-//			FastLCD::WriteLine(robot.angle_controller.control_effort);
-//			FastLCD::Write("Error: ");
-//			FastLCD::WriteLine(robot.angle_controller.error);
-//			FastLCD::Write("I: ");
-//			FastLCD::WriteLine(robot.angle_controller.I);
-            FastLCD::Write("CDS Value: ");
-            FastLCD::WriteLine(robot.light_sensor_value);
-            FastLCD::Write("Average CDS V: ");
-            FastLCD::WriteLine(robot.light_sensor_average_value);
+            log("ControlEffort", robot.angle_controller.control_effort);
+            log("Error", robot.angle_controller.error);
+            log("I", robot.angle_controller.I);
+            log("CDS Value", robot.light_sensor_value);
+            log("Average CDS V", robot.light_sensor_average_value);
 
-            FastLCD::Write("Dist: ");
-            FastLCD::WriteLine(robot.pos.dist(robot.pos0));
-            FastLCD::Write("TargetDist: ");
-            FastLCD::WriteLine(robot.target_dist);
-            FastLCD::Write("DistRemain: ");
-            FastLCD::WriteLine(robot.dist_remain);
-            FastLCD::Write("Slewed%: ");
-            FastLCD::WriteLine(robot.slewed_pct);
-            FastLCD::Write("VT: ");
-            FastLCD::WriteLine((int)visualization_timer.last_lap_cyc);
-            FastLCD::Write("DT: ");
-            FastLCD::WriteLine((int)draw_timer.last_lap_cyc);
+            log("Dist", robot.pos.dist(robot.pos0));
+            log("TargetDist", robot.target_dist);
+            log("DistRemain", robot.dist_remain);
+            log("Slewed%", robot.slewed_pct);
+            log("VT", (int) visualization_timer.last_lap_cyc);
+            log("DT", (int) draw_timer.last_lap_cyc);
         }
 
         if (holding_sec < FORCE_START_HOLD_SEC) {
