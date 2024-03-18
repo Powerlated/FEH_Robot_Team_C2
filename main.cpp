@@ -346,24 +346,6 @@ namespace robot_control {
             target_angle = INITIAL_ANGLE;
         }
 
-        [[nodiscard]] const char *control_mode_string() const {
-            switch (control_mode) {
-                case ControlMode::INIT:
-                    return "Init";
-                case ControlMode::STRAIGHT:
-                    return "Forward";
-                case ControlMode::STRAIGHT_UNTIL_SWITCH:
-                    return "FwdTilSwitch";
-                case ControlMode::TURNING:
-                    return "Turning";
-                case ControlMode::WAIT_FOR_START_LIGHT:
-                    return "WaitStartLight";
-                case ControlMode::WAIT_FOR_TICKET_LIGHT:
-                    return "WaitTicketLight";
-            }
-            return "?????";
-        }
-
         void task_finished() {
             // Set main function priority to higher than encoders so the task list can run.
             __set_BASEPRI(1);
@@ -671,6 +653,25 @@ namespace tasks {
  * Visualization/debugging code.
  */
 namespace visualization {
+    [[nodiscard]]
+    const char *control_mode_string() {
+        switch (robot.control_mode) {
+            case ControlMode::INIT:
+                return "Init";
+            case ControlMode::STRAIGHT:
+                return "Forward";
+            case ControlMode::STRAIGHT_UNTIL_SWITCH:
+                return "FwdTilSwitch";
+            case ControlMode::TURNING:
+                return "Turning";
+            case ControlMode::WAIT_FOR_START_LIGHT:
+                return "WaitStartLight";
+            case ControlMode::WAIT_FOR_TICKET_LIGHT:
+                return "WaitTicketLight";
+        }
+        return "?????";
+    }
+
     const char *nesw[4] = {"N", "W", "S", "E"};
 
     Vec<3> nesw_poss[] = {
@@ -784,7 +785,7 @@ namespace visualization {
             log("L Motor Counts", robot.total_counts_l);
             log("R Motor Counts", robot.total_counts_r);
 
-            log("ControlMode", robot.control_mode_string());
+            log("ControlMode", control_mode_string());
 
             log("ControlEffort", robot.angle_controller.control_effort);
             log("Error", robot.angle_controller.error);
