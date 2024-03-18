@@ -26,6 +26,7 @@
 #include <FEHIO.h>
 #include <cmath>
 #include <typeinfo>
+#include <FEHBattery.h>
 
 using namespace std;
 
@@ -379,6 +380,12 @@ struct Robot {
     void motor_power(float new_pct_l, float new_pct_r) {
         pct_l = new_pct_l;
         pct_r = new_pct_r;
+
+        // A lower battery voltage will result in a HIGHER power supplied to compensate the voltage drop.
+        float voltage_compensation = 11.7f / Battery.Voltage();
+
+        pct_l *= voltage_compensation;
+        pct_r *= voltage_compensation;
 
         ml.SetPercent(pct_l);
         mr.SetPercent(pct_r);
