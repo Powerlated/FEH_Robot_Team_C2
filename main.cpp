@@ -30,6 +30,9 @@
 
 using namespace std;
 
+/*
+ * Namespace forward declarations and uses.
+ */
 namespace util {};
 namespace robot_control {};
 namespace tasks {};
@@ -38,6 +41,9 @@ using namespace util;
 using namespace robot_control;
 using namespace tasks;
 
+/*
+ * Utility type definitions.
+ */
 using Radian = float;
 using Volt = float;
 using Degree = float;
@@ -46,11 +52,14 @@ using Second = float;
 using Inch = float;
 using Hertz = int;
 
-// Declared in startup_mk60d10.cpp
-constexpr int BSP_BUS_DIV = 2;
-
+/*
+ * Proteus constants.
+ */
+constexpr int BSP_BUS_DIV = 2; // Declared in startup_mk60d10.cpp
 constexpr Hertz TICK_RATE = 100;
 constexpr Hertz PROTEUS_SYSTEM_HZ = 88000000.0;
+constexpr int LCD_WIDTH = 320;
+constexpr int LCD_HEIGHT = 240;
 
 /*
  * Code that won't be modified often during testing is stuffed into the "util" namespace.
@@ -209,16 +218,20 @@ namespace util {
     };
 }
 
+/*
+ * Robot control constants.
+ */
 constexpr int SYSTICK_INTERVAL_CYCLES = cyc(1.0 / TICK_RATE);
-
-constexpr Hertz DIAGNOSTICS_HZ = 5;
-constexpr Microsecond TICK_INTERVAL_MICROSECONDS = (1.0 / TICK_RATE) * 1000000;
-constexpr Inch TRACK_WIDTH = 8.276;
-
 constexpr float IGWAN_COUNTS_PER_REV = 636;
+constexpr Inch TRACK_WIDTH = 8.276;
 constexpr Inch WHEEL_DIA = 2.5;
 constexpr Inch INCHES_PER_REV = WHEEL_DIA * M_PI;
 constexpr Inch INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
+constexpr Volt DRIVE_MOTOR_MAX_VOLTAGE = 9.0;
+
+/*
+ * Robot control configuration.
+ */
 constexpr float DRIVE_SLEW_RATE = 200; // Percent per m/s
 constexpr float TURN_SLEW_RATE = 200; // Percent per radian/s
 constexpr float DRIVE_MIN_PERCENT = 5;
@@ -232,10 +245,20 @@ constexpr float RED_LIGHT_VOLTAGE = 0.35;
 constexpr float BLUE_LIGHT_VOLTAGE = 1.5;
 constexpr int WAIT_FOR_LIGHT_CONFIRM_TICKS = ticks(0.5);
 
+constexpr Vec<2> INITIAL_POS{0, 0};
+constexpr Radian INITIAL_ANGLE = rad(-45);
+
+/*
+ * Diagnostics/visualization configuration.
+ */
+constexpr Hertz DIAGNOSTICS_HZ = 5;
+constexpr Microsecond TICK_INTERVAL_MICROSECONDS = (1.0 / TICK_RATE) * 1000000;
 constexpr Second FORCE_START_HOLD_SEC = 0.5;
 constexpr Second FORCE_START_TOTAL_SEC = 1;
 
-constexpr Volt DRIVE_MOTOR_MAX_VOLTAGE = 9.0;
+/*
+ * Port configuration.
+ */
 constexpr auto DRIVE_MOTOR_L_PORT = FEHMotor::Motor0;
 constexpr auto DRIVE_MOTOR_R_PORT = FEHMotor::Motor1;
 constexpr auto ENCODER_L_PIN_0 = FEHIO::FEHIOPin::P3_0;
@@ -247,15 +270,9 @@ constexpr auto BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_7;
 constexpr Inch DRIVE_INCHES_PER_COUNT_L = INCHES_PER_COUNT;
 constexpr Inch DRIVE_INCHES_PER_COUNT_R = INCHES_PER_COUNT;
 
-constexpr Vec<2> INITIAL_POS{0, 0};
-constexpr Radian INITIAL_ANGLE = rad(-45);
-
-constexpr int LCD_WIDTH = 320;
-constexpr int LCD_HEIGHT = 240;
-
 /*
-* Main robot control code.
-*/
+ * Main robot control code.
+ */
 namespace robot_control {
     enum TicketLightColor : int {
         TICKET_LIGHT_NONE,
@@ -814,16 +831,16 @@ namespace visualization {
 }
 
 /*
-* EXCEPTION PRIORITY LEVELS - FROM HIGHEST TO LOWEST
-*
-* The K60 has priority levels ranging from 0 to 15, where 0 is highest and 15 is lowest.
-* When an exception becomes pending and another exception with the same priority is running,
-* the pending exception waits for the running exception to end.
-*
-* 0 - PORT{A,B,C,D,E} - DigitalEncoder IRQs
-* 1 - SysTick - Robot Control Loop
-* 15 - PIT1 - Diagnostics/visualization printing
-*/
+ * EXCEPTION PRIORITY LEVELS - FROM HIGHEST TO LOWEST
+ *
+ * The K60 has priority levels ranging from 0 to 15, where 0 is highest and 15 is lowest.
+ * When an exception becomes pending and another exception with the same priority is running,
+ * the pending exception waits for the running exception to end.
+ *
+ * 0 - PORT{A,B,C,D,E} - DigitalEncoder IRQs
+ * 1 - SysTick - Robot Control Loop
+ * 15 - PIT1 - Diagnostics/visualization printing
+ */
 
 int main() {
     LCD.Clear();
