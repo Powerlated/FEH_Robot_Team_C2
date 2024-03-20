@@ -1,22 +1,22 @@
-/* *
-*
-* FEH ROBOT SP24 TEAM C2
-* Team Members:
-* - Griffin Bohm   (bohm.26@buckeyemail.osu.edu)
-* - Brian Jia      (jia.659@buckeyemail.osu.edu)
-* - Sam Patterson  (patterson.1368@buckeyemail.osu.edu)
-* - Drew Straub    (straub.135@buckeyemail.osu.edu)
-*
-* Code by Brian Jia (jia.659@buckeyemail.osu.edu)
-*
-* Unless otherwise specified, all lengths in this code are in inches,
-* and all angles are in radians.
-*
-* IF YOU ARE NOT A MEMBER OF FEH ROBOT SP24 TEAM C2 (THE TEAM), DO NOT USE THIS CODE.
-* THE TEAM HOLDS EXCLUSIVE COPYRIGHT OVER THIS CODE AND USING IT FOR YOUR OWN
-* ROBOT CONSTITUTES COPYRIGHT INFRINGEMENT AND ACADEMIC MISCONDUCT.
-*
-* */
+/*
+ *
+ * FEH ROBOT SP24 TEAM C2
+ * Team Members:
+ * - Griffin Bohm   (bohm.26@buckeyemail.osu.edu)
+ * - Brian Jia      (jia.659@buckeyemail.osu.edu)
+ * - Sam Patterson  (patterson.1368@buckeyemail.osu.edu)
+ * - Drew Straub    (straub.135@buckeyemail.osu.edu)
+ *
+ * Code by Brian Jia (jia.659@buckeyemail.osu.edu)
+ *
+ * Unless otherwise specified, all lengths in this code are in inches,
+ * and all angles are in radians.
+ *
+ * IF YOU ARE NOT A MEMBER OF FEH ROBOT SP24 TEAM C2 (THE TEAM), DO NOT USE THIS CODE.
+ * THE TEAM HOLDS EXCLUSIVE COPYRIGHT OVER THIS CODE AND USING IT FOR YOUR OWN
+ * ROBOT CONSTITUTES COPYRIGHT INFRINGEMENT AND ACADEMIC MISCONDUCT.
+ *
+ */
 
 #include "CMSIS/MK60D10.h"
 #include <FastLCD.h>
@@ -24,6 +24,7 @@
 #include <FEHMotor.h>
 #include <FEHServo.h>
 #include <FEHIO.h>
+#include <FEHRCS.h>
 #include <cmath>
 #include <typeinfo>
 #include <FEHBattery.h>
@@ -270,6 +271,10 @@ constexpr auto BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_7;
 constexpr Inch DRIVE_INCHES_PER_COUNT_L = INCHES_PER_COUNT;
 constexpr Inch DRIVE_INCHES_PER_COUNT_R = INCHES_PER_COUNT;
 
+constexpr auto LEVER_SERVO_PORT = FEHServo::FEHServoPort::Servo0;
+constexpr auto LEVER_SERVO_MIN = 650;
+constexpr auto LEVER_SERVO_MAX = 2300;
+
 /*
  * Main robot control code.
  */
@@ -303,7 +308,7 @@ namespace robot_control {
         DigitalEncoder er{ENCODER_R_PIN_0, ENCODER_R_PIN_1};
         DigitalInputPin bump_switch{BUMP_SWITCH_PIN};
         AnalogInputPin light_sensor{LIGHT_SENSOR_PIN};
-        FEHServo servo{FEHServo::FEHServoPort::Servo0};
+        FEHServo lever_servo{LEVER_SERVO_PORT};
 
         ControlMode control_mode = ControlMode::INIT;
 
@@ -344,9 +349,15 @@ namespace robot_control {
             pos = INITIAL_POS;
             angle = INITIAL_ANGLE;
             target_angle = INITIAL_ANGLE;
+
+            lever_servo.SetMax(LEVER_SERVO_MAX);
+            lever_servo.SetMin(LEVER_SERVO_MIN);
         }
 
         void task_finished() {
+            ml.Stop();
+            mr.Stop();
+
             // Set main function priority to higher than encoders so the task list can run.
             __set_BASEPRI(1);
             task_running = false;
@@ -587,7 +598,7 @@ namespace tasks {
         }
     }
 
-    void WaitForStartLight(int timeout_ms) {
+    void WaitForStartLight() {
         robot.control_mode = ControlMode::WAIT_FOR_START_LIGHT;
         robot.light_sensor_average_value = 0;
         robot.last_nonconfident_wait_for_light_tick = robot.tick_count;
@@ -633,9 +644,8 @@ namespace tasks {
         wait_for_task_to_finish();
     }
 
-    void StampPassport() {
-        // TODO
-        wait_for_task_to_finish();
+    void LeverServo(float degree) {
+        robot.lever_servo.SetDegree(degree);
     }
 
     void Position4Bar(Degree target_angle) {
@@ -797,8 +807,8 @@ namespace visualization {
             log("TargetDist", robot.target_dist);
             log("DistRemain", robot.dist_remain);
             log("Slewed%", robot.slewed_pct);
-            log("VT", (int) visualization_timer.last_lap_cyc);
-            log("DT", (int) draw_timer.last_lap_cyc);
+//            log("VT", (int) visualization_timer.last_lap_cyc);
+//            log("DT", (int) draw_timer.last_lap_cyc);
         }
 
         if (holding_sec < FORCE_START_HOLD_SEC) {
@@ -844,14 +854,14 @@ namespace visualization {
  */
 
 int main() {
-    LCD.Clear();
-    LCD.WriteLine("Hello FEH!");
-    LCD.WriteLine("SP24 Team C2");
-    LCD.WriteLine("\"LOREM IPSUM\"");
-    LCD.WriteLine("Initializing Robot...");
+    /*
+     * Initialize Robot Communication System (RCS).
+     */
+
+    RCS.InitializeTouchMenu("C2N8hFpMW");
 
     /*
-       * Assign colors to palette numbers.
+     * Assign colors to palette numbers.
      */
     FastLCD::SetPaletteColor(Clear, BLACK);
     FastLCD::SetPaletteColor(White, WHITE);
@@ -883,10 +893,41 @@ int main() {
      * Robot Tasks.
      */
 
-    Speed(25);
-    // Wait for start light to turn on.
-    WaitForStartLight(3000);
+    LeverServo(180);
 
+    Speed(25);
+
+    // Wait for start light to turn on.
+    WaitForStartLight();
+
+    // Forward
+    Straight(17.811);
+
+    // Turn left toward fuel levers
+    Turn(-90);
+
+    // Go toward fuel levers
+    Straight(8); // This will vary based on which fuel lever to use.
+
+    // Turn arm toward fuel levers
+    Turn(0);
+    Straight(-4); // Back into position for the fuel lever flipping
+
+    // Fuel lever flip sequence
+    LeverServo(70);
+    Sleep(250);
+    LeverServo(135);
+    Straight(5);
+    Sleep(3000);
+    LeverServo(45);
+    Straight(-5);
+    LeverServo(90);
+    Sleep(250);
+    LeverServo(45);
+    Straight(-5);
+    LeverServo(180);
+
+    /*
     // Go up ramp.
     Straight(3.92100);
     Turn(45);
@@ -929,6 +970,10 @@ int main() {
 
     Turn(0);
     Straight(-30);
+
+    // Get correct lever from the RCS
+    int correct_lever = RCS.GetCorrectLever();
+     */
 
     stop_robot_control_loop();
 
