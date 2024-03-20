@@ -16,7 +16,7 @@ public:
 	unsigned int ReceiveDataSearch( char* data, unsigned int maxlength, unsigned char expectedfirstchar );
 	unsigned int SendData( char* data, unsigned int length );
 
-	void SetPacketCallBack( void (*packetcallbackfunction)( unsigned char* data, unsigned char length ) );
+	void SetPacketCallBack( void (*packetcallbackfunction)( volatile unsigned char* data, unsigned char length ) );
 
 //	void EnableInterrupt();
 //	void DisableInterrupt();

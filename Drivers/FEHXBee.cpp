@@ -4,7 +4,7 @@
 #include "uart.h"
 #include "FEHLCD.h"
 
-void (*XBeeDataProcess)( unsigned char* data, unsigned char length );
+void (*XBeeDataProcess)( volatile unsigned char* data, unsigned char length );
 
 typedef enum
 {
@@ -16,11 +16,11 @@ typedef enum
 #define XBEEBUFFERSIZE 16
 #define XBEEPACKETSIZE 13
 #define XBEESTARTBYTE 0xFF
-unsigned char _xbeebuffer[ XBEEBUFFERSIZE ];
-unsigned char _xbeebufferindex = 0;
-XBeePacketState _xbeestate = AwaitingStart;
-bool _xbeebytereceived = false;
-char _xbeebyte;
+volatile unsigned char _xbeebuffer[ XBEEBUFFERSIZE ];
+volatile unsigned char _xbeebufferindex = 0;
+volatile XBeePacketState _xbeestate = AwaitingStart;
+volatile bool _xbeebytereceived = false;
+volatile char _xbeebyte;
 
 FEHXBee::FEHXBee()
 {
@@ -149,7 +149,7 @@ unsigned int FEHXBee::SendData( char* data, unsigned int length )
 	return i;
 }
 
-void FEHXBee::SetPacketCallBack( void (*packetcallbackfunction)( unsigned char* data, unsigned char length ) )
+void FEHXBee::SetPacketCallBack( void (*packetcallbackfunction)( volatile unsigned char* data, unsigned char length ) )
 {
 	XBeeDataProcess = packetcallbackfunction;
 }

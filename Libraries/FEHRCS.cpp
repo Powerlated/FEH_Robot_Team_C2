@@ -11,17 +11,17 @@ FEHRCS RCS;
 #define STOPDATA 0xAA
 #define REGION_COUNT 4
 
-void RCSDataProcess( unsigned char *data, unsigned char length );
+void RCSDataProcess( volatile unsigned char *data, unsigned char length );
 
-bool _enabled;
-int _region;
-float _RCS_x;
-float _RCS_y;
-float _RCS_heading;
-long _RCS_objective;
-unsigned char _RCS_time;
-bool _RCS_stop;
-bool _RCS_foundpacket;
+volatile bool _enabled;
+volatile int _region;
+volatile float _RCS_x;
+volatile float _RCS_y;
+volatile float _RCS_heading;
+volatile long _RCS_objective;
+volatile unsigned char _RCS_time;
+volatile bool _RCS_stop;
+volatile bool _RCS_foundpacket;
 
 
 FEHRCS::FEHRCS()
@@ -620,7 +620,7 @@ int FEHRCS::WaitForPacketDebug(int *packetsFound, int *packetsLost, int *lastFou
 // 	return _RCS_heading;
 // }
 
-void RCSDataProcess( unsigned char *data, unsigned char length )
+void RCSDataProcess( volatile unsigned char *data, unsigned char length )
 {
 	if( _enabled )
 	{
