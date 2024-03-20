@@ -792,8 +792,8 @@ namespace visualization {
             log("Angle", deg(robot.angle));
             log("TargetAngle", deg(robot.target_angle));
 
-            log("L Motor Counts", robot.total_counts_l);
-            log("R Motor Counts", robot.total_counts_r);
+//            log("L Motor Counts", robot.total_counts_l);
+//            log("R Motor Counts", robot.total_counts_r);
 
             log("ControlMode", control_mode_string());
 
@@ -805,8 +805,10 @@ namespace visualization {
 
             log("Dist", robot.pos.dist(robot.pos0));
             log("TargetDist", robot.target_dist);
-            log("DistRemain", robot.dist_remain);
-            log("Slewed%", robot.slewed_pct);
+
+            log("FuelLever", RCS.GetCorrectLever());
+//            log("DistRemain", robot.dist_remain);
+//            log("Slewed%", robot.slewed_pct);
 //            log("VT", (int) visualization_timer.last_lap_cyc);
 //            log("DT", (int) draw_timer.last_lap_cyc);
         }
@@ -901,30 +903,33 @@ int main() {
     WaitForStartLight();
 
     // Forward
-    Straight(17.811);
+    Straight(18.5);
 
     // Turn left toward fuel levers
     Turn(-90);
 
+    // Levers are 3.5 inches apart
+    float leverMinus = float(2 - RCS.GetCorrectLever()) * 3.5f;
+
     // Go toward fuel levers
-    Straight(8); // This will vary based on which fuel lever to use.
+    Straight(8 - leverMinus); // This will vary based on which fuel lever to use.
 
     // Turn arm toward fuel levers
     Turn(0);
     Straight(-4); // Back into position for the fuel lever flipping
 
     // Fuel lever flip sequence
-    LeverServo(70);
+    LeverServo(75);
     Sleep(250);
     LeverServo(135);
     Straight(5);
-    Sleep(3000);
+    Sleep(5000);
     LeverServo(45);
     Straight(-5);
     LeverServo(90);
     Sleep(250);
     LeverServo(45);
-    Straight(-5);
+    Straight(5);
     LeverServo(180);
 
     /*
