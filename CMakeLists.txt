@@ -52,7 +52,10 @@ target_sources(${PROJECT_NAME}.elf
 include_directories(. Libraries/ Drivers/ Startup/)
 
 # Add linker script
-target_link_options(${PROJECT_NAME}.elf PRIVATE -Xlinker --gc-sections -T${CMAKE_CURRENT_SOURCE_DIR}/Linker/MK60DN512Z_flash.ld)
+target_link_options(${PROJECT_NAME}.elf PRIVATE
+        -Wl,--print-memory-usage,--gc-sections
+        -T${CMAKE_CURRENT_SOURCE_DIR}/Linker/MK60DN512Z_flash.ld
+)
 
 # Add FEH scripts
 file(COPY Tools/copyS19 Tools/copyS19.bat Tools/sizeGet Tools/sizeGet.bat DESTINATION Tools/)
@@ -63,5 +66,4 @@ add_custom_target(${PROJECT_NAME}.s19
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMAND arm-none-eabi-size ${PROJECT_NAME}.elf > size.txt
         COMMAND ${CMAKE_OBJCOPY} -O srec --srec-len=40 --srec-forceS3 ${PROJECT_NAME}.elf ${PROJECT_NAME}.s19
-        COMMAND Tools/sizeGet
         COMMAND Tools/copyS19)
