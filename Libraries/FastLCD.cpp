@@ -26,6 +26,11 @@ constexpr int MAX_COLS = 26;
 constexpr int WIDTH = 320;
 constexpr int HEIGHT = 240;
 
+int current_line;
+int current_char;
+
+int foreground_palette_index;
+
 #define CharHeight 17
 #define CharWidth  12
 
@@ -142,13 +147,6 @@ static RegisterColorValues palette[16];
 uint32_t LCDBuffer[LCD_WIDTH * LCD_HEIGHT / 8];
 int region_x, region_y, region_width, region_height;
 int draw_x, draw_y;
-
-uint8_t get_pixel(int x, int y) {
-    int pixel_number = LCD_WIDTH * y + x;
-    int index = pixel_number / 8;
-    int bit_number = (pixel_number % 8) * 4;
-    return (LCDBuffer[index] >> bit_number) & 0b1111;
-}
 
 void set_pixel(int x, int y, uint8_t val) {
     if ((unsigned int) x >= LCD_WIDTH) return;
@@ -850,8 +848,9 @@ void FastLCD::WriteCharAt(int x, int y, char charNum) {
     }
 }
 
-void FastLCD::LCDSetColor(uint8_t palette_index) {
-    GPIOB_PCOR = (1 << 9) | (1 << 8);
+void FastLCD::LCDDrawPixel(uint8_t palette_index) {
+    // Bit 17 is WR, we are clearing it here instead of using CLR_WR
+    GPIOB_PCOR = (1 << 9) | (1 << 8) | (1 << 17);
     GPIOC_PCOR = (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7) | (1 << 12) | (1 << 13) | (1 << 14) | (1 << 15) | (1 << 16) |
                  (1 << 17) | (1 << 18) | (1 << 19);
     GPIOD_PCOR = (1 << 0) | (1 << 2) | (1 << 3) | (1 << 4);
@@ -859,6 +858,8 @@ void FastLCD::LCDSetColor(uint8_t palette_index) {
     GPIOB_PSOR = palette[palette_index].BVal;
     GPIOC_PSOR = palette[palette_index].CVal;
     GPIOD_PSOR = palette[palette_index].DVal;
+
+    SET_WR;
 }
 
 void FastLCD::LCDDrawPrepare() {
@@ -880,29 +881,16 @@ void FastLCD::LCDDrawEnd() {
     CLR_RS;
 }
 
-void FastLCD::LCDDrawPixel() {
-    // WR=0;
-    CLR_WR;
-
-    // WR=1;
-    SET_WR;
-}
-
 void FastLCD::DrawScreen() {
     LCDDrawRegion(0, 0, LCD_WIDTH, LCD_HEIGHT);
     LCDDrawPrepare();
 
-    uint8_t last_pixel = get_pixel(0, 0);
-    LCDSetColor(last_pixel);
-
-    for (int y = 0; y < LCD_HEIGHT; y++) {
-        for (int x = 0; x < LCD_WIDTH; x++) {
-            uint8_t pixel = get_pixel(x, y);
-            if (pixel != last_pixel) {
-                LCDSetColor(pixel);
-            }
-            last_pixel = pixel;
-            LCDDrawPixel();
+    for (unsigned long packed_pixels : LCDBuffer) {
+        // 8 pixels per uint32_t
+        for (int p = 0; p < 8; p++) {
+            uint8_t pixel = packed_pixels & 0b1111;
+            LCDDrawPixel(pixel);
+            packed_pixels >>= 4;
         }
     }
 

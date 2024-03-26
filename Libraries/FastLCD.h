@@ -117,23 +117,16 @@ namespace FastLCD
     void WriteLine( bool b );
 	void WriteLine( char c );
 
-    static void WriteChar(int row, int col, char c);
-    static void WriteCharAt(int x, int y, char c);
+    void WriteChar(int row, int col, char c);
+    void WriteCharAt(int x, int y, char c);
 
-    static void NextLine();
-    static void CheckLine();
-    static void NextChar();
+    void NextLine();
+    void CheckLine();
+    void NextChar();
 
-    static int current_line;
-    static int current_char;
+    void LCDDrawPixel(uint8_t palette_index);
 
-    static int foreground_palette_index;
+    void LCDDrawEnd();
 
-    void LCDSetColor(uint8_t palette_index);
-
-    static void LCDDrawPixel();
-
-    static void LCDDrawEnd();
-
-    static void LCDDrawPrepare();
+    void LCDDrawPrepare();
 };
