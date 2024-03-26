@@ -218,7 +218,7 @@ typedef enum IRQn {
 #define __Vendor_SysTickConfig         0         /**< Vendor specific implementation of SysTickConfig is defined */
 
 #include "core_cm4.h"                  /* Core Peripheral Access Layer */
-#include "../../../Downloads/Keil Kinetis K60 DFP 1.5.1 pack/Device/Include/system_MK60D10.h"            /* Device specific configuration file */
+#include "Startup/MK60DZ10.h"            /* Device specific configuration file */
 
 /**
  * @}
