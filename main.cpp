@@ -82,6 +82,10 @@ namespace util {
         return (uint32_t) (sec * TICK_RATE);
     }
 
+    void poweroff() {
+        GPIOD_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( 13 ) );
+    }
+
     template<int m>
     struct Vec {
         float vec[m];
@@ -188,7 +192,7 @@ namespace util {
         Gray,
         Red,
         Yellow,
-    } PaletteColors;
+    };
 
     struct PIController {
         float sample_time;
@@ -224,7 +228,7 @@ namespace util {
  */
 constexpr int SYSTICK_INTERVAL_CYCLES = cyc(1.0 / TICK_RATE);
 constexpr float IGWAN_COUNTS_PER_REV = 636;
-constexpr Inch TRACK_WIDTH = 8.276;
+constexpr Inch TRACK_WIDTH = 8.35;
 constexpr Inch WHEEL_DIA = 2.5;
 constexpr Inch INCHES_PER_REV = WHEEL_DIA * M_PI;
 constexpr Inch INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
@@ -240,11 +244,9 @@ constexpr float TURN_MIN_PERCENT = 5;
 constexpr float STOPPED_I = 10;
 constexpr float STOPPED_I_ACCUMULATE = 3;
 constexpr float STOPPED_I_HIGHPASS = 0.999;
-constexpr float START_LIGHT_THRESHOLD_VOLTAGE = 0.5;
-constexpr float TICKET_LIGHT_THRESHOLD_VOLTAGE = 2.2;
-constexpr float RED_LIGHT_VOLTAGE = 0.35;
-constexpr float BLUE_LIGHT_VOLTAGE = 1.5;
-constexpr int WAIT_FOR_LIGHT_CONFIRM_TICKS = ticks(0.5);
+constexpr float START_LIGHT_THRESHOLD_VOLTAGE = 1;
+constexpr int WAIT_FOR_LIGHT_CONFIDENT_MS = 500;
+constexpr int TICKET_LIGHT_AVERAGING_MS = 500;
 
 constexpr Vec<2> INITIAL_POS{0, 0};
 constexpr Radian INITIAL_ANGLE = rad(-45);
@@ -264,16 +266,24 @@ constexpr auto DRIVE_MOTOR_L_PORT = FEHMotor::Motor0;
 constexpr auto DRIVE_MOTOR_R_PORT = FEHMotor::Motor1;
 constexpr auto ENCODER_L_PIN_0 = FEHIO::FEHIOPin::P3_0;
 constexpr auto ENCODER_L_PIN_1 = FEHIO::FEHIOPin::P3_1;
-constexpr auto ENCODER_R_PIN_0 = FEHIO::FEHIOPin::P0_0;
-constexpr auto ENCODER_R_PIN_1 = FEHIO::FEHIOPin::P0_1;
-constexpr auto LIGHT_SENSOR_PIN = FEHIO::FEHIOPin::P2_0;
+constexpr auto ENCODER_R_PIN_0 = FEHIO::FEHIOPin::P3_2;
+constexpr auto ENCODER_R_PIN_1 = FEHIO::FEHIOPin::P3_3;
+constexpr auto CDS_CELL_RED_PIN = FEHIO::FEHIOPin::P1_0;
+constexpr auto CDS_CELL_BLUE_PIN = FEHIO::FEHIOPin::P1_1;
 constexpr auto BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_7;
 constexpr Inch DRIVE_INCHES_PER_COUNT_L = INCHES_PER_COUNT;
 constexpr Inch DRIVE_INCHES_PER_COUNT_R = INCHES_PER_COUNT;
 
-constexpr auto LEVER_SERVO_PORT = FEHServo::FEHServoPort::Servo0;
-constexpr auto LEVER_SERVO_MIN = 650;
-constexpr auto LEVER_SERVO_MAX = 2300;
+constexpr auto FUEL_SERVO_PORT = FEHServo::FEHServoPort::Servo0;
+constexpr auto DUMPTRUCK_SERVO_PORT = FEHServo::FEHServoPort::Servo1;
+constexpr auto PASSPORT_SERVO_PORT = FEHServo::FEHServoPort::Servo2;
+
+constexpr auto FUEL_SERVO_MIN = 650;
+constexpr auto FUEL_SERVO_MAX = 2400;
+constexpr auto DUMPTRUCK_SERVO_MIN = 500;
+constexpr auto DUMPTRUCK_SERVO_MAX = 2500;
+constexpr auto PASSPORT_SERVO_MIN = 500;
+constexpr auto PASSPORT_SERVO_MAX = 2500;
 
 /*
  * Main robot control code.
@@ -290,8 +300,6 @@ namespace robot_control {
         TURNING,
         STRAIGHT,
         STRAIGHT_UNTIL_SWITCH,
-        WAIT_FOR_START_LIGHT,
-        WAIT_FOR_TICKET_LIGHT
     };
 
     struct Robot {
@@ -307,19 +315,23 @@ namespace robot_control {
         DigitalEncoder el{ENCODER_L_PIN_0, ENCODER_L_PIN_1};
         DigitalEncoder er{ENCODER_R_PIN_0, ENCODER_R_PIN_1};
         DigitalInputPin bump_switch{BUMP_SWITCH_PIN};
-        AnalogInputPin light_sensor{LIGHT_SENSOR_PIN};
-        FEHServo lever_servo{LEVER_SERVO_PORT};
+        AnalogInputPin cds_red{CDS_CELL_RED_PIN};
+        AnalogInputPin cds_blue{CDS_CELL_BLUE_PIN};
+        FEHServo fuel_servo{FUEL_SERVO_PORT};
+        FEHServo dumptruck_servo{DUMPTRUCK_SERVO_PORT};
+        FEHServo passport_servo{PASSPORT_SERVO_PORT};
 
         ControlMode control_mode = ControlMode::INIT;
 
         // Start Light / Ticket Light variables
-        bool force_start{};
-        Volt light_sensor_value{};
-        int last_nonconfident_wait_for_light_tick{};
-        float light_sensor_average_value{};
         TicketLightColor ticket_light_color = TICKET_LIGHT_NONE;
 
         int tick_count{}, task_tick_count{};
+
+        volatile Volt cds_red_value{};
+        volatile Volt cds_blue_value{};
+
+        volatile bool force_start{};
 
         // Drivetrain variables
         float pct_l{}, pct_r{};
@@ -350,8 +362,12 @@ namespace robot_control {
             angle = INITIAL_ANGLE;
             target_angle = INITIAL_ANGLE;
 
-            lever_servo.SetMax(LEVER_SERVO_MAX);
-            lever_servo.SetMin(LEVER_SERVO_MIN);
+            fuel_servo.SetMax(FUEL_SERVO_MAX);
+            fuel_servo.SetMin(FUEL_SERVO_MIN);
+            dumptruck_servo.SetMax(DUMPTRUCK_SERVO_MAX);
+            dumptruck_servo.SetMin(DUMPTRUCK_SERVO_MIN);
+            passport_servo.SetMax(PASSPORT_SERVO_MAX);
+            passport_servo.SetMin(PASSPORT_SERVO_MIN);
         }
 
         void task_finished() {
@@ -447,12 +463,6 @@ namespace robot_control {
             task_tick_count++;
 
             /*
-             * GET ANALOG INPUT DATA
-             */
-
-            light_sensor_value = light_sensor.Value();
-
-            /*
              * ODOMETRY
              */
 
@@ -464,47 +474,6 @@ namespace robot_control {
 
             float control_effort;
             switch (control_mode) {
-                case ControlMode::WAIT_FOR_TICKET_LIGHT:
-                case ControlMode::WAIT_FOR_START_LIGHT:
-                    ml.Stop();
-                    mr.Stop();
-
-                    float threshold_voltage;
-                    if (control_mode == ControlMode::WAIT_FOR_START_LIGHT) {
-                        threshold_voltage = START_LIGHT_THRESHOLD_VOLTAGE;
-                    } else {
-                        threshold_voltage = TICKET_LIGHT_THRESHOLD_VOLTAGE;
-                    }
-
-                    light_sensor_average_value += light_sensor_value;
-                    if (light_sensor_value >= threshold_voltage) {
-                        last_nonconfident_wait_for_light_tick = tick_count;
-                        light_sensor_average_value = 0;
-                    }
-
-                    if (control_mode == ControlMode::WAIT_FOR_START_LIGHT && force_start) {
-                        task_finished();
-                        return;
-                    }
-
-                    // wait some time until we're confident that the light has started
-                    if (last_nonconfident_wait_for_light_tick + WAIT_FOR_LIGHT_CONFIRM_TICKS < tick_count) {
-                        light_sensor_average_value /= WAIT_FOR_LIGHT_CONFIRM_TICKS;
-
-                        if (control_mode == ControlMode::WAIT_FOR_TICKET_LIGHT) {
-                            float red_dist = abs(RED_LIGHT_VOLTAGE - light_sensor_average_value);
-                            float blue_dist = abs(BLUE_LIGHT_VOLTAGE - light_sensor_average_value);
-
-                            if (red_dist < blue_dist) {
-                                ticket_light_color = TICKET_LIGHT_RED;
-                            } else {
-                                ticket_light_color = TICKET_LIGHT_BLUE;
-                            }
-                        }
-
-                        task_finished();
-                    }
-                    return;
                 case ControlMode::TURNING: {
                     Radian angle_turned_so_far = fabs(angle - turn_start_angle);
                     Radian angle_remain = fabs(target_angle - angle);
@@ -599,17 +568,56 @@ namespace tasks {
     }
 
     void WaitForStartLight() {
-        robot.control_mode = ControlMode::WAIT_FOR_START_LIGHT;
-        robot.light_sensor_average_value = 0;
-        robot.last_nonconfident_wait_for_light_tick = robot.tick_count;
-        wait_for_task_to_finish();
+        robot.ml.Stop();
+        robot.mr.Stop();
+
+        // wait some time until we're confident that the light has started
+        int ms_been_confident_for = 0;
+        while (ms_been_confident_for < WAIT_FOR_LIGHT_CONFIDENT_MS) {
+            robot.cds_red_value = robot.cds_red.Value();
+            robot.cds_blue_value = robot.cds_blue.Value();
+
+            // robot control loop will update cds_red_value
+            if (robot.cds_red_value < START_LIGHT_THRESHOLD_VOLTAGE) {
+                ms_been_confident_for++;
+            } else {
+                ms_been_confident_for = 0;
+            }
+
+            if (robot.force_start) {
+                break;
+            }
+
+            Sleep(1);
+        }
     }
 
     void WaitForTicketLight(int timeout_ms) {
-        robot.control_mode = ControlMode::WAIT_FOR_TICKET_LIGHT;
-        robot.light_sensor_average_value = 0;
-        robot.last_nonconfident_wait_for_light_tick = robot.tick_count;
-        wait_for_task_to_finish();
+        robot.ml.Stop();
+        robot.mr.Stop();
+
+        float cds_red_value_avg = 0;
+        float cds_blue_value_avg = 0;
+
+        for (int i = 0; i < TICKET_LIGHT_AVERAGING_MS; i++) {
+            robot.cds_red_value = robot.cds_red.Value();
+            robot.cds_blue_value = robot.cds_blue.Value();
+
+            cds_red_value_avg += robot.cds_red_value;
+            cds_blue_value_avg += robot.cds_blue_value;
+
+            Sleep(1);
+        }
+
+        cds_red_value_avg /= TICKET_LIGHT_AVERAGING_MS;
+        cds_blue_value_avg /= TICKET_LIGHT_AVERAGING_MS;
+
+        if (cds_red_value_avg < cds_blue_value_avg) {
+            // CDS cell red receiving more light...
+            robot.ticket_light_color = TICKET_LIGHT_RED;
+        } else {
+            robot.ticket_light_color = TICKET_LIGHT_BLUE;
+        }
     }
 
     void Straight_prepare(Inch inches) {
@@ -644,8 +652,16 @@ namespace tasks {
         wait_for_task_to_finish();
     }
 
-    void LeverServo(float degree) {
-        robot.lever_servo.SetDegree(degree);
+    void FuelServo(float degree) {
+        robot.fuel_servo.SetDegree(degree);
+    }
+
+    void DumptruckServo(float degree) {
+        robot.dumptruck_servo.SetDegree(degree);
+    }
+
+    void PassportServo(float degree) {
+        robot.passport_servo.SetDegree(degree);
     }
 
     void Position4Bar(Degree target_angle) {
@@ -674,10 +690,6 @@ namespace visualization {
                 return "FwdTilSwitch";
             case ControlMode::TURNING:
                 return "Turning";
-            case ControlMode::WAIT_FOR_START_LIGHT:
-                return "WaitStartLight";
-            case ControlMode::WAIT_FOR_TICKET_LIGHT:
-                return "WaitTicketLight";
         }
         return "?????";
     }
@@ -797,11 +809,12 @@ namespace visualization {
 
             log("ControlMode", control_mode_string());
 
-            log("ControlEffort", robot.angle_controller.control_effort);
-            log("Error", robot.angle_controller.error);
+//            log("ControlEffort", robot.angle_controller.control_effort);
+//            log("Error", robot.angle_controller.error);
             log("I", robot.angle_controller.I);
-            log("CDS Value", robot.light_sensor_value);
-            log("Average CDS V", robot.light_sensor_average_value);
+
+            log("CDS  Red", robot.cds_red_value);
+            log("CDS Blue", robot.cds_blue_value);
 
             log("Dist", robot.pos.dist(robot.pos0));
             log("TargetDist", robot.target_dist);
@@ -895,13 +908,16 @@ int main() {
      * Robot Tasks.
      */
 
-    LeverServo(180);
+    FuelServo(180);
+    DumptruckServo(90);
+    PassportServo(90);
 
     Speed(25);
 
     // Wait for start light to turn on.
     WaitForStartLight();
 
+    /*
     // Forward
     Straight(18.5);
 
@@ -919,35 +935,64 @@ int main() {
     Straight(-4); // Back into position for the fuel lever flipping
 
     // Fuel lever flip sequence
-    LeverServo(75);
+    FuelServo(75);
     Sleep(250);
-    LeverServo(135);
+    FuelServo(135);
     Straight(5);
     Sleep(5000);
-    LeverServo(45);
+    FuelServo(45);
     Straight(-5);
-    LeverServo(90);
+    FuelServo(90);
     Sleep(250);
-    LeverServo(45);
+    FuelServo(45);
     Straight(5);
-    LeverServo(180);
+    FuelServo(180);
+*/
 
-    /*
+    /** Ticket light
     // Go up ramp.
     Straight(3.92100);
     Turn(45);
-    Straight(6);
+    Straight(5);
     Turn(0);
     Straight(29);
 
-    // Turn toward kiosk
+    // Turn toward light
     Turn(-45);
     StraightUntilSwitch(28);
 
     // Go back to line up with ticket light
     Straight(-4.4);
     WaitForTicketLight(3000);
+     */
 
+    /** Checkpoint 4 - Passport lever
+     *
+     **/
+    // Go up ramp.
+    Straight(3.92100);
+    Turn(45);
+    Straight(5.5);
+    Turn(0);
+    Straight(29);
+
+
+    // Go toward kiosk
+    Turn(-45);
+    PassportServo(165);
+    Straight(8.5);
+    Turn(0);
+    Straight(8);
+
+    Turn(33.69);
+    Straight(1);
+    PassportServo(90);
+    Sleep(800);
+    PassportServo(165);
+
+    Straight(-10);
+
+    /*
     Straight(-4.832636);
     Turn(-90);
 
@@ -980,7 +1025,11 @@ int main() {
     int correct_lever = RCS.GetCorrectLever();
      */
 
-    stop_robot_control_loop();
+    FuelServo(0);
+    DumptruckServo(90);
+    PassportServo(90);
+    Sleep(500);
+    poweroff();
 
     return 0;
 }
