@@ -325,7 +325,7 @@ void FEHRCS::Initialize( int region, const char* team_key )
             txlength = _xbee.SendData( txbuffer, 10 );
         }
         LCD.WriteLine("RCS Enabled Successfully, Program running in 3 seconds");
-        Sleep(3000);
+//        Sleep(3000);
         LCD.Clear();
     }
     }
