@@ -1,22 +1,16 @@
 # Toolchain Settings
 set(CMAKE_TOOLCHAIN_FILE ${CMAKE_CURRENT_SOURCE_DIR}/toolchain.cmake)
 
+set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON" FORCE)
+
 cmake_minimum_required(VERSION 3.27.8)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 
-project(Proteus LANGUAGES C CXX)
-add_executable(${PROJECT_NAME}.elf)
+project(Proteus LANGUAGES CXX ASM)
 
-set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON" FORCE)
-
-# Turn on all compiler warnings
-target_compile_options(${PROJECT_NAME}.elf PRIVATE -Wall)
-
-target_sources(${PROJECT_NAME}.elf
-        PRIVATE
-
+add_executable(${PROJECT_NAME}.elf
         Startup/startup_mk60d10.cpp
 
         Drivers/mcg.cpp
@@ -29,6 +23,8 @@ target_sources(${PROJECT_NAME}.elf
         Drivers/adc16.cpp
         Drivers/FEHXBee.cpp
         Drivers/FEHPropeller.cpp
+        Drivers/exception_handler.cpp
+        Drivers/exception_handler.s
 
         Libraries/FEHMotor.cpp
         Libraries/FEHUtility.cpp
@@ -48,12 +44,15 @@ target_sources(${PROJECT_NAME}.elf
         main.cpp
 )
 
+# Compiler flags
+target_compile_options(${PROJECT_NAME}.elf PRIVATE -Wall -Os)
+
 # Add includes
 include_directories(. Libraries/ Drivers/ Startup/)
 
 # Add linker script
 target_link_options(${PROJECT_NAME}.elf PRIVATE
-        -Wl,--print-memory-usage,--gc-sections
+        -Wl,--print-memory-usage,--gc-sections,-Map,${PROJECT_NAME}.map
         -T${CMAKE_CURRENT_SOURCE_DIR}/Linker/MK60DN512Z_flash.ld
 )
 
