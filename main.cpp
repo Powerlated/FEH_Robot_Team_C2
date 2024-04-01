@@ -43,22 +43,11 @@ using namespace robot_control;
 using namespace tasks;
 
 /*
- * Utility type definitions.
- */
-using Radian = float;
-using Volt = float;
-using Degree = float;
-using Microsecond = float;
-using Second = float;
-using Inch = float;
-using Hertz = int;
-
-/*
  * Proteus constants.
  */
 constexpr int BSP_BUS_DIV = 2; // Declared in startup_mk60d10.cpp
-constexpr Hertz TICK_RATE = 100;
-constexpr Hertz PROTEUS_SYSTEM_HZ = 88000000.0;
+constexpr int TICK_RATE = 100;
+constexpr int PROTEUS_SYSTEM_HZ = 88000000.0;
 constexpr int LCD_WIDTH = 320;
 constexpr int LCD_HEIGHT = 240;
 
@@ -66,24 +55,26 @@ constexpr int LCD_HEIGHT = 240;
  * Code that won't be modified often during testing is stuffed into the "util" namespace.
  */
 namespace util {
-    constexpr Radian rad(Degree deg) {
+    constexpr float rad(float deg) {
         return (float) (deg * (M_PI / 180));
     }
 
-    constexpr Degree deg(Radian rad) {
+    constexpr float deg(float rad) {
         return (float) (rad * (180 / M_PI));
     }
 
     constexpr uint32_t cyc(const double sec) {
-        return (uint32_t) (sec * PROTEUS_SYSTEM_HZ);
+        return (uint32_t)(sec * PROTEUS_SYSTEM_HZ);
     }
 
     constexpr uint32_t ticks(const double sec) {
-        return (uint32_t) (sec * TICK_RATE);
+        return (uint32_t)(sec * TICK_RATE);
     }
 
+    [[noreturn]]
     void poweroff() {
-        GPIOD_PDOR &= ~GPIO_PDOR_PDO( GPIO_PIN( 13 ) );
+        GPIOD_PDOR &= ~GPIO_PDOR_PDO(GPIO_PIN(13));
+        while (true) {}
     }
 
     template<int m>
@@ -168,7 +159,7 @@ namespace util {
         static_assert(pit_num < 4);
 
         // Set priority
-        NVIC_SetPriority((IRQn) (PIT0_IRQn + pit_num), irq_priority);
+        NVIC_SetPriority((IRQn)(PIT0_IRQn + pit_num), irq_priority);
 
         // Enable PIT clock
         PIT_BASE_PTR->MCR = 0;
@@ -178,7 +169,7 @@ namespace util {
         PIT_BASE_PTR->CHANNEL[pit_num].TCTRL = PIT_TCTRL_TEN_MASK | PIT_TCTRL_TIE_MASK;
 
         // Enable interrupt in NVIC
-        NVIC_EnableIRQ((IRQn) (PIT0_IRQn + pit_num));
+        NVIC_EnableIRQ((IRQn)(PIT0_IRQn + pit_num));
     }
 
     template<int pit_num>
@@ -228,11 +219,11 @@ namespace util {
  */
 constexpr int SYSTICK_INTERVAL_CYCLES = cyc(1.0 / TICK_RATE);
 constexpr float IGWAN_COUNTS_PER_REV = 636;
-constexpr Inch TRACK_WIDTH = 8.35;
-constexpr Inch WHEEL_DIA = 2.5;
-constexpr Inch INCHES_PER_REV = WHEEL_DIA * M_PI;
-constexpr Inch INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
-constexpr Volt DRIVE_MOTOR_MAX_VOLTAGE = 9.0;
+constexpr float TRACK_WIDTH = 8.35;
+constexpr float WHEEL_DIA = 2.5;
+constexpr float INCHES_PER_REV = WHEEL_DIA * M_PI;
+constexpr float INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
+constexpr float DRIVE_MOTOR_MAX_VOLTAGE = 9.0;
 
 /*
  * Robot control configuration.
@@ -249,15 +240,15 @@ constexpr int WAIT_FOR_LIGHT_CONFIDENT_MS = 500;
 constexpr int TICKET_LIGHT_AVERAGING_MS = 500;
 
 constexpr Vec<2> INITIAL_POS{0, 0};
-constexpr Radian INITIAL_ANGLE = rad(-45);
+constexpr float INITIAL_ANGLE = rad(-45);
 
 /*
  * Diagnostics/visualization configuration.
  */
-constexpr Hertz DIAGNOSTICS_HZ = 5;
-constexpr Microsecond TICK_INTERVAL_MICROSECONDS = (1.0 / TICK_RATE) * 1000000;
-constexpr Second FORCE_START_HOLD_SEC = 0.5;
-constexpr Second FORCE_START_TOTAL_SEC = 1;
+constexpr int DIAGNOSTICS_HZ = 5;
+constexpr float TICK_INTERVAL_MICROSECONDS = (1.0 / TICK_RATE) * 1000000;
+constexpr float FORCE_START_HOLD_SEC = 0.5;
+constexpr float FORCE_START_TOTAL_SEC = 1;
 
 /*
  * Port configuration.
@@ -270,9 +261,11 @@ constexpr auto ENCODER_R_PIN_0 = FEHIO::FEHIOPin::P3_2;
 constexpr auto ENCODER_R_PIN_1 = FEHIO::FEHIOPin::P3_3;
 constexpr auto CDS_CELL_RED_PIN = FEHIO::FEHIOPin::P1_0;
 constexpr auto CDS_CELL_BLUE_PIN = FEHIO::FEHIOPin::P1_1;
-constexpr auto BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_7;
-constexpr Inch DRIVE_INCHES_PER_COUNT_L = INCHES_PER_COUNT;
-constexpr Inch DRIVE_INCHES_PER_COUNT_R = INCHES_PER_COUNT;
+constexpr auto BUTTON_BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_7;
+constexpr auto L_BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_5;
+constexpr auto R_BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_6;
+constexpr float DRIVE_INCHES_PER_COUNT_L = INCHES_PER_COUNT;
+constexpr float DRIVE_INCHES_PER_COUNT_R = INCHES_PER_COUNT;
 
 constexpr auto FUEL_SERVO_PORT = FEHServo::FEHServoPort::Servo0;
 constexpr auto DUMPTRUCK_SERVO_PORT = FEHServo::FEHServoPort::Servo1;
@@ -297,7 +290,9 @@ namespace robot_control {
 
     enum class ControlMode {
         INIT,
-        TURNING,
+        TURN,
+        PIVOT_LEFT,
+        PIVOT_RIGHT,
         STRAIGHT,
         STRAIGHT_UNTIL_SWITCH,
     };
@@ -314,7 +309,9 @@ namespace robot_control {
         FEHMotor mr{DRIVE_MOTOR_R_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
         DigitalEncoder el{ENCODER_L_PIN_0, ENCODER_L_PIN_1};
         DigitalEncoder er{ENCODER_R_PIN_0, ENCODER_R_PIN_1};
-        DigitalInputPin bump_switch{BUMP_SWITCH_PIN};
+        DigitalInputPin button_bump_switch{BUTTON_BUMP_SWITCH_PIN};
+        DigitalInputPin l_bump_switch{L_BUMP_SWITCH_PIN};
+        DigitalInputPin r_bump_switch{R_BUMP_SWITCH_PIN};
         AnalogInputPin cds_red{CDS_CELL_RED_PIN};
         AnalogInputPin cds_blue{CDS_CELL_BLUE_PIN};
         FEHServo fuel_servo{FUEL_SERVO_PORT};
@@ -328,8 +325,8 @@ namespace robot_control {
 
         int tick_count{}, task_tick_count{};
 
-        volatile Volt cds_red_value{};
-        volatile Volt cds_blue_value{};
+        volatile float cds_red_value{};
+        volatile float cds_blue_value{};
 
         volatile bool force_start{};
 
@@ -338,16 +335,16 @@ namespace robot_control {
         float target_pct{};
         float slewed_pct{};
         float dist_remain{};
-        Inch target_dist{};
+        float target_dist{};
         int total_counts_l{}, total_counts_r{};
         PIController angle_controller = PIController(TICK_RATE, 100, 50, 30);
 
         // Position is in inches
         Vec<2> pos{}, pos0{};
         // Angle in radians
-        Radian angle{};
-        Radian target_angle{};
-        Radian turn_start_angle{};
+        float angle{};
+        float target_angle{};
+        float turn_start_angle{};
         bool turning_right{};
         float R{};
 
@@ -404,25 +401,25 @@ namespace robot_control {
             el.ResetCounts();
             er.ResetCounts();
 
-            Inch arclength_l = DRIVE_INCHES_PER_COUNT_L * (float) counts_l;
-            Inch arclength_r = DRIVE_INCHES_PER_COUNT_R * (float) counts_r;
+            float arclength_l = DRIVE_INCHES_PER_COUNT_L * (float) counts_l;
+            float arclength_r = DRIVE_INCHES_PER_COUNT_R * (float) counts_r;
 
-            Inch arclength_inner;
+            float arclength_inner;
             if (abs(arclength_l) > abs(arclength_r)) {
                 arclength_inner = arclength_r;
             } else {
                 arclength_inner = arclength_l;
             }
 
-            Radian dAngle = (arclength_l - arclength_r) / TRACK_WIDTH;
+            float dAngle = (arclength_l - arclength_r) / TRACK_WIDTH;
             if (dAngle != 0) {
-                Inch radius_inner = fabsf(arclength_inner / dAngle);
+                float radius_inner = fabsf(arclength_inner / dAngle);
 
                 // Let R be the distance from the arc center to the point between the wheels
                 R = radius_inner + TRACK_WIDTH / 2;
 
-                Inch dx = R * (cos(angle + dAngle) - cos(angle));
-                Inch dy = -R * (sin(angle + dAngle) - sin(angle));
+                float dx = R * (cos(angle + dAngle) - cos(angle));
+                float dy = -R * (sin(angle + dAngle) - sin(angle));
 
                 if (abs(arclength_l) > abs(arclength_r)) {
                     dx *= -1;
@@ -474,9 +471,11 @@ namespace robot_control {
 
             float control_effort;
             switch (control_mode) {
-                case ControlMode::TURNING: {
-                    Radian angle_turned_so_far = fabs(angle - turn_start_angle);
-                    Radian angle_remain = fabs(target_angle - angle);
+                case ControlMode::TURN:
+                case ControlMode::PIVOT_LEFT:
+                case ControlMode::PIVOT_RIGHT: {
+                    float angle_turned_so_far = fabs(angle - turn_start_angle);
+                    float angle_remain = fabs(target_angle - angle);
                     slewed_pct = slew(
                             TURN_SLEW_RATE,
                             TURN_MIN_PERCENT,
@@ -486,21 +485,39 @@ namespace robot_control {
                     );
                     float power_pct = slewed_pct + stopped_i * STOPPED_I;
 
+                    float new_pct_l, new_pct_r;
                     if (turning_right) {
-                        motor_power(power_pct, -power_pct);
+                        new_pct_l = power_pct;
+                        new_pct_r = -power_pct;
+
                         if (angle >= target_angle) {
                             task_finished();
                         }
                     } else {
-                        motor_power(-power_pct, power_pct);
+                        new_pct_l = -power_pct;
+                        new_pct_r = power_pct;
+
                         if (angle <= target_angle) {
                             task_finished();
                         }
                     }
+
+                    if (control_mode == ControlMode::PIVOT_LEFT) {
+                        new_pct_l = 0;
+                    } else if (control_mode == ControlMode::PIVOT_RIGHT) {
+                        new_pct_r = 0;
+                    }
+
+                    motor_power(new_pct_l, new_pct_r);
                     return;
                 }
                 case ControlMode::STRAIGHT_UNTIL_SWITCH:
-                    if (!bump_switch.Value()) {
+                    if (!l_bump_switch.Value() && !r_bump_switch.Value()) {
+                        task_finished();
+                        return;
+                    }
+
+                    if (!button_bump_switch.Value()) {
                         task_finished();
                         return;
                     }
@@ -592,7 +609,7 @@ namespace tasks {
         }
     }
 
-    void WaitForTicketLight(int timeout_ms) {
+    void CaptureTicketLight() {
         robot.ml.Stop();
         robot.mr.Stop();
 
@@ -620,7 +637,7 @@ namespace tasks {
         }
     }
 
-    void Straight_prepare(Inch inches) {
+    void Straight_prepare(float inches) {
         robot.pos0 = robot.pos;
         robot.target_dist = inches;
         robot.angle_controller.reset();
@@ -628,27 +645,47 @@ namespace tasks {
         robot.stopped_i = 0;
     }
 
-    void Straight(Inch inches) {
+    void Straight(float inches) {
         Straight_prepare(inches);
         wait_for_task_to_finish();
     }
 
-    void StraightUntilSwitch(Inch inches) {
+    void StraightUntilSwitch(float inches) {
         Straight_prepare(inches);
         robot.control_mode = ControlMode::STRAIGHT_UNTIL_SWITCH;
         wait_for_task_to_finish();
+    }
+
+    void ResetFacing(float degree) {
+        robot.angle = rad(degree);
     }
 
     void Speed(float percent) {
         robot.target_pct = percent;
     }
 
-    void Turn(Degree angle) {
-        robot.target_angle = (float) rad(angle);
+    void Turn_prepare(float degree) {
+        robot.target_angle = (float) rad(degree);
         robot.turn_start_angle = robot.angle;
         robot.turning_right = robot.target_angle > robot.angle;
-        robot.control_mode = ControlMode::TURNING;
         robot.stopped_i = 0;
+    }
+
+    void Turn(float degree) {
+        Turn_prepare(degree);
+        robot.control_mode = ControlMode::TURN;
+        wait_for_task_to_finish();
+    }
+
+    void PivotLeft(float degree) {
+        Turn_prepare(degree);
+        robot.control_mode = ControlMode::PIVOT_LEFT;
+        wait_for_task_to_finish();
+    }
+
+    void PivotRight(float degree) {
+        Turn_prepare(degree);
+        robot.control_mode = ControlMode::PIVOT_RIGHT;
         wait_for_task_to_finish();
     }
 
@@ -662,11 +699,6 @@ namespace tasks {
 
     void PassportServo(float degree) {
         robot.passport_servo.SetDegree(degree);
-    }
-
-    void Position4Bar(Degree target_angle) {
-        // TODO
-        wait_for_task_to_finish();
     }
 
     void Delay(int ms) {
@@ -684,12 +716,16 @@ namespace visualization {
         switch (robot.control_mode) {
             case ControlMode::INIT:
                 return "Init";
+            case ControlMode::PIVOT_LEFT:
+                return "PivotLeft";
+            case ControlMode::PIVOT_RIGHT:
+                return "PivotRight";
             case ControlMode::STRAIGHT:
                 return "Forward";
             case ControlMode::STRAIGHT_UNTIL_SWITCH:
                 return "FwdTilSwitch";
-            case ControlMode::TURNING:
-                return "Turning";
+            case ControlMode::TURN:
+                return "Turn";
         }
         return "?????";
     }
@@ -916,8 +952,6 @@ int main() {
 
     // Wait for start light to turn on.
     WaitForStartLight();
-
-    /*
     // Forward
     Straight(18.5);
 
@@ -947,89 +981,42 @@ int main() {
     FuelServo(45);
     Straight(5);
     FuelServo(180);
-*/
 
-    /** Ticket light
-    // Go up ramp.
-    Straight(3.92100);
-    Turn(45);
-    Straight(5);
-    Turn(0);
-    Straight(29);
+    // Turn right
+    Turn(90);
 
-    // Turn toward light
-    Turn(-45);
-    StraightUntilSwitch(28);
+    // Square with the left wall
+    StraightUntilSwitch(-20);
+    ResetFacing(90);
 
-    // Go back to line up with ticket light
-    Straight(-4.4);
-    WaitForTicketLight(3000);
-     */
-
-    /** Checkpoint 4 - Passport lever
-     *
-     **/
-    // Go up ramp.
-    Straight(3.92100);
-    Turn(45);
-    Straight(5.5);
-    Turn(0);
-    Straight(29);
-
-
-    // Go toward kiosk
-    Turn(-45);
-    PassportServo(165);
-    Straight(8.5);
-    Turn(0);
-    Straight(8);
-
-    Turn(33.69);
+    // Face up ramp
     Straight(1);
-    PassportServo(90);
-    Sleep(800);
-    PassportServo(165);
+    PivotLeft(0);
 
-    Straight(-10);
+    Straight(24);
 
-    /*
-    Straight(-4.832636);
-    Turn(-90);
+    // Go to luggage drop
+    PivotRight(90);
+    Straight(12);
+    PivotRight(180);
+    StraightUntilSwitch(12);
 
-    if (robot.ticket_light_color == TICKET_LIGHT_BLUE) {
-        Straight(-2);
-        Turn(0);
-        StraightUntilSwitch(5.75);
+    // TODO: Drop the luggage
 
-        Straight(-5.844 + 2);
+    // Go to light
+    Straight(-12);
+    Turn(135);
+    StraightUntilSwitch(-24);
+    ResetFacing(135);
 
-        Turn(-40);
+    CaptureTicketLight();
 
-        Straight(-20.672 + 2.5);
-    } else if (robot.ticket_light_color == TICKET_LIGHT_RED) {
-        Straight(-3 - 2.5);
-        Turn(0);
-        StraightUntilSwitch(5.75);
+    // TODO: Go to kiosk depending on light color
 
-        Straight(-12.007 + 2);
+    // TODO: Passport mech
 
-        Turn(-40);
+    // TODO: Go down right side ramp and hit the end button
 
-        Straight(-13.041 + 1);
-    }
 
-    Turn(0);
-    Straight(-30);
-
-    // Get correct lever from the RCS
-    int correct_lever = RCS.GetCorrectLever();
-     */
-
-    FuelServo(0);
-    DumptruckServo(90);
-    PassportServo(90);
-    Sleep(500);
     poweroff();
-
-    return 0;
 }
