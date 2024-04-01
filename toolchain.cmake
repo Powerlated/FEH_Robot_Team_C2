@@ -12,8 +12,9 @@ set(CMAKE_RANLIB ${TOOLCHAIN_PREFIX}ranlib)
 set(CMAKE_SIZE ${TOOLCHAIN_PREFIX}size)
 set(CMAKE_STRIP ${TOOLCHAIN_PREFIX}strip)
 
-set(CMAKE_C_FLAGS "-ffunction-sections -fdata-sections -specs=nosys.specs -mcpu=cortex-m4 -mfloat-abi=soft -mthumb -g3 -gdwarf-2 -gstrict-dwarf")
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -fno-exceptions")
+set(CMAKE_C_FLAGS "-ffunction-sections -fdata-sections -specs=nano.specs -specs=nosys.specs -mcpu=cortex-m4 \
+-mfloat-abi=soft -mthumb -g3 -gdwarf-2 -gstrict-dwarf -fshort-enums")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -fno-exceptions -fno-rtti")
 set(CMAKE_ASM_FLAGS "${CMAKE_C_FLAGS}")
 
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
