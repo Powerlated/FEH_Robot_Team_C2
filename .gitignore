@@ -21,3 +21,6 @@ doc_out/
 .vscode/
 *.objdump
 size.txt
+
+out/
+cmake*/
