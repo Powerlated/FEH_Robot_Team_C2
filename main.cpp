@@ -229,15 +229,16 @@ constexpr float DRIVE_MOTOR_MAX_VOLTAGE = 9.0;
  * Robot control configuration.
  */
 constexpr float DRIVE_SLEW_RATE = 200; // Percent per m/s
-constexpr float TURN_SLEW_RATE = 200; // Percent per radian/s
-constexpr float DRIVE_MIN_PERCENT = 5;
-constexpr float TURN_MIN_PERCENT = 5;
+constexpr float TURN_SLEW_RATE = 400; // Percent per radian/s
+constexpr float DRIVE_MIN_PERCENT = 10;
+constexpr float TURN_MIN_PERCENT = 10;
 constexpr float STOPPED_I = 10;
 constexpr float STOPPED_I_ACCUMULATE = 3;
 constexpr float STOPPED_I_HIGHPASS = 0.999;
 constexpr float START_LIGHT_THRESHOLD_VOLTAGE = 1;
 constexpr int WAIT_FOR_LIGHT_CONFIDENT_MS = 500;
 constexpr int TICKET_LIGHT_AVERAGING_MS = 500;
+constexpr int SWITCH_CONFIDENT_TICKS = 50;
 
 constexpr Vec<2> INITIAL_POS{0, 0};
 constexpr float INITIAL_ANGLE = rad(-45);
@@ -255,15 +256,15 @@ constexpr float FORCE_START_TOTAL_SEC = 1;
  */
 constexpr auto DRIVE_MOTOR_L_PORT = FEHMotor::Motor0;
 constexpr auto DRIVE_MOTOR_R_PORT = FEHMotor::Motor1;
+constexpr auto CDS_CELL_RED_PIN = FEHIO::FEHIOPin::P1_0;
+constexpr auto CDS_CELL_BLUE_PIN = FEHIO::FEHIOPin::P1_1;
+constexpr auto L_BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_5;
+constexpr auto R_BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_6;
+constexpr auto BUTTON_BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_7;
 constexpr auto ENCODER_L_PIN_0 = FEHIO::FEHIOPin::P3_0;
 constexpr auto ENCODER_L_PIN_1 = FEHIO::FEHIOPin::P3_1;
 constexpr auto ENCODER_R_PIN_0 = FEHIO::FEHIOPin::P3_2;
 constexpr auto ENCODER_R_PIN_1 = FEHIO::FEHIOPin::P3_3;
-constexpr auto CDS_CELL_RED_PIN = FEHIO::FEHIOPin::P1_0;
-constexpr auto CDS_CELL_BLUE_PIN = FEHIO::FEHIOPin::P1_1;
-constexpr auto BUTTON_BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_7;
-constexpr auto L_BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_5;
-constexpr auto R_BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_6;
 constexpr float DRIVE_INCHES_PER_COUNT_L = INCHES_PER_COUNT;
 constexpr float DRIVE_INCHES_PER_COUNT_R = INCHES_PER_COUNT;
 
@@ -291,8 +292,6 @@ namespace robot_control {
     enum class ControlMode {
         INIT,
         TURN,
-        PIVOT_LEFT,
-        PIVOT_RIGHT,
         STRAIGHT,
         STRAIGHT_UNTIL_SWITCH,
     };
@@ -330,6 +329,8 @@ namespace robot_control {
 
         volatile bool force_start{};
 
+        int switch_pressed_ticks{};
+
         // Drivetrain variables
         float pct_l{}, pct_r{};
         float target_pct{};
@@ -347,6 +348,7 @@ namespace robot_control {
         float turn_start_angle{};
         bool turning_right{};
         float R{};
+        float turn_wheel_bias{};
 
         volatile bool task_running{};
 
@@ -390,11 +392,15 @@ namespace robot_control {
                 last_encoder_r_tick_at = tick_count;
             }
 
-            if (last_encoder_l_tick_at + ticks(0.025) < tick_count) {
-                stopped_i += STOPPED_I_ACCUMULATE / TICK_RATE;
+            if (turn_wheel_bias < 0.8) {  
+                if (last_encoder_l_tick_at + ticks(0.025) < tick_count) {
+                    stopped_i += STOPPED_I_ACCUMULATE / TICK_RATE;
+                }
             }
-            if (last_encoder_r_tick_at + ticks(0.025) < tick_count) {
-                stopped_i += STOPPED_I_ACCUMULATE / TICK_RATE;
+            if (turn_wheel_bias > -0.8) {
+                if (last_encoder_r_tick_at + ticks(0.025) < tick_count) {
+                    stopped_i += STOPPED_I_ACCUMULATE / TICK_RATE;
+                }
             }
             stopped_i *= STOPPED_I_HIGHPASS;
 
@@ -471,9 +477,7 @@ namespace robot_control {
 
             float control_effort;
             switch (control_mode) {
-                case ControlMode::TURN:
-                case ControlMode::PIVOT_LEFT:
-                case ControlMode::PIVOT_RIGHT: {
+                case ControlMode::TURN: {
                     float angle_turned_so_far = fabs(angle - turn_start_angle);
                     float angle_remain = fabs(target_angle - angle);
                     slewed_pct = slew(
@@ -502,10 +506,12 @@ namespace robot_control {
                         }
                     }
 
-                    if (control_mode == ControlMode::PIVOT_LEFT) {
-                        new_pct_l = 0;
-                    } else if (control_mode == ControlMode::PIVOT_RIGHT) {
-                        new_pct_r = 0;
+                    if (turn_wheel_bias < 0) {
+                        new_pct_r *= 1 - fabs(turn_wheel_bias);
+                        new_pct_l *= fabs(turn_wheel_bias) + 1;
+                    } else if (turn_wheel_bias > 0) {
+                        new_pct_l *= 1 - fabs(turn_wheel_bias);
+                        new_pct_r *= fabs(turn_wheel_bias) + 1;
                     }
 
                     motor_power(new_pct_l, new_pct_r);
@@ -513,11 +519,15 @@ namespace robot_control {
                 }
                 case ControlMode::STRAIGHT_UNTIL_SWITCH:
                     if (!l_bump_switch.Value() && !r_bump_switch.Value()) {
-                        task_finished();
-                        return;
+                        switch_pressed_ticks++;
+                    } else if (!button_bump_switch.Value()) {
+                        switch_pressed_ticks++;
+                    } else {
+                        switch_pressed_ticks = 0;
                     }
 
-                    if (!button_bump_switch.Value()) {
+                    if (switch_pressed_ticks >= SWITCH_CONFIDENT_TICKS) {
+                        switch_pressed_ticks = 0;
                         task_finished();
                         return;
                     }
@@ -664,28 +674,34 @@ namespace tasks {
         robot.target_pct = percent;
     }
 
-    void Turn_prepare(float degree) {
+    void Turn_prepare(float degree, float turn_wheel_bias) {
+        robot.turn_wheel_bias = turn_wheel_bias;
         robot.target_angle = (float) rad(degree);
         robot.turn_start_angle = robot.angle;
         robot.turning_right = robot.target_angle > robot.angle;
         robot.stopped_i = 0;
+        robot.control_mode = ControlMode::TURN;
     }
 
     void Turn(float degree) {
-        Turn_prepare(degree);
-        robot.control_mode = ControlMode::TURN;
+        Turn_prepare(degree, 0);
+        wait_for_task_to_finish();
+    }
+
+    void Pivot(float degree, float turn_wheel_bias) {
+        Turn_prepare(degree, turn_wheel_bias);
         wait_for_task_to_finish();
     }
 
     void PivotLeft(float degree) {
-        Turn_prepare(degree);
-        robot.control_mode = ControlMode::PIVOT_LEFT;
+        // Bias 1 = right wheel turning only = pivoting on left
+        Turn_prepare(degree, 1);
         wait_for_task_to_finish();
     }
 
     void PivotRight(float degree) {
-        Turn_prepare(degree);
-        robot.control_mode = ControlMode::PIVOT_RIGHT;
+        // Bias -1 = left wheel turning only = pivoting on right
+        Turn_prepare(degree, -1);
         wait_for_task_to_finish();
     }
 
@@ -716,10 +732,6 @@ namespace visualization {
         switch (robot.control_mode) {
             case ControlMode::INIT:
                 return "Init";
-            case ControlMode::PIVOT_LEFT:
-                return "PivotLeft";
-            case ControlMode::PIVOT_RIGHT:
-                return "PivotRight";
             case ControlMode::STRAIGHT:
                 return "Forward";
             case ControlMode::STRAIGHT_UNTIL_SWITCH:
@@ -945,10 +957,10 @@ int main() {
      */
 
     FuelServo(180);
-    DumptruckServo(90);
+    DumptruckServo(180);
     PassportServo(90);
 
-    Speed(25);
+    Speed(50);
 
     // Wait for start light to turn on.
     WaitForStartLight();
@@ -979,7 +991,7 @@ int main() {
     FuelServo(90);
     Sleep(250);
     FuelServo(45);
-    Straight(5);
+    Straight(3);
     FuelServo(180);
 
     // Turn right
@@ -990,21 +1002,23 @@ int main() {
     ResetFacing(90);
 
     // Face up ramp
-    Straight(1);
+    Straight(0.5);
     PivotLeft(0);
 
     Straight(24);
 
     // Go to luggage drop
-    PivotRight(90);
-    Straight(12);
-    PivotRight(180);
-    StraightUntilSwitch(12);
+    Pivot(180, -0.65);
+    StraightUntilSwitch(6);
+    ResetFacing(180);
 
-    // TODO: Drop the luggage
+    // Drop the luggage
+    DumptruckServo(90);
+    Sleep(500);
+    DumptruckServo(180);
 
     // Go to light
-    Straight(-12);
+    Straight(-8);
     Turn(135);
     StraightUntilSwitch(-24);
     ResetFacing(135);
