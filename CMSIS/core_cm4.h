@@ -60,7 +60,7 @@
   @{
  */
 
-#include "../../BSLI/flight-software-2023-2024/Drivers/CMSIS/Include/cmsis_version.h"
+#include "cmsis_version.h"
 
 /* CMSIS CM4 definitions */
 #define __CM4_CMSIS_VERSION_MAIN  (__CM_CMSIS_VERSION_MAIN)              /*!< \deprecated [31:16] CMSIS HAL main version */
@@ -159,7 +159,7 @@
 
 #endif
 
-#include "../../BSLI/flight-software-2023-2024/Drivers/CMSIS/Include/cmsis_compiler.h"               /* CMSIS compiler specific defines */
+#include "cmsis_compiler.h"               /* CMSIS compiler specific defines */
 
 
 #ifdef __cplusplus
