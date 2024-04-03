@@ -97,36 +97,6 @@ namespace util {
         }
     };
 
-    template<int m, int n>
-    struct Mat {
-        static_assert(m == n);
-        float mat[m * n];
-
-        Vec<m> multiply(Vec<m> &b) const {
-            Vec<m> result{};
-
-            int mat_pos = 0;
-            for (int r = 0; r < m; r++) {
-                for (int c = 0; c < n; c++) {
-                    result.vec[r] += mat[mat_pos++] * b.vec[c];
-                }
-            }
-
-            return result;
-        }
-
-        static Mat<3, 3> RotationTranslation(float angle, float dx, float dy) {
-            float cos = cosf(angle);
-            float sin = sinf(angle);
-
-            return Mat<3, 3>{
-                    cos, -sin, dx,
-                    sin, cos, dy,
-                    0, 0, 1
-            };
-        }
-    };
-
     struct CycTimer {
         uint32_t value{};
         uint32_t last_lap_cyc{};
@@ -237,7 +207,7 @@ constexpr float STOPPED_I_ACCUMULATE = 3;
 constexpr float STOPPED_I_HIGHPASS = 0.999;
 constexpr float START_LIGHT_THRESHOLD_VOLTAGE = 1;
 constexpr int WAIT_FOR_LIGHT_CONFIDENT_MS = 500;
-constexpr int TICKET_LIGHT_AVERAGING_MS = 500;
+constexpr int TICKET_LIGHT_AVERAGING_MS = 100;
 constexpr int SWITCH_CONFIDENT_TICKS = 50;
 
 constexpr Vec<2> INITIAL_POS{0, 0};
@@ -742,58 +712,6 @@ namespace visualization {
         return "?????";
     }
 
-    const char *nesw[4] = {"N", "W", "S", "E"};
-
-    Vec<3> nesw_poss[] = {
-            Vec<3>{0, 80, 1},
-            Vec<3>{80, 0, 1},
-            Vec<3>{0, -80, 1},
-            Vec<3>{-80, 0, 1},
-    };
-
-    Vec<3> arrow_vtx[] = {
-            Vec<3>{-10, 0, 1},
-            Vec<3>{10, 0, 1},
-            Vec<3>{10, 45, 1},
-            Vec<3>{14, 45, 1},
-            Vec<3>{0, 64, 1},
-            Vec<3>{-14, 45, 1},
-            Vec<3>{-10, 45, 1},
-    };
-
-    const int arrow_vtx_len = sizeof(arrow_vtx) / sizeof(Vec<3>);
-
-    void draw_vtx_list(Vec<3> vtx_list[], int len, Mat<3, 3> mat, bool thick) {
-        Vec<3> vtx1 = mat.multiply(vtx_list[len - 1]);
-        for (int i = 0; i < len; i++) {
-            Vec<3> vtx2 = mat.multiply(vtx_list[i]);
-            FastLCD::DrawLine(
-                    (int) vtx1.vec[0],
-                    (int) vtx1.vec[1],
-                    (int) vtx2.vec[0],
-                    (int) vtx2.vec[1], thick);
-            vtx1 = vtx2;
-        }
-    }
-
-    void draw_compass(Mat<3, 3> mat) {
-        FastLCD::SetFontPaletteIndex(White);
-        for (int i = 0; i < 4; i++) {
-            Vec<3> offs{-12.0 / 2, -17.0 / 2, 1};
-            Vec<3> pos = mat.multiply(nesw_poss[i]).add(offs);
-            FastLCD::WriteAt(nesw[i], (int) pos.vec[0], (int) pos.vec[1]);
-        }
-
-        FastLCD::DrawCircle(LCD_WIDTH / 2, LCD_HEIGHT / 2, 64);
-        FastLCD::WriteAt(deg(robot.angle), LCD_WIDTH / 2 - 42, 17);
-
-        FastLCD::SetFontPaletteIndex(Yellow);
-        draw_vtx_list(arrow_vtx, arrow_vtx_len, mat, true);
-    }
-
-    CycTimer visualization_timer;
-    CycTimer draw_timer;
-
     template<typename T>
     void log(const char *label, T value) {
         FastLCD::Write(label);
@@ -802,19 +720,17 @@ namespace visualization {
     }
 
     extern "C" void PIT1_IRQHandler(void) {
-        visualization_timer.begin();
-
         clear_PIT_irq_flag<1>();
 
         static bool prev_touching = false;
-        static bool display_compass = true;
+        static bool display_testing_screen = true;
         static float holding_sec = 0;
 
         int x, y;
         bool touching = LCD.Touch(&x, &y);
         if (touching && !prev_touching) {
             if (x < LCD_WIDTH / 2) {
-                display_compass = !display_compass;
+                display_testing_screen = !display_testing_screen;
             }
         }
         prev_touching = touching;
@@ -832,47 +748,37 @@ namespace visualization {
         }
 
         FastLCD::Clear();
-        if (display_compass) {
-            Mat mat = Mat<3, 3>::RotationTranslation(-robot.angle + rad(180), LCD_WIDTH / 2.0, LCD_HEIGHT / 2.0);
-            draw_compass(mat);
-        } else {
-            FastLCD::SetFontPaletteIndex(White);
-//			FastLCD::Write("Tick CPU usage: ");
-//			FastLCD::Write((tick_cycles * 100) / (int) cyc(1.0 / TICK_RATE) + 1); // add 1% safety margin
-//			FastLCD::WriteLine("%");
-//			log("Tick count", (int) robot.tick_count);
 
-//            FastLCD::Write("X/Yin: ");
-//            FastLCD::Write(robot.pos.vec[0]);
-//            FastLCD::Write(" ");
-//            FastLCD::WriteLine(robot.pos.vec[1]);
+        FastLCD::SetFontPaletteIndex(White);
+//      FastLCD::Write("X/Yin: ");
+//      FastLCD::Write(robot.pos.vec[0]);
+//      FastLCD::Write(" ");
+//      FastLCD::WriteLine(robot.pos.vec[1]);
 
-//            log("Turn radius: ", robot.R);
+//      log("Turn radius: ", robot.R);
 
-            log("Angle", deg(robot.angle));
-            log("TargetAngle", deg(robot.target_angle));
+        log("Angle", deg(robot.angle));
+        log("TargetAngle", deg(robot.target_angle));
 
-//            log("L Motor Counts", robot.total_counts_l);
-//            log("R Motor Counts", robot.total_counts_r);
+//      log("L Motor Counts", robot.total_counts_l);
+//      log("R Motor Counts", robot.total_counts_r);
 
-            log("ControlMode", control_mode_string());
+        log("ControlMode", control_mode_string());
 
-//            log("ControlEffort", robot.angle_controller.control_effort);
-//            log("Error", robot.angle_controller.error);
-            log("I", robot.angle_controller.I);
+//      log("ControlEffort", robot.angle_controller.control_effort);
+//      log("Error", robot.angle_controller.error);
+        log("I", robot.angle_controller.I);
 
-            log("CDS  Red", robot.cds_red_value);
-            log("CDS Blue", robot.cds_blue_value);
+        log("CDS  Red", robot.cds_red_value);
+        log("CDS Blue", robot.cds_blue_value);
 
-            log("Dist", robot.pos.dist(robot.pos0));
-            log("TargetDist", robot.target_dist);
+        log("Dist", robot.pos.dist(robot.pos0));
+        log("TargetDist", robot.target_dist);
 
-            log("FuelLever", RCS.GetCorrectLever());
-//            log("DistRemain", robot.dist_remain);
-//            log("Slewed%", robot.slewed_pct);
-//            log("VT", (int) visualization_timer.last_lap_cyc);
-//            log("DT", (int) draw_timer.last_lap_cyc);
-        }
+        log("FuelLever", RCS.GetCorrectLever());
+//      log("DistRemain", robot.dist_remain);
+//      log("Slewed%", robot.slewed_pct);
+
 
         if (holding_sec < FORCE_START_HOLD_SEC) {
             if (touching && x >= LCD_WIDTH / 2) {
@@ -896,11 +802,7 @@ namespace visualization {
             FastLCD::FillRectangle(0, 0, progress_bar_width, 32);
         }
 
-        draw_timer.begin();
         FastLCD::DrawScreen();
-        draw_timer.lap();
-
-        visualization_timer.lap();
     }
 }
 
@@ -962,6 +864,10 @@ int main() {
 
     Speed(50);
 
+    /*
+     * PATH START!
+     */
+
     // Wait for start light to turn on.
     WaitForStartLight();
     // Forward
@@ -981,7 +887,7 @@ int main() {
     Straight(-4); // Back into position for the fuel lever flipping
 
     // Fuel lever flip sequence
-    FuelServo(75);
+    FuelServo(72);
     Sleep(250);
     FuelServo(135);
     Straight(5);
@@ -991,24 +897,26 @@ int main() {
     FuelServo(90);
     Sleep(250);
     FuelServo(45);
-    Straight(3);
+    Straight(2);
     FuelServo(180);
 
     // Turn right
     Turn(90);
 
     // Square with the left wall
-    StraightUntilSwitch(-20);
+    StraightUntilSwitch(-(9.0f + leverMinus));
     ResetFacing(90);
 
     // Face up ramp
     Straight(0.5);
     PivotLeft(0);
 
-    Straight(24);
+    // Approach the ramp slowly and then go fast up toward it to avoid slippage
+    Straight(2);
+    Straight(23);
 
     // Go to luggage drop
-    Pivot(180, -0.65);
+    Pivot(180, -0.7);
     StraightUntilSwitch(6);
     ResetFacing(180);
 
@@ -1017,20 +925,32 @@ int main() {
     Sleep(500);
     DumptruckServo(180);
 
-    // Go to light
-    Straight(-8);
+    // Ticket light
+    Straight(-16);
     Turn(135);
-    StraightUntilSwitch(-24);
+
+    // TODO: Go to kiosk depending on light color. This is just for the blue light so far.
+    StraightUntilSwitch(-16);
     ResetFacing(135);
-
+    Straight(2);
     CaptureTicketLight();
+    Straight(5);
+    Turn(90);
+    Straight(6);
+    PivotRight(0);
+    StraightUntilSwitch(4);
 
-    // TODO: Go to kiosk depending on light color
+    PivotRight(-30);
+    PivotLeft(0);
+
+    Straight(2);
+
+    // Press the high button
+    DumptruckServo(0);
+    Sleep(500);
+    DumptruckServo(180);
 
     // TODO: Passport mech
 
     // TODO: Go down right side ramp and hit the end button
-
-
-    poweroff();
 }
