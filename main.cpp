@@ -198,8 +198,6 @@ constexpr float DRIVE_MOTOR_MAX_VOLTAGE = 9.0;
 /*
  * Robot control configuration.
  */
-constexpr float DRIVE_SLEW_RATE = 200; // Percent per m/s
-constexpr float TURN_SLEW_RATE = 400; // Percent per radian/s
 constexpr float DRIVE_MIN_PERCENT = 10;
 constexpr float TURN_MIN_PERCENT = 10;
 constexpr float STOPPED_I = 10;
@@ -293,38 +291,47 @@ namespace robot_control {
         TicketLightColor ticket_light_color = TICKET_LIGHT_NONE;
 
         int tick_count{}, task_tick_count{};
-
-        volatile float cds_red_value{};
-        volatile float cds_blue_value{};
-
+        volatile bool task_running{};
         volatile bool force_start{};
 
         int switch_pressed_ticks{};
 
-        // Drivetrain variables
+        float target_speed = 50;
+        float drive_slew_rate = 200; // Percent per m/s
+        float turn_slew_rate = 400; // Percent per radian/s
+
+        /* START DEBUG VARIABLES */
+        volatile float cds_red_value{};
+        volatile float cds_blue_value{};
+
         float pct_l{}, pct_r{};
-        float target_pct{};
         float slewed_pct{};
         float dist_remain{};
         float target_dist{};
         int total_counts_l{}, total_counts_r{};
+
+        float R{};
+        /* END DEBUG VARIABLES */
+
         PIController angle_controller = PIController(TICK_RATE, 100, 50, 30);
 
         // Position is in inches
         Vec<2> pos{}, pos0{};
+
+        /* START TURN VARIABLES */
         // Angle in radians
         float angle{};
         float target_angle{};
         float turn_start_angle{};
         bool turning_right{};
-        float R{};
         float turn_wheel_bias{};
+        /* END TURN VARIABLES */
 
-        volatile bool task_running{};
-
+        /* START UNSTUCK VARIABLES */
         int last_encoder_l_tick_at = 0;
         int last_encoder_r_tick_at = 0;
         float stopped_i{};
+        /* END UNSTUCK VARIABLES */
 
         Robot() {
             pos = INITIAL_POS;
@@ -451,9 +458,9 @@ namespace robot_control {
                     float angle_turned_so_far = fabs(angle - turn_start_angle);
                     float angle_remain = fabs(target_angle - angle);
                     slewed_pct = slew(
-                            TURN_SLEW_RATE,
+                            turn_slew_rate,
                             TURN_MIN_PERCENT,
-                            target_pct,
+                            target_speed,
                             angle_turned_so_far,
                             angle_remain
                     );
@@ -507,9 +514,9 @@ namespace robot_control {
                     float dist = pos.dist(pos0);
                     dist_remain = fabs(target_dist) - fabs(dist);
                     slewed_pct = slew(
-                            DRIVE_SLEW_RATE,
+                            drive_slew_rate,
                             DRIVE_MIN_PERCENT,
-                            target_pct,
+                            target_speed,
                             dist,
                             dist_remain
                     );
@@ -609,6 +616,8 @@ namespace tasks {
         cds_red_value_avg /= TICKET_LIGHT_AVERAGING_MS;
         cds_blue_value_avg /= TICKET_LIGHT_AVERAGING_MS;
 
+        cds_red_value_avg *= 1.15; // Correction factor to make red and blue equal.
+
         if (cds_red_value_avg < cds_blue_value_avg) {
             // CDS cell red receiving more light...
             robot.ticket_light_color = TICKET_LIGHT_RED;
@@ -641,7 +650,15 @@ namespace tasks {
     }
 
     void Speed(float percent) {
-        robot.target_pct = percent;
+        robot.target_speed = percent;
+    }
+
+    void TurnSlewRate(float rate) {
+        robot.turn_slew_rate = rate;
+    }
+
+    void DriveSlewRate(float rate) {
+        robot.drive_slew_rate = rate;
     }
 
     void Turn_prepare(float degree, float turn_wheel_bias) {
@@ -818,7 +835,7 @@ namespace visualization {
  * 15 - PIT1 - Diagnostics/visualization printing
  */
 
-int main() {
+void init() {
     /*
      * Initialize Robot Communication System (RCS).
      */
@@ -853,16 +870,18 @@ int main() {
      */
     SysTick_Config(SYSTICK_INTERVAL_CYCLES);
     NVIC_SetPriority(SysTick_IRQn, 1);
+}
 
-    /*
-     * Robot Tasks.
-     */
+int main() {
+    init();
 
     FuelServo(180);
     DumptruckServo(180);
     PassportServo(90);
 
-    Speed(50);
+    DriveSlewRate(400);
+    TurnSlewRate(600);
+    Speed(90);
 
     /*
      * PATH START!
@@ -884,16 +903,16 @@ int main() {
 
     // Turn arm toward fuel levers
     Turn(0);
-    Straight(-4); // Back into position for the fuel lever flipping
+    Straight(-4.75); // Back into position for the fuel lever flipping
 
     // Fuel lever flip sequence
     FuelServo(72);
     Sleep(250);
     FuelServo(135);
-    Straight(5);
+    Straight(2);
     Sleep(5000);
     FuelServo(45);
-    Straight(-5);
+    Straight(-2);
     FuelServo(90);
     Sleep(250);
     FuelServo(45);
@@ -904,7 +923,7 @@ int main() {
     Turn(90);
 
     // Square with the left wall
-    StraightUntilSwitch(-(9.0f + leverMinus));
+    StraightUntilSwitch(-(7.0f + leverMinus));
     ResetFacing(90);
 
     // Face up ramp
@@ -926,7 +945,7 @@ int main() {
     DumptruckServo(180);
 
     // Ticket light
-    Straight(-16);
+    Straight(-16.7);
     Turn(135);
 
     // TODO: Go to kiosk depending on light color. This is just for the blue light so far.
