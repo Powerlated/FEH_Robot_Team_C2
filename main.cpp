@@ -251,6 +251,15 @@ constexpr auto PASSPORT_SERVO_MAX = 2500;
  * Main robot control code.
  */
 namespace robot_control {
+    void enable_robot_control_loop() {
+        SysTick_Config(SYSTICK_INTERVAL_CYCLES);
+        NVIC_SetPriority(SysTick_IRQn, 1);
+    }
+
+    void disable_robot_control_loop() {
+        SysTick->CTRL = 0;
+    }
+
     enum TicketLightColor : int {
         TICKET_LIGHT_NONE,
         TICKET_LIGHT_RED,
@@ -703,22 +712,25 @@ namespace tasks {
         wait_for_task_to_finish();
     }
 
+    /*
+     * ROBOT CONTROL LOOP MUST BE DISABLED BEFORE TOUCHING SERVOS. BOTH OF THEM ACCESS UART!
+     */
     void FuelServo(float degree) {
-        __set_BASEPRI(1);
+        disable_robot_control_loop();
         robot.fuel_servo.SetDegree(degree);
-        __set_BASEPRI(0);
+        enable_robot_control_loop();
     }
 
     void DumptruckServo(float degree) {
-        __set_BASEPRI(1);
+        disable_robot_control_loop();
         robot.dumptruck_servo.SetDegree(degree);
-        __set_BASEPRI(0);
+        enable_robot_control_loop();
     }
 
     void PassportServo(float degree) {
-        __set_BASEPRI(1);
+        disable_robot_control_loop();
         robot.passport_servo.SetDegree(degree);
-        __set_BASEPRI(0);
+        enable_robot_control_loop();
     }
 
     void Delay(int ms) {
@@ -885,8 +897,7 @@ void init() {
      *
      * Priority is 1 because DigitalEncoder PORT IRQs need higher priority.
      */
-    SysTick_Config(SYSTICK_INTERVAL_CYCLES);
-    NVIC_SetPriority(SysTick_IRQn, 1);
+    enable_robot_control_loop();
 }
 
 int main() {
