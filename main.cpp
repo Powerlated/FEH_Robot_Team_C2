@@ -693,15 +693,21 @@ namespace tasks {
     }
 
     void FuelServo(float degree) {
+        __set_BASEPRI(1);
         robot.fuel_servo.SetDegree(degree);
+        __set_BASEPRI(0);
     }
 
     void DumptruckServo(float degree) {
+        __set_BASEPRI(1);
         robot.dumptruck_servo.SetDegree(degree);
+        __set_BASEPRI(0);
     }
 
     void PassportServo(float degree) {
+        __set_BASEPRI(1);
         robot.passport_servo.SetDegree(degree);
+        __set_BASEPRI(0);
     }
 
     void Delay(int ms) {
@@ -951,15 +957,16 @@ int main() {
     // TODO: Go to kiosk depending on light color. This is just for the blue light so far.
     StraightUntilSwitch(-16);
     ResetFacing(135);
+    TurnSlewRate(300);
     Straight(2);
     CaptureTicketLight();
     Straight(5);
     Turn(90);
-    Straight(6);
+    Straight(9);
     PivotRight(0);
-    StraightUntilSwitch(4);
+    StraightUntilSwitch(6);
 
-    PivotRight(-30);
+    PivotRight(-45);
     PivotLeft(0);
 
     Straight(2);
