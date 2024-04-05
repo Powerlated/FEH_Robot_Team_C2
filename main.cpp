@@ -324,7 +324,8 @@ namespace robot_control {
         float target_angle{};
         float turn_start_angle{};
         bool turning_right{};
-        float turn_wheel_bias{};
+        float turn_l_mul{};
+        float turn_r_mul{};
         /* END TURN VARIABLES */
 
         /* START UNSTUCK VARIABLES */
@@ -369,12 +370,12 @@ namespace robot_control {
                 last_encoder_r_tick_at = tick_count;
             }
 
-            if (turn_wheel_bias < 0.8) {  
+            if (turn_l_mul < 0.2) {
                 if (last_encoder_l_tick_at + ticks(0.025) < tick_count) {
                     stopped_i += STOPPED_I_ACCUMULATE / TICK_RATE;
                 }
             }
-            if (turn_wheel_bias > -0.8) {
+            if (turn_r_mul < 0.2) {
                 if (last_encoder_r_tick_at + ticks(0.025) < tick_count) {
                     stopped_i += STOPPED_I_ACCUMULATE / TICK_RATE;
                 }
@@ -483,13 +484,8 @@ namespace robot_control {
                         }
                     }
 
-                    if (turn_wheel_bias < 0) {
-                        new_pct_r *= 1 - fabs(turn_wheel_bias);
-                        new_pct_l *= fabs(turn_wheel_bias) + 1;
-                    } else if (turn_wheel_bias > 0) {
-                        new_pct_l *= 1 - fabs(turn_wheel_bias);
-                        new_pct_r *= fabs(turn_wheel_bias) + 1;
-                    }
+                    new_pct_l *= turn_l_mul;
+                    new_pct_r *= turn_r_mul;
 
                     motor_power(new_pct_l, new_pct_r);
                     return;
@@ -661,8 +657,9 @@ namespace tasks {
         robot.drive_slew_rate = rate;
     }
 
-    void Turn_prepare(float degree, float turn_wheel_bias) {
-        robot.turn_wheel_bias = turn_wheel_bias;
+    void Turn_prepare(float degree, float turn_l_mul, float turn_r_mul) {
+        robot.turn_l_mul = turn_l_mul;
+        robot.turn_r_mul = turn_r_mul;
         robot.target_angle = (float) rad(degree);
         robot.turn_start_angle = robot.angle;
         robot.turning_right = robot.target_angle > robot.angle;
@@ -671,24 +668,38 @@ namespace tasks {
     }
 
     void Turn(float degree) {
-        Turn_prepare(degree, 0);
+        Turn_prepare(degree, 1, 1);
         wait_for_task_to_finish();
     }
 
     void Pivot(float degree, float turn_wheel_bias) {
-        Turn_prepare(degree, turn_wheel_bias);
+        float turn_l_mul = 1, turn_r_mul = 1;
+        if (turn_wheel_bias < 0) {
+            turn_r_mul = 1 - fabs(turn_wheel_bias);
+            turn_l_mul = fabs(turn_wheel_bias) + 1;
+        } else if (turn_wheel_bias > 0) {
+            turn_l_mul = 1 - fabs(turn_wheel_bias);
+            turn_r_mul = fabs(turn_wheel_bias) + 1;
+        }
+
+        Turn_prepare(degree, turn_l_mul, turn_r_mul);
+        wait_for_task_to_finish();
+    }
+
+    void Arc(float degree, float turn_l_mul, float turn_r_mul) {
+        Turn_prepare(degree, turn_l_mul, turn_r_mul);
         wait_for_task_to_finish();
     }
 
     void PivotLeft(float degree) {
-        // Bias 1 = right wheel turning only = pivoting on left
-        Turn_prepare(degree, 1);
+        // right wheel turning only = pivoting on left
+        Turn_prepare(degree,0, 1);
         wait_for_task_to_finish();
     }
 
     void PivotRight(float degree) {
-        // Bias -1 = left wheel turning only = pivoting on right
-        Turn_prepare(degree, -1);
+        // left wheel turning only = pivoting on right
+        Turn_prepare(degree, 1, 0);
         wait_for_task_to_finish();
     }
 
@@ -895,8 +906,13 @@ int main() {
 
     // Wait for start light to turn on.
     WaitForStartLight();
+
+    // Start button
+    Straight(-2);
+    Straight(2);
+
     // Forward
-    Straight(18.5);
+    Straight(17.5);
 
     // Turn left toward fuel levers
     Turn(-90);
@@ -909,7 +925,7 @@ int main() {
 
     // Turn arm toward fuel levers
     Turn(0);
-    Straight(-4.75); // Back into position for the fuel lever flipping
+    Straight(-3); // Back into position for the fuel lever flipping
 
     // Fuel lever flip sequence
     FuelServo(72);
@@ -929,7 +945,7 @@ int main() {
     Turn(90);
 
     // Square with the left wall
-    StraightUntilSwitch(-(7.0f + leverMinus));
+    StraightUntilSwitch(-(8.0f + leverMinus));
     ResetFacing(90);
 
     // Face up ramp
@@ -951,7 +967,7 @@ int main() {
     DumptruckServo(180);
 
     // Ticket light
-    Straight(-16.7);
+    Straight(-17);
     Turn(135);
 
     // TODO: Go to kiosk depending on light color. This is just for the blue light so far.
@@ -960,19 +976,30 @@ int main() {
     TurnSlewRate(300);
     Straight(2);
     CaptureTicketLight();
-    Straight(5);
-    Turn(90);
-    Straight(9);
-    PivotRight(0);
-    StraightUntilSwitch(6);
 
-    PivotRight(-45);
-    PivotLeft(0);
+    if (robot.ticket_light_color == TICKET_LIGHT_BLUE) {
+        Straight(5);
+        Turn(90);
+        Straight(8);
+        PivotRight(0);
+        StraightUntilSwitch(6);
 
-    Straight(2);
+        // Pivot to get into position for the center button
+        PivotRight(-45);
+        PivotLeft(0);
+    } else {
+        Arc(0, -0.6, 1);
+
+        // Pivot to get into position for the center button
+        PivotLeft(45);
+        PivotRight(0);
+    }
+
+    StraightUntilSwitch(8);
+    Straight(-1.1);
 
     // Press the high button
-    DumptruckServo(0);
+    DumptruckServo(60);
     Sleep(500);
     DumptruckServo(180);
 
