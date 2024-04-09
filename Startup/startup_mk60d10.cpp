@@ -352,7 +352,7 @@ void PORTD_IRQHandler()
 #define BSP_BUS_DIV                     (2)
 #define BSP_FLEXBUS_DIV                 (2)
 #define BSP_FLASH_DIV                   (4)
-#define BSP_CLOCK_MUL                   (44)    /* 48MHz */
+#define BSP_CLOCK_MUL                   (55)    /* 48MHz */
 
 #define BSP_REF_CLOCK_DIV               (BSP_CLOCK_SRC / BSP_REF_CLOCK_SRC)
 
