@@ -52,7 +52,7 @@ using namespace tasks;
 /*
  * Proteus constants.
  */
-int SystemCoreClock = 88000000;
+int SystemCoreClock = 110 * 1000000; // yeah we overclocked the proteus
 constexpr int LCD_WIDTH = 320;
 constexpr int LCD_HEIGHT = 240;
 
@@ -263,7 +263,7 @@ namespace robot_control {
         volatile float cds_red_value{};
         volatile float cds_blue_value{};
 
-        uint32_t total_counts_l{}, total_counts_r{};
+        int32_t total_counts_l{}, total_counts_r{};
 
         float R{};
         /* END DEBUG VARIABLES */
@@ -274,8 +274,8 @@ namespace robot_control {
         // Angle in radians
         float angle{};
 
-        uint32_t counts_l{}, counts_r{};
-        uint32_t task_counts_l{}, task_counts_r{};
+        int32_t counts_l{}, counts_r{};
+        int32_t task_counts_l{}, task_counts_r{};
 
         Robot() {
             pos = INITIAL_POS;
@@ -378,21 +378,29 @@ namespace robot_control {
 
                 tick_count++;
                 stopped_i *= STOPPED_I_HIGHPASS;
-                return stopped_i;
+                return stopped_i * STOPPED_I;
             }
 
         };
 
-        void execute_straight(float inches, bool until_switch) {
+        void execute_straight(float inches, bool until_switch, int timeout_ms) {
             int switch_pressed_ticks = 0;
 
             Vec<2> pos0 = pos;
             unstuck unstuck;
             PIController angle_controller(CONTROL_LOOP_HZ, 100, 50, 30);
             TickType_t time = xTaskGetTickCount();
+            TickType_t start_time = xTaskGetTickCount();
 
             float target_angle = angle;
             while (true) {
+                if (timeout_ms > 0) {
+                    if (xTaskGetTickCount() - start_time > timeout_ms) {
+                        motor_power(0, 0);
+                        return;
+                    }
+                }
+
                 if (until_switch) {
                     if (!l_bump_switch.Value() && !r_bump_switch.Value()) {
                         switch_pressed_ticks++;
@@ -403,7 +411,7 @@ namespace robot_control {
                     }
 
                     if (switch_pressed_ticks >= SWITCH_CONFIDENT_TICKS) {
-                        switch_pressed_ticks = 0;
+                        motor_power(0, 0);
                         return;
                     }
                 }
@@ -429,6 +437,7 @@ namespace robot_control {
                 }
 
                 if (fabs(dist) > fabsf(inches)) {
+                    motor_power(0, 0);
                     return;
                 }
 
@@ -444,7 +453,7 @@ namespace robot_control {
             task_counts_l = 0;
             task_counts_r = 0;
             unstuck unstuck;
-            PIController pi(CONTROL_LOOP_HZ, 5, 10, 30);
+            PIController pi(CONTROL_LOOP_HZ, 0.5, 1, 30);
             TickType_t time = xTaskGetTickCount();
 
             while (true) {
@@ -482,12 +491,16 @@ namespace robot_control {
                     }
                 }
 
+                l_effort = 0;
+                r_effort = 0;
+
                 float new_pct_l, new_pct_r;
                 if (turning_right) {
                     new_pct_l = power_pct + l_effort;
                     new_pct_r = -power_pct + r_effort;
 
                     if (angle >= target_angle) {
+                        motor_power(0, 0);
                         return;
                     }
                 } else {
@@ -495,6 +508,7 @@ namespace robot_control {
                     new_pct_r = power_pct + r_effort;
 
                     if (angle <= target_angle) {
+                        motor_power(0, 0);
                         return;
                     }
                 }
@@ -570,11 +584,19 @@ namespace tasks {
     }
 
     void Straight(float inches) {
-        robot.execute_straight(inches, false);
+        robot.execute_straight(inches, false, 0);
+    }
+
+    void StraightTimeout(float inches, int timeout_ms) {
+        robot.execute_straight(inches, false, timeout_ms);
     }
 
     void StraightUntilSwitch(float inches) {
-        robot.execute_straight(inches, true);
+        robot.execute_straight(inches, true, 0);
+    }
+
+    void StraightUntilSwitchTimeout(float inches, int timeout_ms) {
+        robot.execute_straight(inches, true, timeout_ms);
     }
 
     void ResetFacing(float degree) {
@@ -678,10 +700,13 @@ namespace visualization {
 
         FastLCD::SetFontPaletteIndex(White);
 
+        log("Time (s)", (int)(xTaskGetTickCount() / 1000));
+
         log("CDS  Red", robot.cds_red_value);
         log("CDS Blue", robot.cds_blue_value);
 
         log("FuelLever", RCS.GetCorrectLever());
+        log("Angle", deg(robot.angle));
 
         if (holding_sec < FORCE_START_HOLD_SEC) {
             if (touching && x >= LCD_WIDTH / 2) {
@@ -726,7 +751,7 @@ void robot_path_task() {
     WaitForStartLight();
 
     // Start button
-    Straight(-2);
+    StraightTimeout(-2, 1000);
     Straight(2);
 
     // Forward
@@ -743,16 +768,16 @@ void robot_path_task() {
 
     // Turn arm toward fuel levers
     Turn(0);
-    Straight(-3); // Back into position for the fuel lever flipping
+    Straight(-3.5); // Back into position for the fuel lever flipping
 
     // Fuel lever flip sequence
     FuelServo(72);
     Sleep(250);
     FuelServo(135);
-    Straight(2);
+    Straight(3);
     Sleep(5000);
     FuelServo(45);
-    Straight(-2);
+    Straight(-3);
     FuelServo(90);
     Sleep(250);
     FuelServo(45);
@@ -775,8 +800,8 @@ void robot_path_task() {
     Straight(23);
 
     // Go to luggage drop
-    Pivot(180, -0.7);
-    StraightUntilSwitch(6);
+    Pivot(180, -0.65);
+    StraightUntilSwitch(8);
     ResetFacing(180);
 
     // Drop the luggage
@@ -785,7 +810,7 @@ void robot_path_task() {
     DumptruckServo(180);
 
     // Ticket light
-    Straight(-17);
+    Straight(-17.5);
     Turn(135);
 
     // TODO: Go to kiosk depending on light color. This is just for the blue light so far.
@@ -798,9 +823,9 @@ void robot_path_task() {
     if (robot.ticket_light_color == TICKET_LIGHT_BLUE) {
         Straight(5);
         Turn(90);
-        Straight(8);
+        Straight(9);
         PivotRight(0);
-        StraightUntilSwitch(6);
+        StraightUntilSwitchTimeout(6, 2000);
 
         // Pivot to get into position for the center button
         PivotRight(-45);
@@ -814,13 +839,13 @@ void robot_path_task() {
         PivotRight(0);
     }
 
-    StraightUntilSwitch(8);
+    StraightUntilSwitchTimeout(8, 2000);
     Straight(-1.1);
 
     // Press the high button
     DumptruckServo(60);
     Sleep(500);
-    DumptruckServo(180);
+    DumptruckServo(75);
 
     // TODO: Passport mech
 
@@ -874,7 +899,7 @@ int main() {
      * Initialize Robot Communication System (RCS).
      */
 
-    RCS.InitializeTouchMenu("C2N8hFpMW");
+//    RCS.InitializeTouchMenu("C2N8hFpMW");
 
     /*
      * Assign colors to palette numbers.
@@ -915,7 +940,6 @@ int main() {
             robot_path_stack,
             &robot_path_tcb
     );
-
 
     xTaskCreateStatic(
             TaskFunction_t(odometry_task),
