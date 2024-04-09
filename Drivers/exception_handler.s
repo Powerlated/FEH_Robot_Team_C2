@@ -8,14 +8,12 @@
 .MemManage_Name: .asciz "MemManage"
 .BusFault_Name: .asciz "BusFault"
 .UsageFault_Name: .asciz "UsageFault"
-.SVC_Name: .asciz "SVC"
 
 .global NMI_Handler
 .global HardFault_Handler
 .global MemManage_Handler
 .global BusFault_Handler
 .global UsageFault_Handler
-.global SVC_Handler
 
 .thumb_func
 NMI_Handler:
@@ -38,9 +36,6 @@ UsageFault_Handler:
     ldr r2, =.UsageFault_Name
     b .collect_info
 .thumb_func
-SVC_Handler:
-    ldr r2, =.SVC_Name
-    b .collect_info
 
 // This version is for Cortex M3, Cortex M4 and Cortex M4F
 .thumb_func

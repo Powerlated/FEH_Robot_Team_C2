@@ -8,10 +8,19 @@ cmake_minimum_required(VERSION 3.27.8)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 
-project(Proteus LANGUAGES CXX ASM)
+project(Proteus LANGUAGES C CXX ASM)
 
 add_executable(${PROJECT_NAME}.elf
         Startup/startup_mk60d10.cpp
+
+        FreeRTOS/Source/croutine.c
+        FreeRTOS/Source/event_groups.c
+        FreeRTOS/Source/list.c
+        FreeRTOS/Source/queue.c
+        FreeRTOS/Source/tasks.c
+        FreeRTOS/Source/timers.c
+        FreeRTOS/Source/portable/GCC/ARM_CM3/port.c
+        FreeRTOS/Source/portable/GCC/ARM_CM3/fsl_tickless_systick.c
 
         Drivers/mcg.cpp
         Drivers/i2c.cpp
@@ -23,6 +32,7 @@ add_executable(${PROJECT_NAME}.elf
         Drivers/adc16.cpp
         Drivers/FEHXBee.cpp
         Drivers/FEHPropeller.cpp
+        Drivers/FEHProteus.cpp
         Drivers/exception_handler.cpp
         Drivers/exception_handler.s
 
@@ -39,7 +49,6 @@ add_executable(${PROJECT_NAME}.elf
         Libraries/FEHSD.cpp
         Libraries/FEHRandom.cpp
 
-        FEHProteus.cpp
 
         main.cpp
 )
@@ -48,7 +57,13 @@ add_executable(${PROJECT_NAME}.elf
 target_compile_options(${PROJECT_NAME}.elf PRIVATE -Wall -Os)
 
 # Add includes
-include_directories(. Libraries/ Drivers/ Startup/)
+include_directories(.
+        Libraries/
+        Drivers/
+        Startup/
+        FreeRTOS/Source/include
+        FreeRTOS/Source/portable/GCC/ARM_CM3
+)
 
 # Add linker script
 target_link_options(${PROJECT_NAME}.elf PRIVATE

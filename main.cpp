@@ -29,6 +29,13 @@
 #include <typeinfo>
 #include <FEHBattery.h>
 
+extern "C" {
+#include "FreeRTOS.h"
+#include "task.h"
+#include "queue.h"
+#include "timers.h"
+}
+
 using namespace std;
 
 /*
@@ -45,11 +52,11 @@ using namespace tasks;
 /*
  * Proteus constants.
  */
-constexpr int BSP_BUS_DIV = 2; // Declared in startup_mk60d10.cpp
-constexpr int TICK_RATE = 100;
-constexpr int PROTEUS_SYSTEM_HZ = 88000000.0;
+int SystemCoreClock = 88000000;
 constexpr int LCD_WIDTH = 320;
 constexpr int LCD_HEIGHT = 240;
+
+#define Sleep vTaskDelay
 
 /*
  * Code that won't be modified often during testing is stuffed into the "util" namespace.
@@ -61,14 +68,6 @@ namespace util {
 
     constexpr float deg(float rad) {
         return (float) (rad * (180 / M_PI));
-    }
-
-    constexpr uint32_t cyc(const double sec) {
-        return (uint32_t)(sec * PROTEUS_SYSTEM_HZ);
-    }
-
-    constexpr uint32_t ticks(const double sec) {
-        return (uint32_t)(sec * TICK_RATE);
     }
 
     [[noreturn]]
@@ -121,32 +120,6 @@ namespace util {
         }
     };
 
-    // NXP Freescale K60 manual: Chapter 40: Periodic Interrupt Timer (PIT)
-    template<int pit_num, int irq_priority>
-    void init_PIT(uint32_t cyc_interval) {
-        // PIT0 is being used by FEHIO AnalogEncoder and AnalogInputPin, cannot use
-        static_assert(pit_num != 0);
-        static_assert(pit_num < 4);
-
-        // Set priority
-        NVIC_SetPriority((IRQn)(PIT0_IRQn + pit_num), irq_priority);
-
-        // Enable PIT clock
-        PIT_BASE_PTR->MCR = 0;
-        // Set up PIT interval
-        PIT_BASE_PTR->CHANNEL[pit_num].LDVAL = cyc_interval / BSP_BUS_DIV;
-        // Start PIT and enable PIT interrupts
-        PIT_BASE_PTR->CHANNEL[pit_num].TCTRL = PIT_TCTRL_TEN_MASK | PIT_TCTRL_TIE_MASK;
-
-        // Enable interrupt in NVIC
-        NVIC_EnableIRQ((IRQn)(PIT0_IRQn + pit_num));
-    }
-
-    template<int pit_num>
-    void clear_PIT_irq_flag() {
-        PIT_BASE_PTR->CHANNEL[pit_num].TFLG = 1;
-    }
-
     enum {
         Clear = 0,
         White,
@@ -187,7 +160,7 @@ namespace util {
 /*
  * Robot control constants.
  */
-constexpr int SYSTICK_INTERVAL_CYCLES = cyc(1.0 / TICK_RATE);
+constexpr int CONTROL_LOOP_HZ = 100;
 constexpr float IGWAN_COUNTS_PER_REV = 636;
 constexpr float TRACK_WIDTH = 8.35;
 constexpr float WHEEL_DIA = 2.5;
@@ -206,7 +179,7 @@ constexpr float STOPPED_I_HIGHPASS = 0.999;
 constexpr float START_LIGHT_THRESHOLD_VOLTAGE = 1;
 constexpr int WAIT_FOR_LIGHT_CONFIDENT_MS = 500;
 constexpr int TICKET_LIGHT_AVERAGING_MS = 100;
-constexpr int SWITCH_CONFIDENT_TICKS = 50;
+constexpr int SWITCH_CONFIDENT_TICKS = 500;
 
 constexpr Vec<2> INITIAL_POS{0, 0};
 constexpr float INITIAL_ANGLE = rad(-45);
@@ -214,8 +187,8 @@ constexpr float INITIAL_ANGLE = rad(-45);
 /*
  * Diagnostics/visualization configuration.
  */
-constexpr int DIAGNOSTICS_HZ = 5;
-constexpr float TICK_INTERVAL_MICROSECONDS = (1.0 / TICK_RATE) * 1000000;
+constexpr int DIAGNOSTICS_HZ = 10;
+constexpr float TICK_INTERVAL_MICROSECONDS = (1.0 / CONTROL_LOOP_HZ) * 1000000;
 constexpr float FORCE_START_HOLD_SEC = 0.5;
 constexpr float FORCE_START_TOTAL_SEC = 1;
 
@@ -251,26 +224,10 @@ constexpr auto PASSPORT_SERVO_MAX = 2500;
  * Main robot control code.
  */
 namespace robot_control {
-    void enable_robot_control_loop() {
-        SysTick_Config(SYSTICK_INTERVAL_CYCLES);
-        NVIC_SetPriority(SysTick_IRQn, 1);
-    }
-
-    void disable_robot_control_loop() {
-        SysTick->CTRL = 0;
-    }
-
     enum TicketLightColor : int {
         TICKET_LIGHT_NONE,
         TICKET_LIGHT_RED,
         TICKET_LIGHT_BLUE
-    };
-
-    enum class ControlMode {
-        INIT,
-        TURN,
-        STRAIGHT,
-        STRAIGHT_UNTIL_SWITCH,
     };
 
     struct Robot {
@@ -294,16 +251,10 @@ namespace robot_control {
         FEHServo dumptruck_servo{DUMPTRUCK_SERVO_PORT};
         FEHServo passport_servo{PASSPORT_SERVO_PORT};
 
-        ControlMode control_mode = ControlMode::INIT;
-
         // Start Light / Ticket Light variables
         TicketLightColor ticket_light_color = TICKET_LIGHT_NONE;
 
-        int tick_count{}, task_tick_count{};
-        volatile bool task_running{};
         volatile bool force_start{};
-
-        int switch_pressed_ticks{};
 
         float target_speed = 50;
         float drive_slew_rate = 200; // Percent per m/s
@@ -313,40 +264,21 @@ namespace robot_control {
         volatile float cds_red_value{};
         volatile float cds_blue_value{};
 
-        float pct_l{}, pct_r{};
-        float slewed_pct{};
-        float dist_remain{};
-        float target_dist{};
         int total_counts_l{}, total_counts_r{};
 
         float R{};
         /* END DEBUG VARIABLES */
 
-        PIController angle_controller = PIController(TICK_RATE, 100, 50, 30);
-
         // Position is in inches
-        Vec<2> pos{}, pos0{};
+        Vec<2> pos{};
 
         /* START TURN VARIABLES */
         // Angle in radians
         float angle{};
-        float target_angle{};
-        float turn_start_angle{};
-        bool turning_right{};
-        float turn_l_mul{};
-        float turn_r_mul{};
-        /* END TURN VARIABLES */
-
-        /* START UNSTUCK VARIABLES */
-        int last_encoder_l_tick_at = 0;
-        int last_encoder_r_tick_at = 0;
-        float stopped_i{};
-        /* END UNSTUCK VARIABLES */
 
         Robot() {
             pos = INITIAL_POS;
             angle = INITIAL_ANGLE;
-            target_angle = INITIAL_ANGLE;
 
             fuel_servo.SetMax(FUEL_SERVO_MAX);
             fuel_servo.SetMin(FUEL_SERVO_MIN);
@@ -356,40 +288,12 @@ namespace robot_control {
             passport_servo.SetMin(PASSPORT_SERVO_MIN);
         }
 
-        void task_finished() {
-            ml.Stop();
-            mr.Stop();
-
-            // Set main function priority to higher than encoders so the task list can run.
-            __set_BASEPRI(1);
-            task_running = false;
-        }
-
         void process_odometry() {
             auto counts_l = el.Counts();
             auto counts_r = -er.Counts();
 
             total_counts_l += counts_l;
             total_counts_r += counts_r;
-
-            if (counts_l != 0) {
-                last_encoder_l_tick_at = tick_count;
-            }
-            if (counts_r != 0) {
-                last_encoder_r_tick_at = tick_count;
-            }
-
-            if (turn_l_mul < 0.2) {
-                if (last_encoder_l_tick_at + ticks(0.025) < tick_count) {
-                    stopped_i += STOPPED_I_ACCUMULATE / TICK_RATE;
-                }
-            }
-            if (turn_r_mul < 0.2) {
-                if (last_encoder_r_tick_at + ticks(0.025) < tick_count) {
-                    stopped_i += STOPPED_I_ACCUMULATE / TICK_RATE;
-                }
-            }
-            stopped_i *= STOPPED_I_HIGHPASS;
 
             el.ResetCounts();
             er.ResetCounts();
@@ -428,10 +332,7 @@ namespace robot_control {
             }
         }
 
-        void motor_power(float new_pct_l, float new_pct_r) {
-            pct_l = new_pct_l;
-            pct_r = new_pct_r;
-
+        void motor_power(float pct_l, float pct_r) {
             // A lower battery voltage will result in a HIGHER power supplied to compensate the voltage drop.
             float voltage_compensation = 11.7f / Battery.Voltage();
 
@@ -448,58 +349,19 @@ namespace robot_control {
             return fmin(max, fmin(slewed_start, slewed_end) + min);
         }
 
-        void tick() {
-            tick_count++;
-            task_tick_count++;
+        // TODO: Unified PID
+        void execute_straight(float inches, bool until_switch) {
 
-            /*
-             * ODOMETRY
-             */
+            int switch_pressed_ticks = 0;
 
-            process_odometry();
+            TickType_t time = xTaskGetTickCount();
 
-            /*
-             * DRIVETRAIN MOTOR MANAGEMENT
-             */
+            Vec<2> pos0 = pos;
+            PIController angle_controller(CONTROL_LOOP_HZ, 100, 50, 30);
 
-            float control_effort;
-            switch (control_mode) {
-                case ControlMode::TURN: {
-                    float angle_turned_so_far = fabs(angle - turn_start_angle);
-                    float angle_remain = fabs(target_angle - angle);
-                    slewed_pct = slew(
-                            turn_slew_rate,
-                            TURN_MIN_PERCENT,
-                            target_speed,
-                            angle_turned_so_far,
-                            angle_remain
-                    );
-                    float power_pct = slewed_pct + stopped_i * STOPPED_I;
-
-                    float new_pct_l, new_pct_r;
-                    if (turning_right) {
-                        new_pct_l = power_pct;
-                        new_pct_r = -power_pct;
-
-                        if (angle >= target_angle) {
-                            task_finished();
-                        }
-                    } else {
-                        new_pct_l = -power_pct;
-                        new_pct_r = power_pct;
-
-                        if (angle <= target_angle) {
-                            task_finished();
-                        }
-                    }
-
-                    new_pct_l *= turn_l_mul;
-                    new_pct_r *= turn_r_mul;
-
-                    motor_power(new_pct_l, new_pct_r);
-                    return;
-                }
-                case ControlMode::STRAIGHT_UNTIL_SWITCH:
+            float target_angle = angle;
+            while (true) {
+                if (until_switch) {
                     if (!l_bump_switch.Value() && !r_bump_switch.Value()) {
                         switch_pressed_ticks++;
                     } else if (!button_bump_switch.Value()) {
@@ -510,72 +372,88 @@ namespace robot_control {
 
                     if (switch_pressed_ticks >= SWITCH_CONFIDENT_TICKS) {
                         switch_pressed_ticks = 0;
-                        task_finished();
                         return;
                     }
-                case ControlMode::STRAIGHT: {
-                    control_effort = angle_controller.process(target_angle, angle);
+                }
 
-                    float dist = pos.dist(pos0);
-                    dist_remain = fabs(target_dist) - fabs(dist);
-                    slewed_pct = slew(
-                            drive_slew_rate,
-                            DRIVE_MIN_PERCENT,
-                            target_speed,
-                            dist,
-                            dist_remain
-                    );
-                    float power_pct = slewed_pct + stopped_i * STOPPED_I;
+                float control_effort = angle_controller.process(target_angle, angle);
 
-                    if (target_dist < 0) {
-                        motor_power(-power_pct + control_effort, -power_pct - control_effort);
-                    } else {
-                        motor_power(power_pct + control_effort, power_pct - control_effort);
-                    }
+                float dist = pos.dist(pos0);
+                float dist_remain = fabs(inches) - fabs(dist);
+                float slewed_pct = slew(
+                        drive_slew_rate,
+                        DRIVE_MIN_PERCENT,
+                        target_speed,
+                        dist,
+                        dist_remain
+                );
+                float power_pct = slewed_pct;
 
-                    if (fabs(dist) > fabsf(target_dist)) {
-                        task_finished();
-                    }
+                if (inches < 0) {
+                    motor_power(-power_pct + control_effort, -power_pct - control_effort);
+                } else {
+                    motor_power(power_pct + control_effort, power_pct - control_effort);
+                }
+
+                if (fabs(dist) > fabsf(inches)) {
                     return;
                 }
-                default:
-                    return;
+
+                vTaskDelayUntil(&time, 1);
+            }
+        }
+
+        void execute_turn(float degree, float turn_l_mul, float turn_r_mul) {
+            float target_angle = (float) rad(degree);
+            float turn_start_angle = angle;
+            bool turning_right = target_angle > angle;
+
+            TickType_t time = xTaskGetTickCount();
+
+            while (true) {
+                float angle_turned_so_far = fabs(angle - turn_start_angle);
+                float angle_remain = fabs(target_angle - angle);
+                float slewed_pct = slew(
+                        turn_slew_rate,
+                        TURN_MIN_PERCENT,
+                        target_speed,
+                        angle_turned_so_far,
+                        angle_remain
+                );
+                float power_pct = slewed_pct;
+
+                float new_pct_l, new_pct_r;
+                if (turning_right) {
+                    new_pct_l = power_pct;
+                    new_pct_r = -power_pct;
+
+                    if (angle >= target_angle) {
+                        return;
+                    }
+                } else {
+                    new_pct_l = -power_pct;
+                    new_pct_r = power_pct;
+
+                    if (angle <= target_angle) {
+                        return;
+                    }
+                }
+
+                new_pct_l *= turn_l_mul;
+                new_pct_r *= turn_r_mul;
+
+                motor_power(new_pct_l, new_pct_r);
+
+                vTaskDelayUntil(&time, 1);
             }
         }
     } robot;
-
-    void stop_robot_control_loop() {
-        robot.motor_power(0, 0);
-        SysTick_BASE_PTR->CSR = 0;
-    }
-
-    CycTimer tick_timer{};
-    int tick_cycles{};
-    // This is called every (1 / TICK_RATE) seconds by the SysTick timer
-    extern "C" void SysTick_Handler(void) {
-        tick_timer.begin();
-        robot.tick();
-        tick_cycles = (int) tick_timer.lap();
-    }
-
 }
 
 /*
  * Task running/handling code.
  */
 namespace tasks {
-    int spinwait_iters{};
-
-    void wait_for_task_to_finish() {
-        spinwait_iters = 0;
-        robot.task_running = true;
-        // Lower main() priority back to normal.
-        __set_BASEPRI(0);
-        while (robot.task_running) {
-            spinwait_iters++;
-        }
-    }
-
     void WaitForStartLight() {
         robot.ml.Stop();
         robot.mr.Stop();
@@ -631,23 +509,12 @@ namespace tasks {
         }
     }
 
-    void Straight_prepare(float inches) {
-        robot.pos0 = robot.pos;
-        robot.target_dist = inches;
-        robot.angle_controller.reset();
-        robot.control_mode = ControlMode::STRAIGHT;
-        robot.stopped_i = 0;
-    }
-
     void Straight(float inches) {
-        Straight_prepare(inches);
-        wait_for_task_to_finish();
+        robot.execute_straight(inches, false);
     }
 
     void StraightUntilSwitch(float inches) {
-        Straight_prepare(inches);
-        robot.control_mode = ControlMode::STRAIGHT_UNTIL_SWITCH;
-        wait_for_task_to_finish();
+        robot.execute_straight(inches, true);
     }
 
     void ResetFacing(float degree) {
@@ -666,19 +533,8 @@ namespace tasks {
         robot.drive_slew_rate = rate;
     }
 
-    void Turn_prepare(float degree, float turn_l_mul, float turn_r_mul) {
-        robot.turn_l_mul = turn_l_mul;
-        robot.turn_r_mul = turn_r_mul;
-        robot.target_angle = (float) rad(degree);
-        robot.turn_start_angle = robot.angle;
-        robot.turning_right = robot.target_angle > robot.angle;
-        robot.stopped_i = 0;
-        robot.control_mode = ControlMode::TURN;
-    }
-
     void Turn(float degree) {
-        Turn_prepare(degree, 1, 1);
-        wait_for_task_to_finish();
+        robot.execute_turn(degree, 1, 1);
     }
 
     void Pivot(float degree, float turn_wheel_bias) {
@@ -691,51 +547,33 @@ namespace tasks {
             turn_r_mul = fabs(turn_wheel_bias) + 1;
         }
 
-        Turn_prepare(degree, turn_l_mul, turn_r_mul);
-        wait_for_task_to_finish();
+        robot.execute_turn(degree, turn_l_mul, turn_r_mul);
     }
 
     void Arc(float degree, float turn_l_mul, float turn_r_mul) {
-        Turn_prepare(degree, turn_l_mul, turn_r_mul);
-        wait_for_task_to_finish();
+        robot.execute_turn(degree, turn_l_mul, turn_r_mul);
     }
 
     void PivotLeft(float degree) {
         // right wheel turning only = pivoting on left
-        Turn_prepare(degree,0, 1);
-        wait_for_task_to_finish();
+        robot.execute_turn(degree, 0, 1);
     }
 
     void PivotRight(float degree) {
         // left wheel turning only = pivoting on right
-        Turn_prepare(degree, 1, 0);
-        wait_for_task_to_finish();
+        robot.execute_turn(degree, 1, 0);
     }
 
-    /*
-     * ROBOT CONTROL LOOP MUST BE DISABLED BEFORE TOUCHING SERVOS. BOTH OF THEM ACCESS UART!
-     */
     void FuelServo(float degree) {
-        disable_robot_control_loop();
         robot.fuel_servo.SetDegree(degree);
-        enable_robot_control_loop();
     }
 
     void DumptruckServo(float degree) {
-        disable_robot_control_loop();
         robot.dumptruck_servo.SetDegree(degree);
-        enable_robot_control_loop();
     }
 
     void PassportServo(float degree) {
-        disable_robot_control_loop();
         robot.passport_servo.SetDegree(degree);
-        enable_robot_control_loop();
-    }
-
-    void Delay(int ms) {
-        // TODO
-        wait_for_task_to_finish();
     }
 }
 
@@ -743,21 +581,6 @@ namespace tasks {
  * Visualization/debugging code.
  */
 namespace visualization {
-    [[nodiscard]]
-    const char *control_mode_string() {
-        switch (robot.control_mode) {
-            case ControlMode::INIT:
-                return "Init";
-            case ControlMode::STRAIGHT:
-                return "Forward";
-            case ControlMode::STRAIGHT_UNTIL_SWITCH:
-                return "FwdTilSwitch";
-            case ControlMode::TURN:
-                return "Turn";
-        }
-        return "?????";
-    }
-
     template<typename T>
     void log(const char *label, T value) {
         FastLCD::Write(label);
@@ -765,9 +588,7 @@ namespace visualization {
         FastLCD::WriteLine(value);
     }
 
-    extern "C" void PIT1_IRQHandler(void) {
-        clear_PIT_irq_flag<1>();
-
+    void print_diagnostics() {
         static bool prev_touching = false;
         static bool display_testing_screen = true;
         static float holding_sec = 0;
@@ -796,35 +617,11 @@ namespace visualization {
         FastLCD::Clear();
 
         FastLCD::SetFontPaletteIndex(White);
-//      FastLCD::Write("X/Yin: ");
-//      FastLCD::Write(robot.pos.vec[0]);
-//      FastLCD::Write(" ");
-//      FastLCD::WriteLine(robot.pos.vec[1]);
-
-//      log("Turn radius: ", robot.R);
-
-        log("Angle", deg(robot.angle));
-        log("TargetAngle", deg(robot.target_angle));
-
-//      log("L Motor Counts", robot.total_counts_l);
-//      log("R Motor Counts", robot.total_counts_r);
-
-        log("ControlMode", control_mode_string());
-
-//      log("ControlEffort", robot.angle_controller.control_effort);
-//      log("Error", robot.angle_controller.error);
-        log("I", robot.angle_controller.I);
 
         log("CDS  Red", robot.cds_red_value);
         log("CDS Blue", robot.cds_blue_value);
 
-        log("Dist", robot.pos.dist(robot.pos0));
-        log("TargetDist", robot.target_dist);
-
         log("FuelLever", RCS.GetCorrectLever());
-//      log("DistRemain", robot.dist_remain);
-//      log("Slewed%", robot.slewed_pct);
-
 
         if (holding_sec < FORCE_START_HOLD_SEC) {
             if (touching && x >= LCD_WIDTH / 2) {
@@ -852,57 +649,7 @@ namespace visualization {
     }
 }
 
-/*
- * EXCEPTION PRIORITY LEVELS - FROM HIGHEST TO LOWEST
- *
- * The K60 has priority levels ranging from 0 to 15, where 0 is highest and 15 is lowest.
- * When an exception becomes pending and another exception with the same priority is running,
- * the pending exception waits for the running exception to end.
- *
- * 0 - PORT{A,B,C,D,E} - DigitalEncoder IRQs
- * 1 - SysTick - Robot Control Loop
- * 15 - PIT1 - Diagnostics/visualization printing
- */
-
-void init() {
-    /*
-     * Initialize Robot Communication System (RCS).
-     */
-
-    RCS.InitializeTouchMenu("C2N8hFpMW");
-
-    /*
-     * Assign colors to palette numbers.
-     */
-    FastLCD::SetPaletteColor(Clear, BLACK);
-    FastLCD::SetPaletteColor(White, WHITE);
-    FastLCD::SetPaletteColor(Gray, GRAY);
-    FastLCD::SetPaletteColor(Red, RED);
-    FastLCD::SetPaletteColor(Yellow, YELLOW);
-
-    /*
-     * Set main function priority.
-     */
-    __set_BASEPRI(1);
-
-    /*
-     * Begin the diagnostics printing timer at the lowest possible priority (15).
-     * Calls PIT1_IRQHandler() every 0.05 seconds.
-     */
-    init_PIT<1, 15>(cyc(1.0 / DIAGNOSTICS_HZ));
-
-    /*
-     * Initialize the robot control loop by setting up the SysTick timer.
-     * Calls SysTick_Handler() at TICK_RATE hz.
-     *
-     * Priority is 1 because DigitalEncoder PORT IRQs need higher priority.
-     */
-    enable_robot_control_loop();
-}
-
-int main() {
-    init();
-
+void robot_path_task() {
     FuelServo(180);
     DumptruckServo(180);
     PassportServo(90);
@@ -999,6 +746,7 @@ int main() {
         PivotRight(-45);
         PivotLeft(0);
     } else {
+        // TODO: Get this working, this just crashes into a wall.
         Arc(0, -0.6, 1);
 
         // Pivot to get into position for the center button
@@ -1017,4 +765,107 @@ int main() {
     // TODO: Passport mech
 
     // TODO: Go down right side ramp and hit the end button
+}
+
+[[noreturn]]
+void odometry_task() {
+    static TickType_t time = 0;
+    while (true) {
+        robot.process_odometry();
+        vTaskDelayUntil(&time, 1000 / CONTROL_LOOP_HZ);
+    }
+}
+
+[[noreturn]]
+void diagnostics_task() {
+    static TickType_t time = 0;
+    while (true) {
+        visualization::print_diagnostics();
+        vTaskDelayUntil(&time, 1000 / DIAGNOSTICS_HZ);
+    }
+}
+
+extern "C" void vApplicationGetIdleTaskMemory(StaticTask_t **ppxIdleTaskTCBBuffer,
+                                              StackType_t **ppxIdleTaskStackBuffer,
+                                              uint32_t *puxIdleTaskStackSize) {
+
+    static StaticTask_t xIdleTaskTCB;
+    static StackType_t uxIdleTaskStack[configMINIMAL_STACK_SIZE];
+
+    *ppxIdleTaskTCBBuffer = &xIdleTaskTCB;
+    *ppxIdleTaskStackBuffer = uxIdleTaskStack;
+    *puxIdleTaskStackSize = configMINIMAL_STACK_SIZE;
+}
+
+extern "C" void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
+                                               StackType_t **ppxTimerTaskStackBuffer,
+                                               uint32_t *puxTimerTaskStackSize) {
+
+    static StaticTask_t xTimerTaskTCB;
+    static StackType_t uxTimerTaskStack[configTIMER_TASK_STACK_DEPTH];
+
+    *ppxTimerTaskTCBBuffer = &xTimerTaskTCB;
+    *ppxTimerTaskStackBuffer = uxTimerTaskStack;
+    *puxTimerTaskStackSize = configTIMER_TASK_STACK_DEPTH;
+}
+
+int main() {
+    /*
+     * Initialize Robot Communication System (RCS).
+     */
+
+    RCS.InitializeTouchMenu("C2N8hFpMW");
+
+    /*
+     * Assign colors to palette numbers.
+     */
+    FastLCD::SetPaletteColor(Clear, BLACK);
+    FastLCD::SetPaletteColor(White, WHITE);
+    FastLCD::SetPaletteColor(Gray, GRAY);
+    FastLCD::SetPaletteColor(Red, RED);
+    FastLCD::SetPaletteColor(Yellow, YELLOW);
+
+    /*
+     * Start tasks.
+     */
+    const int STACK_SIZE = 1024;
+    static StaticTask_t diagnostics_tcb;
+    static StackType_t diagnostics_stack[STACK_SIZE];
+    static StaticTask_t robot_path_tcb;
+    static StackType_t robot_path_stack[STACK_SIZE];
+    static StaticTask_t odometry_tcb;
+    static StackType_t odometry_stack[STACK_SIZE];
+
+    xTaskCreateStatic(
+            TaskFunction_t(diagnostics_task),
+            "diagnostics",
+            STACK_SIZE,
+            nullptr,
+            tskIDLE_PRIORITY,
+            diagnostics_stack,
+            &diagnostics_tcb
+    );
+
+    xTaskCreateStatic(
+            TaskFunction_t(robot_path_task),
+            "robot_path",
+            STACK_SIZE,
+            nullptr,
+            tskIDLE_PRIORITY,
+            robot_path_stack,
+            &robot_path_tcb
+    );
+
+
+    xTaskCreateStatic(
+            TaskFunction_t(odometry_task),
+            "odometry",
+            STACK_SIZE,
+            nullptr,
+            tskIDLE_PRIORITY,
+            odometry_stack,
+            &odometry_tcb
+    );
+
+    vTaskStartScheduler();
 }
