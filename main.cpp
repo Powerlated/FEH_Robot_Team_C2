@@ -179,7 +179,7 @@ constexpr float STOPPED_I_HIGHPASS = 0.999;
 constexpr float START_LIGHT_THRESHOLD_VOLTAGE = 1;
 constexpr int WAIT_FOR_LIGHT_CONFIDENT_MS = 500;
 constexpr int TICKET_LIGHT_AVERAGING_MS = 100;
-constexpr int SWITCH_CONFIDENT_TICKS = 500;
+constexpr int SWITCH_CONFIDENT_TICKS = 50;
 
 constexpr Vec<2> INITIAL_POS{0, 0};
 constexpr float INITIAL_ANGLE = rad(-45);
@@ -188,7 +188,6 @@ constexpr float INITIAL_ANGLE = rad(-45);
  * Diagnostics/visualization configuration.
  */
 constexpr int DIAGNOSTICS_HZ = 10;
-constexpr float TICK_INTERVAL_MICROSECONDS = (1.0 / CONTROL_LOOP_HZ) * 1000000;
 constexpr float FORCE_START_HOLD_SEC = 0.5;
 constexpr float FORCE_START_TOTAL_SEC = 1;
 
@@ -264,7 +263,7 @@ namespace robot_control {
         volatile float cds_red_value{};
         volatile float cds_blue_value{};
 
-        int total_counts_l{}, total_counts_r{};
+        uint32_t total_counts_l{}, total_counts_r{};
 
         float R{};
         /* END DEBUG VARIABLES */
@@ -272,9 +271,11 @@ namespace robot_control {
         // Position is in inches
         Vec<2> pos{};
 
-        /* START TURN VARIABLES */
         // Angle in radians
         float angle{};
+
+        uint32_t counts_l{}, counts_r{};
+        uint32_t task_counts_l{}, task_counts_r{};
 
         Robot() {
             pos = INITIAL_POS;
@@ -289,11 +290,12 @@ namespace robot_control {
         }
 
         void process_odometry() {
-            auto counts_l = el.Counts();
-            auto counts_r = -er.Counts();
-
+            counts_l = el.Counts();
+            counts_r = -er.Counts();
             total_counts_l += counts_l;
             total_counts_r += counts_r;
+            task_counts_l += counts_l;
+            task_counts_r += counts_r;
 
             el.ResetCounts();
             er.ResetCounts();
@@ -349,14 +351,45 @@ namespace robot_control {
             return fmin(max, fmin(slewed_start, slewed_end) + min);
         }
 
-        // TODO: Unified PID
+        struct unstuck {
+            uint32_t last_encoder_l_tick_at = 0;
+            uint32_t last_encoder_r_tick_at = 0;
+            uint32_t tick_count = 0;
+            float stopped_i = 0;
+
+            float process(Robot &r, float turn_l_mul, float turn_r_mul) {
+                if (r.counts_l != 0) {
+                    last_encoder_l_tick_at = tick_count;
+                }
+                if (r.counts_r != 0) {
+                    last_encoder_r_tick_at = tick_count;
+                }
+
+                if (turn_l_mul < 0.2) {
+                    if (last_encoder_l_tick_at + 25 < tick_count) {
+                        stopped_i += STOPPED_I_ACCUMULATE / CONTROL_LOOP_HZ;
+                    }
+                }
+                if (turn_r_mul < 0.2) {
+                    if (last_encoder_r_tick_at + 25 < tick_count) {
+                        stopped_i += STOPPED_I_ACCUMULATE / CONTROL_LOOP_HZ;
+                    }
+                }
+
+                tick_count++;
+                stopped_i *= STOPPED_I_HIGHPASS;
+                return stopped_i;
+            }
+
+        };
+
         void execute_straight(float inches, bool until_switch) {
             int switch_pressed_ticks = 0;
 
-            TickType_t time = xTaskGetTickCount();
-
             Vec<2> pos0 = pos;
+            unstuck unstuck;
             PIController angle_controller(CONTROL_LOOP_HZ, 100, 50, 30);
+            TickType_t time = xTaskGetTickCount();
 
             float target_angle = angle;
             while (true) {
@@ -387,6 +420,8 @@ namespace robot_control {
                         dist_remain
                 );
 
+                power_pct += unstuck.process(*this, 1, 1);
+
                 if (inches < 0) {
                     motor_power(-power_pct + control_effort, -power_pct - control_effort);
                 } else {
@@ -397,7 +432,7 @@ namespace robot_control {
                     return;
                 }
 
-                vTaskDelayUntil(&time, 1);
+                vTaskDelayUntil(&time, 1000 / CONTROL_LOOP_HZ);
             }
         }
 
@@ -406,6 +441,10 @@ namespace robot_control {
             float turn_start_angle = angle;
             bool turning_right = target_angle > angle;
 
+            task_counts_l = 0;
+            task_counts_r = 0;
+            unstuck unstuck;
+            PIController pi(CONTROL_LOOP_HZ, 5, 10, 30);
             TickType_t time = xTaskGetTickCount();
 
             while (true) {
@@ -419,17 +458,41 @@ namespace robot_control {
                         angle_remain
                 );
 
+                power_pct += unstuck.process(*this, turn_l_mul, turn_r_mul);
+
+                // make sure wheel ratios are correct using PI controller
+                float l_effort, r_effort;
+                // if regular (i.e. not pivot) turn
+                if (turn_l_mul != 0 && turn_r_mul != 0) {
+                    // diff > 0 - left wheel is ahead of right
+                    // diff < 0 - right wheel is ahead of left
+                    float diff = abs((float)task_counts_l / turn_l_mul) - abs((float)task_counts_r / turn_r_mul);
+                    float effort = pi.process(0, diff);
+
+                    // when left is ahead, diff > 0, and so PI produces a negative effort
+                    l_effort = effort;
+                    r_effort = -effort;
+                } else {
+                    if (turn_l_mul == 0) {
+                        l_effort = pi.process(0, (float)task_counts_l);
+                        r_effort = 0;
+                    } else {
+                        l_effort = 0;
+                        r_effort = pi.process(0, (float)task_counts_r);
+                    }
+                }
+
                 float new_pct_l, new_pct_r;
                 if (turning_right) {
-                    new_pct_l = power_pct;
-                    new_pct_r = -power_pct;
+                    new_pct_l = power_pct + l_effort;
+                    new_pct_r = -power_pct + r_effort;
 
                     if (angle >= target_angle) {
                         return;
                     }
                 } else {
-                    new_pct_l = -power_pct;
-                    new_pct_r = power_pct;
+                    new_pct_l = -power_pct + l_effort;
+                    new_pct_r = power_pct + r_effort;
 
                     if (angle <= target_angle) {
                         return;
@@ -441,7 +504,7 @@ namespace robot_control {
 
                 motor_power(new_pct_l, new_pct_r);
 
-                vTaskDelayUntil(&time, 1);
+                vTaskDelayUntil(&time, 1000 / CONTROL_LOOP_HZ);
             }
         }
     } robot;
