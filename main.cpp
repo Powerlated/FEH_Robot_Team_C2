@@ -351,7 +351,6 @@ namespace robot_control {
 
         // TODO: Unified PID
         void execute_straight(float inches, bool until_switch) {
-
             int switch_pressed_ticks = 0;
 
             TickType_t time = xTaskGetTickCount();
@@ -380,14 +379,13 @@ namespace robot_control {
 
                 float dist = pos.dist(pos0);
                 float dist_remain = fabs(inches) - fabs(dist);
-                float slewed_pct = slew(
+                float power_pct = slew(
                         drive_slew_rate,
                         DRIVE_MIN_PERCENT,
                         target_speed,
                         dist,
                         dist_remain
                 );
-                float power_pct = slewed_pct;
 
                 if (inches < 0) {
                     motor_power(-power_pct + control_effort, -power_pct - control_effort);
@@ -413,14 +411,13 @@ namespace robot_control {
             while (true) {
                 float angle_turned_so_far = fabs(angle - turn_start_angle);
                 float angle_remain = fabs(target_angle - angle);
-                float slewed_pct = slew(
+                float power_pct = slew(
                         turn_slew_rate,
                         TURN_MIN_PERCENT,
                         target_speed,
                         angle_turned_so_far,
                         angle_remain
                 );
-                float power_pct = slewed_pct;
 
                 float new_pct_l, new_pct_r;
                 if (turning_right) {
@@ -841,7 +838,7 @@ int main() {
             "diagnostics",
             STACK_SIZE,
             nullptr,
-            tskIDLE_PRIORITY,
+            0,
             diagnostics_stack,
             &diagnostics_tcb
     );
@@ -851,7 +848,7 @@ int main() {
             "robot_path",
             STACK_SIZE,
             nullptr,
-            tskIDLE_PRIORITY,
+            4,
             robot_path_stack,
             &robot_path_tcb
     );
@@ -862,7 +859,7 @@ int main() {
             "odometry",
             STACK_SIZE,
             nullptr,
-            tskIDLE_PRIORITY,
+            5,
             odometry_stack,
             &odometry_tcb
     );

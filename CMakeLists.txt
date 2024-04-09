@@ -61,6 +61,7 @@ include_directories(.
         Libraries/
         Drivers/
         Startup/
+        FreeRTOS
         FreeRTOS/Source/include
         FreeRTOS/Source/portable/GCC/ARM_CM3
 )
