@@ -365,12 +365,12 @@ namespace robot_control {
                     last_encoder_r_tick_at = tick_count;
                 }
 
-                if (turn_l_mul < 0.2) {
+                if (turn_l_mul > 0.2) {
                     if (last_encoder_l_tick_at + 25 < tick_count) {
                         stopped_i += STOPPED_I_ACCUMULATE / CONTROL_LOOP_HZ;
                     }
                 }
-                if (turn_r_mul < 0.2) {
+                if (turn_r_mul > 0.2) {
                     if (last_encoder_r_tick_at + 25 < tick_count) {
                         stopped_i += STOPPED_I_ACCUMULATE / CONTROL_LOOP_HZ;
                     }
@@ -638,12 +638,12 @@ namespace tasks {
 
     void PivotLeft(float degree) {
         // right wheel turning only = pivoting on left
-        robot.execute_turn(degree, 0, 1);
+        robot.execute_turn(degree, 0, 2);
     }
 
     void PivotRight(float degree) {
         // left wheel turning only = pivoting on right
-        robot.execute_turn(degree, 1, 0);
+        robot.execute_turn(degree, 2, 0);
     }
 
     void FuelServo(float degree) {
@@ -781,7 +781,7 @@ void robot_path_task() {
     FuelServo(90);
     Sleep(250);
     FuelServo(45);
-    Straight(2);
+    Straight(3);
     FuelServo(180);
 
     // Turn right
@@ -800,7 +800,7 @@ void robot_path_task() {
     Straight(23);
 
     // Go to luggage drop
-    Pivot(180, -0.65);
+    Pivot(180, -0.7);
     StraightUntilSwitch(8);
     ResetFacing(180);
 
@@ -847,31 +847,35 @@ void robot_path_task() {
     Sleep(1500);
     DumptruckServo(75);
 
-    // TODO: Passport mech
+    // Get into place for passport
     PassportServo(170);
-    PivotRight(-30);
+    PivotRight(-45);
     DumptruckServo(20);
     PivotLeft(0);
     PivotRight(25);
 
+    // Passport up
     PassportServo(75);
     Sleep(2000);
     PassportServo(170);
 
+    // Go back a bit and use the dumptruck to hit the passport down
+    Straight(-1);
     Turn(180);
-    Straight(20);
+
+    // Go toward ramp
+    Straight(10);
     DumptruckServo(180);
+    PivotLeft(90);
+    StraightUntilSwitch(17);
 
-    PivotRight(90);
-    StraightUntilSwitch(24);
-
+    // Square with right side wall
+    ResetFacing(90);
     Straight(-2);
     Turn(180);
 
+    // Go down right side ramp and hit the end button
     Straight(30);
-
-
-    // TODO: Go down right side ramp and hit the end button
 }
 
 [[noreturn]]
@@ -921,7 +925,7 @@ int main() {
      * Initialize Robot Communication System (RCS).
      */
 
-//    RCS.InitializeTouchMenu("C2N8hFpMW");
+    RCS.InitializeTouchMenu("C2N8hFpMW");
 
     /*
      * Assign colors to palette numbers.
