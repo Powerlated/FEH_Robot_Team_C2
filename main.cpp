@@ -828,7 +828,7 @@ void robot_path_task() {
         StraightUntilSwitchTimeout(6, 2000);
 
         // Pivot to get into position for the center button
-        PivotRight(-45);
+        PivotRight(-35);
         PivotLeft(0);
     } else {
         // TODO: Get this working, this just crashes into a wall.
@@ -843,11 +843,33 @@ void robot_path_task() {
     Straight(-1.1);
 
     // Press the high button
-    DumptruckServo(60);
-    Sleep(500);
+    DumptruckServo(40);
+    Sleep(1500);
     DumptruckServo(75);
 
     // TODO: Passport mech
+    PassportServo(170);
+    PivotRight(-30);
+    DumptruckServo(20);
+    PivotLeft(0);
+    PivotRight(25);
+
+    PassportServo(75);
+    Sleep(2000);
+    PassportServo(170);
+
+    Turn(180);
+    Straight(20);
+    DumptruckServo(180);
+
+    PivotRight(90);
+    StraightUntilSwitch(24);
+
+    Straight(-2);
+    Turn(180);
+
+    Straight(30);
+
 
     // TODO: Go down right side ramp and hit the end button
 }
