@@ -828,10 +828,11 @@ void robot_path_task() {
         StraightUntilSwitchTimeout(6, 2000);
 
         // Pivot to get into position for the center button
-        PivotRight(-40);
+        PivotRight(-45);
         PivotLeft(0);
     } else {
-        // TODO: Get this working, this just crashes into a wall.
+        // TODO: Get this working, this just crashes into a wall. If we can't get it working in time,
+        // TODO: it's only a few points lost.
         Arc(0, -0.6, 1);
 
         // Pivot to get into position for the center button
@@ -840,15 +841,13 @@ void robot_path_task() {
     }
 
     StraightUntilSwitchTimeout(8, 2000);
-    Straight(-0.8);
+    Straight(-2);
 
-    // TODO: the dumptruck itself isn't powerful enough to hit the top button.
-    // TODO: get the dumptruck in place and use the drivetrain to push it into the button.
-    // Press the high button
+    // Dumptruck in place
     DumptruckServo(40);
-    Sleep(200);
-    StraightTimeout(0.5, 1000);
-    Sleep(1500);
+    Sleep(500);
+    // Ram into it
+    StraightTimeout(2, 1000);
     DumptruckServo(75);
 
     // Get into place for passport
@@ -860,17 +859,15 @@ void robot_path_task() {
 
     // Passport up
     PassportServo(75);
-    Sleep(2000);
+    Sleep(1000);
     PassportServo(90);
 
     // use the dumptruck to hit the passport down
-    PivotRight(45);
-    Straight(-3);
-
-    Turn(180);
+    PivotRight(30);
+    PivotLeft(180);
 
     // Go toward ramp
-    Straight(5);
+    Straight(7);
     DumptruckServo(180);
     PivotLeft(90);
     StraightUntilSwitch(17);
