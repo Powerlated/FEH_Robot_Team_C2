@@ -739,7 +739,6 @@ void robot_path_task() {
     DumptruckServo(180);
     PassportServo(90);
 
-    DriveSlewRate(400);
     TurnSlewRate(600);
     Speed(90);
 
@@ -751,11 +750,12 @@ void robot_path_task() {
     WaitForStartLight();
 
     // Start button
+    DriveSlewRate(2000); // fast acceleration for start button
     StraightTimeout(-2, 1000);
-    Straight(2);
+    DriveSlewRate(400);     // regular acceleration for rest of course
 
-    // Forward
-    Straight(17.5);
+    // Forward // TODO: 18.5 cuts it close to the lever assembly
+    Straight(19);
 
     // Turn left toward fuel levers
     Turn(-90);
@@ -785,7 +785,9 @@ void robot_path_task() {
     FuelServo(180);
 
     // Turn right
+    TurnSlewRate(1000);
     Turn(90);
+    TurnSlewRate(600);
 
     // Square with the left wall
     StraightUntilSwitch(-(8.0f + leverMinus));
@@ -841,13 +843,11 @@ void robot_path_task() {
     }
 
     StraightUntilSwitchTimeout(8, 2000);
-    Straight(-2);
+    Straight(-1.1);
 
     // Dumptruck in place
-    DumptruckServo(40);
-    Sleep(500);
-    // Ram into it
-    StraightTimeout(2, 1000);
+    DumptruckServo(35);
+    Sleep(1000);
     DumptruckServo(75);
 
     // Get into place for passport
@@ -875,9 +875,12 @@ void robot_path_task() {
     // Square with right side wall and turn
     ResetFacing(90);
     Straight(-1.5);
+
     Turn(180);
 
     // Go down right side ramp and hit the end button
+    DriveSlewRate(1000); // FULL SPEED AHEAD!
+    Speed(100);
     Straight(50);
 }
 
