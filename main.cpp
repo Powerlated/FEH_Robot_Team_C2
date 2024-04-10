@@ -823,7 +823,7 @@ void robot_path_task() {
     if (robot.ticket_light_color == TICKET_LIGHT_BLUE) {
         Straight(5);
         Turn(90);
-        Straight(8);
+        Straight(8.5);
         PivotRight(0);
         StraightUntilSwitchTimeout(6, 2000);
 
@@ -840,7 +840,7 @@ void robot_path_task() {
     }
 
     StraightUntilSwitchTimeout(8, 2000);
-    Straight(-1.1);
+    Straight(-0.8);
 
     // Press the high button
     DumptruckServo(40);
@@ -849,7 +849,7 @@ void robot_path_task() {
 
     // Get into place for passport
     PassportServo(170);
-    PivotRight(-35);
+    PivotRight(-45);
     DumptruckServo(0);
     PivotLeft(0);
     PivotRight(25);
