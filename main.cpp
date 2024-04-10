@@ -800,7 +800,7 @@ void robot_path_task() {
     Straight(23);
 
     // Go to luggage drop
-    Pivot(180, -0.7);
+    Pivot(180, -0.8);
     StraightUntilSwitch(8);
     ResetFacing(180);
 
@@ -809,8 +809,8 @@ void robot_path_task() {
     Sleep(500);
     DumptruckServo(180);
 
-    // Ticket light
-    Straight(-17.5);
+    // Go to ticket light
+    Straight(-17);
     Turn(135);
 
     // TODO: Go to kiosk depending on light color. This is just for the blue light so far.
@@ -823,12 +823,12 @@ void robot_path_task() {
     if (robot.ticket_light_color == TICKET_LIGHT_BLUE) {
         Straight(5);
         Turn(90);
-        Straight(9);
+        Straight(8);
         PivotRight(0);
         StraightUntilSwitchTimeout(6, 2000);
 
         // Pivot to get into position for the center button
-        PivotRight(-35);
+        PivotRight(-45);
         PivotLeft(0);
     } else {
         // TODO: Get this working, this just crashes into a wall.
@@ -849,22 +849,25 @@ void robot_path_task() {
 
     // Get into place for passport
     PassportServo(170);
-    PivotRight(-45);
-    DumptruckServo(20);
+    PivotRight(-35);
+    DumptruckServo(0);
     PivotLeft(0);
     PivotRight(25);
 
     // Passport up
     PassportServo(75);
     Sleep(2000);
-    PassportServo(170);
+    PassportServo(90);
 
     // Go back a bit and use the dumptruck to hit the passport down
     Straight(-1);
-    Turn(180);
+    PivotLeft(100);
+    Straight(-2);
+
+    PivotLeft(180);
 
     // Go toward ramp
-    Straight(10);
+    Straight(5);
     DumptruckServo(180);
     PivotLeft(90);
     StraightUntilSwitch(17);
