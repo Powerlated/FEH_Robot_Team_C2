@@ -18,7 +18,6 @@ add_executable(${PROJECT_NAME}.elf
         FreeRTOS/Source/list.c
         FreeRTOS/Source/queue.c
         FreeRTOS/Source/tasks.c
-        FreeRTOS/Source/timers.c
         FreeRTOS/Source/portable/GCC/ARM_CM3/port.c
         FreeRTOS/Source/portable/GCC/ARM_CM3/fsl_tickless_systick.c
 
