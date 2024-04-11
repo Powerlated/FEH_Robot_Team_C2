@@ -166,7 +166,7 @@ constexpr float TRACK_WIDTH = 8.35;
 constexpr float WHEEL_DIA = 2.5;
 constexpr float INCHES_PER_REV = WHEEL_DIA * M_PI;
 constexpr float INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
-constexpr float DRIVE_MOTOR_MAX_VOLTAGE = 9.0;
+float DRIVE_MOTOR_MAX_VOLTAGE = 9.0; // TODO: igwans are actually rated at 12
 
 /*
  * Robot control configuration.
@@ -273,6 +273,7 @@ namespace robot_control {
 
         // Angle in radians
         float angle{};
+        float target_angle{};
 
         int32_t counts_l{}, counts_r{};
         int32_t task_counts_l{}, task_counts_r{};
@@ -280,6 +281,7 @@ namespace robot_control {
         Robot() {
             pos = INITIAL_POS;
             angle = INITIAL_ANGLE;
+            target_angle = INITIAL_ANGLE;
 
             fuel_servo.SetMax(FUEL_SERVO_MAX);
             fuel_servo.SetMin(FUEL_SERVO_MIN);
@@ -388,11 +390,10 @@ namespace robot_control {
 
             Vec<2> pos0 = pos;
             unstuck unstuck;
-            PIController angle_controller(CONTROL_LOOP_HZ, 100, 50, 30);
+            PIController angle_controller(CONTROL_LOOP_HZ, 200, 100, 100);
             TickType_t time = xTaskGetTickCount();
             TickType_t start_time = xTaskGetTickCount();
 
-            float target_angle = angle;
             while (true) {
                 if (timeout_ms > 0) {
                     if (xTaskGetTickCount() - start_time > timeout_ms) {
@@ -446,7 +447,7 @@ namespace robot_control {
         }
 
         void execute_turn(float degree, float turn_l_mul, float turn_r_mul) {
-            float target_angle = (float) rad(degree);
+            target_angle = (float) rad(degree);
             float turn_start_angle = angle;
             bool turning_right = target_angle > angle;
 
@@ -707,6 +708,7 @@ namespace visualization {
 
         log("FuelLever", RCS.GetCorrectLever());
         log("Angle", deg(robot.angle));
+        log("TargetAngle", deg(robot.target_angle));
 
         if (holding_sec < FORCE_START_HOLD_SEC) {
             if (touching && x >= LCD_WIDTH / 2) {
@@ -750,7 +752,7 @@ void robot_path_task() {
     WaitForStartLight();
 
     // Start button
-    DriveSlewRate(2000); // fast acceleration for start button
+    DriveSlewRate(1000); // fast acceleration for start button
     StraightTimeout(-2, 1000);
     DriveSlewRate(400);     // regular acceleration for rest of course
 
@@ -812,11 +814,10 @@ void robot_path_task() {
     DumptruckServo(180);
 
     // Go to ticket light
-    Straight(-17);
+    Straight(-16.75);
     Turn(135);
 
-    // TODO: Go to kiosk depending on light color. This is just for the blue light so far.
-    StraightUntilSwitch(-16);
+    StraightUntilSwitch(-15);
     ResetFacing(135);
     TurnSlewRate(300);
     Straight(2);
@@ -833,9 +834,10 @@ void robot_path_task() {
         PivotRight(-45);
         PivotLeft(0);
     } else {
-        // TODO: Get this working, this just crashes into a wall. If we can't get it working in time,
-        // TODO: it's only a few points lost.
-        Arc(0, -0.6, 1);
+        // TODO: Get this working
+        Straight(10);
+        Pivot(0, 0.75);
+        StraightUntilSwitchTimeout(4, 2000);
 
         // Pivot to get into position for the center button
         PivotLeft(45);
@@ -870,9 +872,9 @@ void robot_path_task() {
     Straight(7);
     DumptruckServo(180);
     PivotLeft(90);
-    StraightUntilSwitch(17);
 
     // Square with right side wall and turn
+    StraightUntilSwitch(15);
     ResetFacing(90);
     Straight(-1.5);
 
