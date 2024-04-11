@@ -403,7 +403,8 @@ namespace robot_control {
                 }
 
                 if (until_switch) {
-                    if (!l_bump_switch.Value() && !r_bump_switch.Value()) {
+                    // TODO: fix the left bump switch and add it back `!l_bump_switch.Value() &&`
+                    if (!r_bump_switch.Value()) {
                         switch_pressed_ticks++;
                     } else if (!button_bump_switch.Value()) {
                         switch_pressed_ticks++;
@@ -848,7 +849,7 @@ void robot_path_task() {
     Straight(-1.1);
 
     // Dumptruck in place
-    DumptruckServo(35);
+    DumptruckServo(30);
     Sleep(1000);
     DumptruckServo(75);
 
@@ -860,7 +861,7 @@ void robot_path_task() {
     PivotRight(25);
 
     // Passport up
-    PassportServo(75);
+    PassportServo(70);
     Sleep(1000);
     PassportServo(90);
 
