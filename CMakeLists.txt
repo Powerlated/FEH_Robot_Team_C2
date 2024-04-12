@@ -48,6 +48,9 @@ add_executable(${PROJECT_NAME}.elf
         Libraries/FEHSD.cpp
         Libraries/FEHRandom.cpp
 
+        NXP_SDK/peripherals.c
+        NXP_SDK/fsl_ftm.c
+        NXP_SDK/pin_mux.c
 
         main.cpp
 )
@@ -63,6 +66,7 @@ include_directories(.
         FreeRTOS
         FreeRTOS/Source/include
         FreeRTOS/Source/portable/GCC/ARM_CM3
+        NXP_SDK/
 )
 
 # Add linker script
