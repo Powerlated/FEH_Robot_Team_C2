@@ -166,7 +166,7 @@ constexpr float TRACK_WIDTH = 8.35;
 constexpr float WHEEL_DIA = 2.5;
 constexpr float INCHES_PER_REV = WHEEL_DIA * M_PI;
 constexpr float INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
-float DRIVE_MOTOR_MAX_VOLTAGE = 9.0; // TODO: igwans are actually rated at 12
+float DRIVE_MOTOR_MAX_VOLTAGE = 10.5; // TODO: igwans are actually rated at 12
 
 /*
  * Robot control configuration.
@@ -179,7 +179,7 @@ constexpr float STOPPED_I_HIGHPASS = 0.999;
 constexpr float START_LIGHT_THRESHOLD_VOLTAGE = 1;
 constexpr int WAIT_FOR_LIGHT_CONFIDENT_MS = 500;
 constexpr int TICKET_LIGHT_AVERAGING_MS = 100;
-constexpr int SWITCH_CONFIDENT_TICKS = 50;
+constexpr int SWITCH_CONFIDENT_TICKS = 30;
 
 constexpr Vec<2> INITIAL_POS{0, 0};
 constexpr float INITIAL_ANGLE = rad(-45);
@@ -343,6 +343,9 @@ namespace robot_control {
             pct_l *= voltage_compensation;
             pct_r *= voltage_compensation;
 
+            pct_l *= 9.0f / DRIVE_MOTOR_MAX_VOLTAGE;
+            pct_r *= 9.0f / DRIVE_MOTOR_MAX_VOLTAGE;
+
             ml.SetPercent(pct_l);
             mr.SetPercent(pct_r);
         }
@@ -404,7 +407,7 @@ namespace robot_control {
 
                 if (until_switch) {
                     // TODO: fix the left bump switch and add it back `!l_bump_switch.Value() &&`
-                    if (!r_bump_switch.Value()) {
+                    if (!l_bump_switch.Value() && !r_bump_switch.Value()) {
                         switch_pressed_ticks++;
                     } else if (!button_bump_switch.Value()) {
                         switch_pressed_ticks++;
@@ -738,11 +741,14 @@ namespace visualization {
 }
 
 void robot_path_task() {
+    const int TS = 600;
+    const int DS = 400;
+
     FuelServo(180);
     DumptruckServo(180);
     PassportServo(90);
 
-    TurnSlewRate(600);
+    TurnSlewRate(TS);
     Speed(90);
 
     /*
@@ -754,11 +760,12 @@ void robot_path_task() {
 
     // Start button
     DriveSlewRate(1000); // fast acceleration for start button
-    StraightTimeout(-2, 1000);
-    DriveSlewRate(400);     // regular acceleration for rest of course
+        StraightTimeout(-2, 1000);
+    DriveSlewRate(550);    // a bit slower for getting to levers
 
     // Forward // TODO: 18.5 cuts it close to the lever assembly
     Straight(19);
+    DriveSlewRate(DS);     // regular acceleration for rest of course
 
     // Turn left toward fuel levers
     Turn(-90);
@@ -790,7 +797,7 @@ void robot_path_task() {
     // Turn right
     TurnSlewRate(1000);
     Turn(90);
-    TurnSlewRate(600);
+    TurnSlewRate(TS);
 
     // Square with the left wall
     StraightUntilSwitch(-(8.0f + leverMinus));
@@ -801,12 +808,16 @@ void robot_path_task() {
     PivotLeft(0);
 
     // Approach the ramp slowly and then go fast up toward it to avoid slippage
+    DriveSlewRate(550);   // slightly faster ramp acceleration
     Straight(2);
     Straight(23);
+    DriveSlewRate(DS);
 
     // Go to luggage drop
     Pivot(180, -0.8);
-    StraightUntilSwitch(8);
+    DriveSlewRate(750);
+    StraightUntilSwitch(9);
+    DriveSlewRate(DS);
     ResetFacing(180);
 
     // Drop the luggage
@@ -815,19 +826,22 @@ void robot_path_task() {
     DumptruckServo(180);
 
     // Go to ticket light
-    Straight(-16.75);
+    Straight(-15.25);
     Turn(135);
 
+    // Square with ticket light wall
+    DriveSlewRate(600);
     StraightUntilSwitch(-15);
+    DriveSlewRate(DS);
     ResetFacing(135);
-    TurnSlewRate(300);
+    TurnSlewRate(225);
     Straight(2);
     CaptureTicketLight();
 
     if (robot.ticket_light_color == TICKET_LIGHT_BLUE) {
         Straight(5);
         Turn(90);
-        Straight(8.5);
+        Straight(9);
         PivotRight(0);
         StraightUntilSwitchTimeout(6, 2000);
 
@@ -855,12 +869,12 @@ void robot_path_task() {
 
     // Get into place for passport
     PassportServo(170);
-    PivotRight(-45);
+    PivotRight(-50);
     DumptruckServo(0);
     PivotLeft(0);
     PivotRight(25);
 
-    // Passport up
+    // Passport arm up
     PassportServo(70);
     Sleep(1000);
     PassportServo(90);
@@ -869,7 +883,9 @@ void robot_path_task() {
     PivotRight(30);
     PivotLeft(180);
 
-    // Go toward ramp
+    // Go toward ramp to go to end button
+    TurnSlewRate(600);
+    DriveSlewRate(400); // FULL SPEED AHEAD!
     Straight(7);
     DumptruckServo(180);
     PivotLeft(90);
@@ -877,12 +893,12 @@ void robot_path_task() {
     // Square with right side wall and turn
     StraightUntilSwitch(15);
     ResetFacing(90);
-    Straight(-1.5);
+    Straight(-1);
 
     Turn(180);
 
     // Go down right side ramp and hit the end button
-    DriveSlewRate(1000); // FULL SPEED AHEAD!
+    DriveSlewRate(600); // FULL SPEED AHEAD!
     Speed(100);
     Straight(50);
 }
@@ -930,6 +946,7 @@ extern "C" void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuf
 }
 
 int main() {
+
     /*
      * Initialize Robot Communication System (RCS).
      */
