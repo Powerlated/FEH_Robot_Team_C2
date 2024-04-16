@@ -162,24 +162,24 @@ namespace util {
  */
 constexpr int CONTROL_LOOP_HZ = 100;
 constexpr float IGWAN_COUNTS_PER_REV = 636;
-constexpr float TRACK_WIDTH = 8.35;
+constexpr float TRACK_WIDTH = 8.40;
 constexpr float WHEEL_DIA = 2.5;
 constexpr float INCHES_PER_REV = WHEEL_DIA * M_PI;
 constexpr float INCHES_PER_COUNT = (float) (INCHES_PER_REV / IGWAN_COUNTS_PER_REV);
-float DRIVE_MOTOR_MAX_VOLTAGE = 10.5; // TODO: igwans are actually rated at 12
+float DRIVE_MOTOR_MAX_VOLTAGE = 11; // TODO: igwans are actually rated at 12
 
 /*
  * Robot control configuration.
  */
-constexpr float DRIVE_MIN_PERCENT = 10;
-constexpr float TURN_MIN_PERCENT = 10;
+constexpr float DRIVE_MIN_PERCENT = 7.5;
+constexpr float TURN_MIN_PERCENT = 7.5;
 constexpr float STOPPED_I = 10;
 constexpr float STOPPED_I_ACCUMULATE = 3;
 constexpr float STOPPED_I_HIGHPASS = 0.999;
 constexpr float START_LIGHT_THRESHOLD_VOLTAGE = 1;
 constexpr int WAIT_FOR_LIGHT_CONFIDENT_MS = 500;
 constexpr int TICKET_LIGHT_AVERAGING_MS = 100;
-constexpr int SWITCH_CONFIDENT_TICKS = 30;
+constexpr int SWITCH_CONFIDENT_TICKS = 20;
 
 constexpr Vec<2> INITIAL_POS{0, 0};
 constexpr float INITIAL_ANGLE = rad(-45);
@@ -263,6 +263,10 @@ namespace robot_control {
         volatile float cds_red_value{};
         volatile float cds_blue_value{};
 
+        float d_battery_voltage{};
+        float d_pct_l{};
+        float d_pct_r{};
+        float d_diff{};
         int32_t total_counts_l{}, total_counts_r{};
 
         float R{};
@@ -338,13 +342,17 @@ namespace robot_control {
 
         void motor_power(float pct_l, float pct_r) {
             // A lower battery voltage will result in a HIGHER power supplied to compensate the voltage drop.
-            float voltage_compensation = 11.7f / Battery.Voltage();
+            d_battery_voltage = Battery.Voltage();
+            float voltage_compensation = 11.7f / d_battery_voltage;
 
             pct_l *= voltage_compensation;
             pct_r *= voltage_compensation;
 
             pct_l *= 9.0f / DRIVE_MOTOR_MAX_VOLTAGE;
             pct_r *= 9.0f / DRIVE_MOTOR_MAX_VOLTAGE;
+
+            d_pct_l = pct_l;
+            d_pct_r = pct_r;
 
             ml.SetPercent(pct_l);
             mr.SetPercent(pct_r);
@@ -714,6 +722,11 @@ namespace visualization {
         log("Angle", deg(robot.angle));
         log("TargetAngle", deg(robot.target_angle));
 
+        log("Battery%", (int)round((robot.d_battery_voltage / 11.7) * 100));
+        log("MotorL%", robot.d_pct_l);
+        log("MotorR%", robot.d_pct_r);
+        log("Diff", robot.d_diff);
+
         if (holding_sec < FORCE_START_HOLD_SEC) {
             if (touching && x >= LCD_WIDTH / 2) {
                 holding_sec += 1.0 / DIAGNOSTICS_HZ;
@@ -741,8 +754,8 @@ namespace visualization {
 }
 
 void robot_path_task() {
-    const int TS = 600;
-    const int DS = 400;
+    const int TS = 800;
+    const int DS = 600;
 
     FuelServo(180);
     DumptruckServo(180);
@@ -800,18 +813,15 @@ void robot_path_task() {
     TurnSlewRate(TS);
 
     // Square with the left wall
-    StraightUntilSwitch(-(8.0f + leverMinus));
+    StraightUntilSwitch(-(8.0f + leverMinus) - 2);
     ResetFacing(90);
 
     // Face up ramp
     Straight(0.5);
     PivotLeft(0);
 
-    // Approach the ramp slowly and then go fast up toward it to avoid slippage
-    DriveSlewRate(550);   // slightly faster ramp acceleration
-    Straight(2);
-    Straight(23);
-    DriveSlewRate(DS);
+    // Drive up ramp
+    Straight(25);
 
     // Go to luggage drop
     Pivot(180, -0.8);
@@ -826,30 +836,26 @@ void robot_path_task() {
     DumptruckServo(180);
 
     // Go to ticket light
-    Straight(-15.25);
+    Straight(-16);
     Turn(135);
 
     // Square with ticket light wall
-    DriveSlewRate(600);
     StraightUntilSwitch(-15);
-    DriveSlewRate(DS);
     ResetFacing(135);
-    TurnSlewRate(225);
     Straight(2);
     CaptureTicketLight();
 
     if (robot.ticket_light_color == TICKET_LIGHT_BLUE) {
-        Straight(5);
+        Straight(6);
         Turn(90);
-        Straight(9);
+        Straight(9.5);
         PivotRight(0);
-        StraightUntilSwitchTimeout(6, 2000);
+        StraightUntilSwitchTimeout(7, 2000);
 
         // Pivot to get into position for the center button
         PivotRight(-45);
         PivotLeft(0);
     } else {
-        // TODO: Get this working
         Straight(10);
         Pivot(0, 0.75);
         StraightUntilSwitchTimeout(4, 2000);
