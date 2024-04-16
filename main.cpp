@@ -177,8 +177,8 @@ constexpr float STOPPED_I = 10;
 constexpr float STOPPED_I_ACCUMULATE = 3;
 constexpr float STOPPED_I_HIGHPASS = 0.999;
 constexpr float START_LIGHT_THRESHOLD_VOLTAGE = 1;
-constexpr int WAIT_FOR_LIGHT_CONFIDENT_MS = 500;
-constexpr int TICKET_LIGHT_AVERAGING_MS = 100;
+constexpr int WAIT_FOR_LIGHT_CONFIDENT_MS = 50;
+constexpr int TICKET_LIGHT_AVERAGING_MS = 50;
 constexpr int SWITCH_CONFIDENT_TICKS = 20;
 
 constexpr Vec<2> INITIAL_POS{0, 0};
@@ -414,7 +414,6 @@ namespace robot_control {
                 }
 
                 if (until_switch) {
-                    // TODO: fix the left bump switch and add it back `!l_bump_switch.Value() &&`
                     if (!l_bump_switch.Value() && !r_bump_switch.Value()) {
                         switch_pressed_ticks++;
                     } else if (!button_bump_switch.Value()) {
@@ -727,6 +726,10 @@ namespace visualization {
         log("MotorR%", robot.d_pct_r);
         log("Diff", robot.d_diff);
 
+        log("LBump", robot.r_bump_switch.Value());
+        log("RBump", robot.r_bump_switch.Value());
+        log("FBump", robot.button_bump_switch.Value());
+
         if (holding_sec < FORCE_START_HOLD_SEC) {
             if (touching && x >= LCD_WIDTH / 2) {
                 holding_sec += 1.0 / DIAGNOSTICS_HZ;
@@ -773,11 +776,11 @@ void robot_path_task() {
 
     // Start button
     DriveSlewRate(1000); // fast acceleration for start button
-        StraightTimeout(-2, 1000);
+        StraightTimeout(-2, 500);
     DriveSlewRate(550);    // a bit slower for getting to levers
 
     // Forward // TODO: 18.5 cuts it close to the lever assembly
-    Straight(19);
+    Straight(19.5);
     DriveSlewRate(DS);     // regular acceleration for rest of course
 
     // Turn left toward fuel levers
@@ -808,9 +811,7 @@ void robot_path_task() {
     FuelServo(180);
 
     // Turn right
-    TurnSlewRate(1000);
     Turn(90);
-    TurnSlewRate(TS);
 
     // Square with the left wall
     StraightUntilSwitch(-(8.0f + leverMinus) - 2);
@@ -825,9 +826,7 @@ void robot_path_task() {
 
     // Go to luggage drop
     Pivot(180, -0.8);
-    DriveSlewRate(750);
     StraightUntilSwitch(9);
-    DriveSlewRate(DS);
     ResetFacing(180);
 
     // Drop the luggage
@@ -836,7 +835,7 @@ void robot_path_task() {
     DumptruckServo(180);
 
     // Go to ticket light
-    Straight(-16);
+    Straight(-15);
     Turn(135);
 
     // Square with ticket light wall
@@ -848,7 +847,7 @@ void robot_path_task() {
     if (robot.ticket_light_color == TICKET_LIGHT_BLUE) {
         Straight(6);
         Turn(90);
-        Straight(9.5);
+        Straight(8.75);
         PivotRight(0);
         StraightUntilSwitchTimeout(7, 2000);
 
@@ -890,8 +889,6 @@ void robot_path_task() {
     PivotLeft(180);
 
     // Go toward ramp to go to end button
-    TurnSlewRate(600);
-    DriveSlewRate(400); // FULL SPEED AHEAD!
     Straight(7);
     DumptruckServo(180);
     PivotLeft(90);
