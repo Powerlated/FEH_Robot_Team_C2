@@ -30,7 +30,7 @@
 #ifndef _FSL_PORT_H_
 #define _FSL_PORT_H_
 
-#include "../../../Downloads/SDK_2_2_0_MK60DN512xxx10/devices/MK60D10/drivers/fsl_common.h"
+#include "fsl_common.h"
 
 /*!
  * @addtogroup port
