@@ -18,10 +18,7 @@
  *
  */
 
-#include "NXP_SDK/MK60D10.h"
-#include "NXP_SDK/peripherals.h"
-#include "NXP_SDK/fsl_ftm.h"
-#include "pin_mux.h"
+#include "CMSIS/MK60D10.h"
 #include <FastLCD.h>
 #include <FEHLCD.h>
 #include <FEHMotor.h>
@@ -55,7 +52,7 @@ using namespace tasks;
 /*
  * Proteus constants.
  */
-uint32_t SystemCoreClock = 110 * 1000000; // yeah we overclocked the proteus
+int SystemCoreClock = 110 * 1000000; // yeah we overclocked the proteus
 constexpr int LCD_WIDTH = 320;
 constexpr int LCD_HEIGHT = 240;
 
@@ -204,6 +201,10 @@ constexpr auto CDS_CELL_BLUE_PIN = FEHIO::FEHIOPin::P1_1;
 constexpr auto L_BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_5;
 constexpr auto R_BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_6;
 constexpr auto BUTTON_BUMP_SWITCH_PIN = FEHIO::FEHIOPin::P1_7;
+constexpr auto ENCODER_L_PIN_0 = FEHIO::FEHIOPin::P3_0;
+constexpr auto ENCODER_L_PIN_1 = FEHIO::FEHIOPin::P3_1;
+constexpr auto ENCODER_R_PIN_0 = FEHIO::FEHIOPin::P3_2;
+constexpr auto ENCODER_R_PIN_1 = FEHIO::FEHIOPin::P3_3;
 constexpr float DRIVE_INCHES_PER_COUNT_L = INCHES_PER_COUNT;
 constexpr float DRIVE_INCHES_PER_COUNT_R = INCHES_PER_COUNT;
 
@@ -238,6 +239,8 @@ namespace robot_control {
 
         FEHMotor ml{DRIVE_MOTOR_L_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
         FEHMotor mr{DRIVE_MOTOR_R_PORT, DRIVE_MOTOR_MAX_VOLTAGE};
+        DigitalEncoder el{ENCODER_L_PIN_0, ENCODER_L_PIN_1};
+        DigitalEncoder er{ENCODER_R_PIN_0, ENCODER_R_PIN_1};
         DigitalInputPin button_bump_switch{BUTTON_BUMP_SWITCH_PIN};
         DigitalInputPin l_bump_switch{L_BUMP_SWITCH_PIN};
         DigitalInputPin r_bump_switch{R_BUMP_SWITCH_PIN};
@@ -289,15 +292,15 @@ namespace robot_control {
         }
 
         void process_odometry() {
-            counts_l = (int16_t)FTM_GetQuadDecoderCounterValue(FTM1);
-            counts_r = (int16_t)FTM_GetQuadDecoderCounterValue(FTM2);
+            counts_l = el.Counts();
+            counts_r = -er.Counts();
             total_counts_l += counts_l;
             total_counts_r += counts_r;
             task_counts_l += counts_l;
             task_counts_r += counts_r;
 
-            FTM_ClearQuadDecoderCounterValue(FTM1);
-            FTM_ClearQuadDecoderCounterValue(FTM2);
+            el.ResetCounts();
+            er.ResetCounts();
 
             float arclength_l = DRIVE_INCHES_PER_COUNT_L * (float) counts_l;
             float arclength_r = DRIVE_INCHES_PER_COUNT_R * (float) counts_r;
@@ -943,20 +946,6 @@ extern "C" void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuf
 }
 
 int main() {
-    /*
-     * Initialize quadrature decoding on FTM1 and FTM2.
-     * I configured this using MCUXpresso.
-     *
-     * FTM1 - Left Motor
-     * Channel A: [62] PORTA, 10 - FEHIOPin::P2_5
-     * Channel B: [63] PORTA, 11 - FEHIOPin::P2_4
-     * FTM2 - Right Motor
-     * Channel A: [64] PORTA, 12 - FEHIOPin::P2_3
-     * Channel B: [65] PORTA, 13 - FEHIOPin::P2_2
-     *
-     */
-    BOARD_InitBootPins();
-    BOARD_InitBootPeripherals();
 
     /*
      * Initialize Robot Communication System (RCS).
