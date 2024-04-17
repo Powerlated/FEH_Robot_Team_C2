@@ -905,7 +905,7 @@ void robot_path_task() {
     PivotRight(25);
 
     // Passport arm up
-    PassportServo(70);
+    PassportServo(60);
     Sleep(400);
     PassportServo(90);
 
