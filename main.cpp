@@ -179,7 +179,7 @@ constexpr float STOPPED_I_HIGHPASS = 0.999;
 constexpr float START_LIGHT_THRESHOLD_VOLTAGE = 1;
 constexpr int WAIT_FOR_LIGHT_CONFIDENT_MS = 50;
 constexpr int TICKET_LIGHT_AVERAGING_MS = 50;
-constexpr int SWITCH_CONFIDENT_TICKS = 20;
+constexpr int SWITCH_CONFIDENT_TICKS = 10;
 
 constexpr Vec<2> INITIAL_POS{0, 0};
 constexpr float INITIAL_ANGLE = rad(-45);
@@ -414,7 +414,9 @@ namespace robot_control {
                 }
 
                 if (until_switch) {
-                    if (!l_bump_switch.Value() && !r_bump_switch.Value()) {
+                    // if (!l_bump_switch.Value() && !r_bump_switch.Value()) {
+                    // TODO: Fix r_bump_switch
+                    if (!r_bump_switch.Value()) {
                         switch_pressed_ticks++;
                     } else if (!button_bump_switch.Value()) {
                         switch_pressed_ticks++;
@@ -595,6 +597,29 @@ namespace tasks {
         }
     }
 
+    void CaptureTicketLightDelayed_task(const int *ms) {
+        Sleep(*ms);
+        CaptureTicketLight();
+    }
+
+    void CaptureTicketLightDelayed(int ms) {
+        static int ms_static = ms;
+
+        const int STACK_SIZE = 1024;
+        static StaticTask_t tcb;
+        static StackType_t stack[STACK_SIZE];
+
+        xTaskCreateStatic(
+                TaskFunction_t(CaptureTicketLightDelayed_task),
+                "TicketLightDelayed",
+                STACK_SIZE,
+                &ms,
+                5,
+                stack,
+                &tcb
+        );
+    }
+
     void Straight(float inches) {
         robot.execute_straight(inches, false, 0);
     }
@@ -757,8 +782,8 @@ namespace visualization {
 }
 
 void robot_path_task() {
-    const int TS = 1000;
-    const int DS = 800;
+    const int TS = 3000;
+    const int DS = 1000;
 
     FuelServo(180);
     DumptruckServo(180);
@@ -794,7 +819,7 @@ void robot_path_task() {
 
     // Turn arm toward fuel levers
     Turn(0);
-    Straight(-3.8); // Back into position for the fuel lever flipping
+    Straight(-4.5); // Back into position for the fuel lever flipping
 
     // Fuel lever flip sequence
     FuelServo(72);
@@ -825,13 +850,13 @@ void robot_path_task() {
     Straight(25);
 
     // Go to luggage drop
-    Pivot(180, -0.8);
+    Pivot(180, -0.75);
     StraightUntilSwitch(9);
     ResetFacing(180);
 
     // Drop the luggage
     DumptruckServo(70);
-    Sleep(500);
+    Sleep(200);
     DumptruckServo(180);
 
     // Go to ticket light
@@ -860,19 +885,18 @@ void robot_path_task() {
     } else {
         Straight(10);
         Pivot(0, 0.75);
-        StraightUntilSwitchTimeout(4, 2000);
+        StraightUntilSwitchTimeout(4, 1000);
 
         // Pivot to get into position for the center button
         PivotLeft(45);
         PivotRight(0);
     }
 
-    StraightUntilSwitchTimeout(8, 2000);
-    Straight(-1.1);
+    StraightTimeout(3.5, 2000);
 
     // Dumptruck in place
     DumptruckServo(10);
-    Sleep(1000);
+    Sleep(500);
     DumptruckServo(55);
 
     // Get into place for passport
@@ -884,7 +908,7 @@ void robot_path_task() {
 
     // Passport arm up
     PassportServo(70);
-    Sleep(1000);
+    Sleep(400);
     PassportServo(90);
 
     // use the dumptruck to hit the passport down
@@ -993,7 +1017,7 @@ int main() {
             "robot_path",
             STACK_SIZE,
             nullptr,
-            4,
+            3,
             robot_path_stack,
             &robot_path_tcb
     );
@@ -1003,7 +1027,7 @@ int main() {
             "odometry",
             STACK_SIZE,
             nullptr,
-            5,
+            4,
             odometry_stack,
             &odometry_tcb
     );
