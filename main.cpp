@@ -726,7 +726,7 @@ namespace visualization {
         log("MotorR%", robot.d_pct_r);
         log("Diff", robot.d_diff);
 
-        log("LBump", robot.r_bump_switch.Value());
+        log("LBump", robot.l_bump_switch.Value());
         log("RBump", robot.r_bump_switch.Value());
         log("FBump", robot.button_bump_switch.Value());
 
@@ -757,8 +757,8 @@ namespace visualization {
 }
 
 void robot_path_task() {
-    const int TS = 800;
-    const int DS = 600;
+    const int TS = 1000;
+    const int DS = 800;
 
     FuelServo(180);
     DumptruckServo(180);
@@ -776,10 +776,10 @@ void robot_path_task() {
 
     // Start button
     DriveSlewRate(1000); // fast acceleration for start button
-        StraightTimeout(-2, 500);
-    DriveSlewRate(550);    // a bit slower for getting to levers
+        StraightTimeout(-2, 1000);
+    DriveSlewRate(DS);    // a bit slower for getting to levers
 
-    // Forward // TODO: 18.5 cuts it close to the lever assembly
+    // Forward
     Straight(19.5);
     DriveSlewRate(DS);     // regular acceleration for rest of course
 
@@ -794,14 +794,14 @@ void robot_path_task() {
 
     // Turn arm toward fuel levers
     Turn(0);
-    Straight(-3.5); // Back into position for the fuel lever flipping
+    Straight(-3.8); // Back into position for the fuel lever flipping
 
     // Fuel lever flip sequence
     FuelServo(72);
     Sleep(250);
     FuelServo(135);
     Straight(3);
-    Sleep(5000);
+    Sleep(4500);
     FuelServo(45);
     Straight(-3);
     FuelServo(90);
@@ -839,7 +839,10 @@ void robot_path_task() {
     Turn(135);
 
     // Square with ticket light wall
-    StraightUntilSwitch(-15);
+    StraightUntilSwitch(-12);
+    StraightUntilSwitch(-1);
+    StraightUntilSwitch(-1);
+    StraightUntilSwitch(-1);
     ResetFacing(135);
     Straight(2);
     CaptureTicketLight();
@@ -849,7 +852,7 @@ void robot_path_task() {
         Turn(90);
         Straight(8.75);
         PivotRight(0);
-        StraightUntilSwitchTimeout(7, 2000);
+        StraightUntilSwitchTimeout(8.5, 2000);
 
         // Pivot to get into position for the center button
         PivotRight(-45);
@@ -874,7 +877,7 @@ void robot_path_task() {
 
     // Get into place for passport
     PassportServo(170);
-    PivotRight(-50);
+    PivotRight(-45);
     DumptruckServo(0);
     PivotLeft(0);
     PivotRight(25);
@@ -894,14 +897,13 @@ void robot_path_task() {
     PivotLeft(90);
 
     // Square with right side wall and turn
-    StraightUntilSwitch(15);
+    StraightUntilSwitch(14);
     ResetFacing(90);
     Straight(-1);
 
     Turn(180);
 
     // Go down right side ramp and hit the end button
-    DriveSlewRate(600); // FULL SPEED AHEAD!
     Speed(100);
     Straight(50);
 }
