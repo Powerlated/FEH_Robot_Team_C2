@@ -822,17 +822,17 @@ void robot_path_task() {
     Straight(-4.5); // Back into position for the fuel lever flipping
 
     // Fuel lever flip sequence
-    FuelServo(72);
+    FuelServo(70);
     Sleep(250);
-    FuelServo(135);
     Straight(3);
+    FuelServo(135);
     Sleep(4500);
     FuelServo(45);
     Straight(-3);
     FuelServo(90);
     Sleep(250);
-    FuelServo(45);
     Straight(3);
+    FuelServo(45);
     FuelServo(180);
 
     // Turn right
@@ -850,7 +850,7 @@ void robot_path_task() {
     Straight(25);
 
     // Go to luggage drop
-    Pivot(180, -0.75);
+    Pivot(180, -0.70);
     StraightUntilSwitch(9);
     ResetFacing(180);
 
@@ -866,8 +866,6 @@ void robot_path_task() {
     // Square with ticket light wall
     StraightUntilSwitch(-12);
     StraightUntilSwitch(-1);
-    StraightUntilSwitch(-1);
-    StraightUntilSwitch(-1);
     ResetFacing(135);
     Straight(2);
     CaptureTicketLight();
@@ -875,7 +873,7 @@ void robot_path_task() {
     if (robot.ticket_light_color == TICKET_LIGHT_BLUE) {
         Straight(6);
         Turn(90);
-        Straight(8.75);
+        Straight(8.5);
         PivotRight(0);
         StraightUntilSwitchTimeout(8.5, 2000);
 
@@ -892,7 +890,7 @@ void robot_path_task() {
         PivotRight(0);
     }
 
-    StraightTimeout(3.5, 2000);
+    StraightTimeout(5, 2000);
 
     // Dumptruck in place
     DumptruckServo(10);
