@@ -830,7 +830,7 @@ void robot_path_task() {
     ResetFacing(180);
 
     // Drop the luggage
-    DumptruckServo(90);
+    DumptruckServo(70);
     Sleep(500);
     DumptruckServo(180);
 
@@ -871,9 +871,9 @@ void robot_path_task() {
     Straight(-1.1);
 
     // Dumptruck in place
-    DumptruckServo(30);
+    DumptruckServo(10);
     Sleep(1000);
-    DumptruckServo(75);
+    DumptruckServo(55);
 
     // Get into place for passport
     PassportServo(170);
