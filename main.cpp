@@ -789,6 +789,7 @@ void robot_path_task() {
     DumptruckServo(180);
     PassportServo(90);
 
+    DriveSlewRate(DS);
     TurnSlewRate(TS);
     Speed(90);
 
@@ -843,11 +844,11 @@ void robot_path_task() {
     ResetFacing(90);
 
     // Face up ramp
-    Straight(0.5);
-    PivotLeft(0);
+    Straight(4);
+    Turn(0);
 
     // Drive up ramp
-    Straight(25);
+    Straight(26);
 
     // Go to luggage drop
     Pivot(180, -0.70);
@@ -882,7 +883,9 @@ void robot_path_task() {
         PivotLeft(0);
     } else {
         Straight(10);
-        Pivot(0, 0.75);
+        TurnSlewRate(TS * 0.5); // This turn is crazy fucking fast let's slow it down
+        Pivot(0, 0.82);
+        TurnSlewRate(TS);
         StraightUntilSwitchTimeout(4, 1000);
 
         // Pivot to get into position for the center button
@@ -906,15 +909,16 @@ void robot_path_task() {
 
     // Passport arm up
     PassportServo(60);
-    Sleep(400);
+    Sleep(500);
     PassportServo(90);
 
     // use the dumptruck to hit the passport down
     PivotRight(30);
-    PivotLeft(180);
+    PivotLeft(90);
+    Turn(180);
 
     // Go toward ramp to go to end button
-    Straight(7);
+    Straight(6);
     DumptruckServo(180);
     PivotLeft(90);
 
