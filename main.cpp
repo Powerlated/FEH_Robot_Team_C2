@@ -848,10 +848,12 @@ void robot_path_task() {
     Turn(0);
 
     // Drive up ramp
+    DriveSlewRate(DS * 2); // get the acceleration out of the way before we hit the ramp
     Straight(26);
+    DriveSlewRate(DS);
 
     // Go to luggage drop
-    Pivot(180, -0.70);
+    Pivot(180, -0.72);
     StraightUntilSwitch(9);
     ResetFacing(180);
 
@@ -914,7 +916,7 @@ void robot_path_task() {
 
     // use the dumptruck to hit the passport down
     PivotRight(30);
-    PivotLeft(90);
+    PivotLeft(120);
     Turn(180);
 
     // Go toward ramp to go to end button
@@ -923,7 +925,7 @@ void robot_path_task() {
     PivotLeft(90);
 
     // Square with right side wall and turn
-    StraightUntilSwitch(14);
+    StraightUntilSwitch(13);
     ResetFacing(90);
     Straight(-1);
 
