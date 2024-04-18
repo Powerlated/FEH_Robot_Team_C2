@@ -401,7 +401,7 @@ namespace robot_control {
 
             Vec<2> pos0 = pos;
             unstuck unstuck;
-            PIController angle_controller(CONTROL_LOOP_HZ, 200, 100, 100);
+            PIController angle_controller(CONTROL_LOOP_HZ, 200, 200, 100);
             TickType_t time = xTaskGetTickCount();
             TickType_t start_time = xTaskGetTickCount();
 
@@ -878,12 +878,12 @@ void robot_path_task() {
     if (robot.ticket_light_color == TICKET_LIGHT_BLUE) {
         Straight(6);
         Turn(90);
-        Straight(8.75);
+        Straight(9);
         PivotRight(0);
         StraightUntilSwitchTimeout(8.5, 2000);
 
         // Pivot to get into position for the center button
-        PivotRight(-45);
+        PivotRight(-37.5);
         PivotLeft(0);
     } else {
         Straight(10);
@@ -897,7 +897,7 @@ void robot_path_task() {
         PivotRight(0);
     }
 
-    StraightTimeout(5, 2000);
+    StraightTimeout(4, 2000);
 
     // Dumptruck in place
     DumptruckServo(10);
@@ -911,7 +911,7 @@ void robot_path_task() {
     PivotLeft(0);
     PivotRight(28);
 
-    Straight(0.5);
+    Straight(1);
 
     // Passport arm up
     PassportServo(60);
@@ -929,7 +929,7 @@ void robot_path_task() {
     PivotLeft(90);
 
     // Square with right side wall and turn
-    StraightUntilSwitch(13);
+    StraightUntilSwitchTimeout(13, 2000);
     ResetFacing(90);
     Straight(-1);
 
