@@ -853,7 +853,9 @@ void robot_path_task() {
     DriveSlewRate(DS);
 
     // Go to luggage drop
+    TurnSlewRate(TS * 0.75); // This turn is crazy fucking fast let's slow it down
     Pivot(180, -0.72);
+    TurnSlewRate(TS);
     StraightUntilSwitch(9);
     ResetFacing(180);
 
@@ -876,7 +878,7 @@ void robot_path_task() {
     if (robot.ticket_light_color == TICKET_LIGHT_BLUE) {
         Straight(6);
         Turn(90);
-        Straight(8.5);
+        Straight(8.75);
         PivotRight(0);
         StraightUntilSwitchTimeout(8.5, 2000);
 
@@ -891,7 +893,7 @@ void robot_path_task() {
         StraightUntilSwitchTimeout(4, 1000);
 
         // Pivot to get into position for the center button
-        PivotLeft(45);
+        PivotLeft(37.5);
         PivotRight(0);
     }
 
@@ -907,7 +909,9 @@ void robot_path_task() {
     PivotRight(-45);
     DumptruckServo(0);
     PivotLeft(0);
-    PivotRight(25);
+    PivotRight(28);
+
+    Straight(0.5);
 
     // Passport arm up
     PassportServo(60);
