@@ -683,6 +683,16 @@ namespace tasks {
         robot.execute_turn(degree, 2, 0);
     }
 
+    void FwdSquareWiggle() {
+        robot.motor_power(100, 0);
+        Sleep(100);
+        robot.motor_power(0, 100);
+        Sleep(100);
+        robot.motor_power(100, 100);
+        Sleep(100);
+        robot.motor_power(0, 0);
+    }
+
     void FuelServo(float degree) {
         robot.fuel_servo.SetDegree(degree);
     }
@@ -854,9 +864,10 @@ void robot_path_task() {
 
     // Go to luggage drop
     TurnSlewRate(TS * 0.75); // This turn is crazy fucking fast let's slow it down
-    Pivot(185, -0.72);
+    Pivot(180, -0.72);
     TurnSlewRate(TS);
     StraightUntilSwitchTimeout(9, 1000);
+    FwdSquareWiggle();
     ResetFacing(180);
 
     // Drop the luggage
@@ -870,7 +881,7 @@ void robot_path_task() {
 
     // Square with ticket light wall
     StraightUntilSwitch(-11);
-    StraightUntilSwitch(-1);
+    StraightUntilSwitch(-2);
     ResetFacing(135);
     Straight(2);
     CaptureTicketLight();
@@ -878,7 +889,7 @@ void robot_path_task() {
     if (robot.ticket_light_color == TICKET_LIGHT_BLUE) {
         Straight(6);
         Turn(90);
-        Straight(9.5);
+        Straight(9);
         PivotRight(0);
         StraightUntilSwitchTimeout(8.5, 1000);
 
@@ -886,7 +897,7 @@ void robot_path_task() {
         PivotRight(-37.5);
         PivotLeft(0);
     } else {
-        Straight(10);
+        Straight(9.75);
         TurnSlewRate(TS * 0.5); // This turn is crazy fucking fast let's slow it down
         Pivot(0, 0.82);
         TurnSlewRate(TS);
@@ -905,9 +916,9 @@ void robot_path_task() {
     DumptruckServo(55);
 
     // Get into place for passport
-    Straight(-1);
+    Straight(-2);
     PassportServo(170);
-    PivotRight(-45);
+    PivotRight(-35);
     DumptruckServo(0);
     PivotLeft(0);
     PivotRight(28);
@@ -930,7 +941,7 @@ void robot_path_task() {
     PivotLeft(90);
 
     // Square with right side wall and turn
-    StraightUntilSwitchTimeout(13, 1500);
+    StraightUntilSwitchTimeout(11, 1500);
     ResetFacing(90);
     Straight(-1);
 
