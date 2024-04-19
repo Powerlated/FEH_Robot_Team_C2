@@ -685,11 +685,17 @@ namespace tasks {
 
     void FwdSquareWiggle() {
         robot.motor_power(100, 0);
-        Sleep(100);
+        Sleep(50);
         robot.motor_power(0, 100);
-        Sleep(100);
+        Sleep(50);
         robot.motor_power(100, 100);
-        Sleep(100);
+        Sleep(300);
+        robot.motor_power(0, 0);
+    }
+
+    void FwdSquarePush() {
+        robot.motor_power(100, 100);
+        Sleep(500);
         robot.motor_power(0, 0);
     }
 
@@ -897,7 +903,7 @@ void robot_path_task() {
         PivotRight(-37.5);
         PivotLeft(0);
     } else {
-        Straight(9.75);
+        Straight(9.25);
         TurnSlewRate(TS * 0.5); // This turn is crazy fucking fast let's slow it down
         Pivot(0, 0.82);
         TurnSlewRate(TS);
@@ -912,7 +918,7 @@ void robot_path_task() {
 
     // Dumptruck in place
     DumptruckServo(10);
-    Sleep(500);
+    Sleep(600);
     DumptruckServo(55);
 
     // Get into place for passport
@@ -941,7 +947,8 @@ void robot_path_task() {
     PivotLeft(90);
 
     // Square with right side wall and turn
-    StraightUntilSwitchTimeout(11, 1500);
+    StraightUntilSwitchTimeout(11, 1200);
+    FwdSquarePush();
     ResetFacing(90);
     Straight(-1);
 
