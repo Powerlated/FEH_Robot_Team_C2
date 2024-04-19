@@ -903,6 +903,7 @@ void robot_path_task() {
         PivotRight(-37.5);
         PivotLeft(0);
     } else {
+        // TODO: I decreased this by 0.5 on Friday
         Straight(9.25);
         TurnSlewRate(TS * 0.5); // This turn is crazy fucking fast let's slow it down
         Pivot(0, 0.82);
@@ -918,6 +919,7 @@ void robot_path_task() {
 
     // Dumptruck in place
     DumptruckServo(10);
+    // TODO: I increased this by 100 on Friday
     Sleep(600);
     DumptruckServo(55);
 
