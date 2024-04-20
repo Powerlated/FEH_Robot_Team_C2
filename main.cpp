@@ -803,7 +803,7 @@ void robot_path_task() {
 
     FuelServo(180);
     DumptruckServo(180);
-    PassportServo(90);
+    PassportServo(83);
 
     DriveSlewRate(DS);
     TurnSlewRate(TS);
@@ -929,7 +929,7 @@ void robot_path_task() {
 
     // Get into place for passport
     Straight(-2);
-    PassportServo(170);
+    PassportServo(160);
     PivotRight(-35);
     DumptruckServo(0);
     PivotLeft(0);
@@ -938,9 +938,9 @@ void robot_path_task() {
     StraightTimeout(4, 1000);
 
     // Passport arm up
-    PassportServo(60);
+    PassportServo(53);
     Sleep(500);
-    PassportServo(90);
+    PassportServo(83);
 
     // use the dumptruck to hit the passport down
     PivotRight(30);
