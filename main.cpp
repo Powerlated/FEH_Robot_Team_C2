@@ -922,6 +922,10 @@ void robot_path_task() {
     // TODO: I increased this by 100 on Friday
     Sleep(600);
     DumptruckServo(55);
+    Sleep(600);
+    DumptruckServo(10);
+    Sleep(600);
+    DumptruckServo(55);
 
     // Get into place for passport
     Straight(-2);
