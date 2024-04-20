@@ -906,7 +906,7 @@ void robot_path_task() {
         // TODO: I decreased this by 0.5 on Friday
         Straight(9.25);
         TurnSlewRate(TS * 0.5); // This turn is crazy fucking fast let's slow it down
-        Pivot(0, 0.82);
+        Pivot(0, 0.72); // TODO: Decreased from 0.82 to 0.72 because it was too far right of white button
         TurnSlewRate(TS);
         StraightUntilSwitchTimeout(4, 1000);
 
