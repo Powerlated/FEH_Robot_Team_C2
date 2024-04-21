@@ -1016,15 +1016,6 @@ int main() {
     RCS.InitializeTouchMenu("C2N8hFpMW");
 
     /*
-     * Assign colors to palette numbers.
-     */
-    FastLCD::SetPaletteColor(Clear, BLACK);
-    FastLCD::SetPaletteColor(White, WHITE);
-    FastLCD::SetPaletteColor(Gray, GRAY);
-    FastLCD::SetPaletteColor(Red, RED);
-    FastLCD::SetPaletteColor(Yellow, YELLOW);
-
-    /*
      * Start tasks.
      */
     const int STACK_SIZE = 1024;
